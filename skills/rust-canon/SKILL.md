@@ -1,13 +1,14 @@
 ---
 name: rust-canon
 description: Rust stack defaults and quality gates for Rust-first product ecosystems — workspace layout, dependency policy, error handling, config layering, model-stack policy, secrets. Use when writing Rust, scaffolding crates, choosing dependencies, or picking models/providers.
+license: MIT
 ---
 
 # Rust Canon
 
 Rust is the default for products — prefer building native over porting or wrapping.
-TypeScript for standalone web libs and lightweight org tooling (Node ≥20 ESM, pnpm,
-near-zero deps); Svelte 5 + Vite + plain CSS (no SSR) for dashboards and
+TypeScript for standalone web libs and lightweight org tooling (Node ≥22 LTS — 24 preferred — ESM,
+pnpm, near-zero deps); Svelte 5 + Vite + plain CSS (no SSR) for dashboards and
 prototypes; Flutter when a multi-platform consumer app is needed. Python is throwaway
 experiment glue only — never in `src/` or shipped code; confined to `prototypes/spikes/`
 and gitignored scratch.
@@ -36,7 +37,6 @@ unless genuinely necessary (expensive to run). Mobile is native or Flutter, not 
 - Never `unwrap()` in library code (tests only). Errors bubble to the caller/operator;
   no fail-open, no silent skip.
 - Async on tokio; non-blocking, multi-threaded by default.
-- f16 over f32 on GPU paths.
 - `--release` by default for everything executed or measured; debug builds only when
   actively debugging (assertions, symbols, tight edit-compile loops).
 - `///` docs on public items; names say what things do (`captured_at` ≠ `ingested_at`;

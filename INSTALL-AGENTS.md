@@ -113,12 +113,15 @@ For each selected product:
    ```
 4. Preserve all content outside the managed block. Duplicate, incomplete, or
    reversed markers are a conflict requiring inspection; do not guess.
-5. Install each Forge-owned Skill into `~/.agents/skills/` for Codex and Kimi.
+5. Codex loads `$CODEX_HOME/AGENTS.override.md` instead of `AGENTS.md` when it exists.
+   If an override file is present, place the block there or remove the override
+   deliberately; otherwise the Forge block is never read.
+6. Install each Forge-owned Skill into `~/.agents/skills/` for Codex and Kimi.
    Do not use the legacy `$CODEX_HOME/skills/` location as the portable target.
-6. Install the same Forge-owned Skills into Claude Code's native user Skill
+7. Install the same Forge-owned Skills into Claude Code's native user Skill
    directory. A symlink may point directly to the Forge source; otherwise copy
    the complete Skill directory.
-7. Do not install anything from `custom/` as though Forge owned it. Follow the
+8. Do not install anything from `custom/` as though Forge owned it. Follow the
    ownership recorded in `custom/INDEX.md`.
 
 Writes should be staged in the destination directory and atomically renamed

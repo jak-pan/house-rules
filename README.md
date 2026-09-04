@@ -29,7 +29,7 @@ engineering judgment (rules marked ⚒). Method and receipts: [EVIDENCE.md](EVID
 | `skills/design-canon` | Architecture principles: raw-canonical data, black-box boundaries, end-state-first, naming |
 | `skills/design-flow` | Feature lifecycle: spec/design → lofi/hifi prototype → spike → implement → closeout with doc migration |
 | `skills/finding-unknowns` | Unknowns-first working (after Thariq Shihipar's field guide): blindspot pass, reverse interview, prototype variants, pre-merge quiz |
-| `skills/reasoning-moves` | **The scaffold pack** — frontier-native reasoning moves as explicit checkpoints for capable-but-not-frontier models (tuned for Opus): ground/gate/verify/report/learn |
+| `skills/reasoning-moves` | **The scaffold pack** — frontier-native reasoning moves as explicit checkpoints for capable-but-not-frontier models (for any model below the strongest available tier): ground/gate/verify/report/learn |
 | `skills/spec-writing` | Specs that pass the "buildable by a mid-level engineer without questions" bar: shape, worked examples, decisions+rejected, naming, reality-sweep first |
 | `skills/audit-report-authoring` | Evidence-based audit and diligence report sets: claim labels, specialist/master authority, canonical questions, report-local citations, domain lenses and structural lint |
 | `skills/task-protocol` | Multi-agent task management: single-writer task files, immutable handoffs, generated board |

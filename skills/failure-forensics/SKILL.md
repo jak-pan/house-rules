@@ -1,6 +1,7 @@
 ---
 name: failure-forensics
 description: Per-item forensic root-cause procedure for wrong results, regressions, score drops, slowdowns, and operator-reported symptoms. Use when a run underperforms, a metric moves unexpectedly, something got slower, or the operator says "investigate", "forensics", or "why".
+license: MIT
 ---
 
 # Failure Forensics

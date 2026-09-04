@@ -1,6 +1,7 @@
 ---
 name: reasoning-moves
-description: The scaffold pack — reasoning moves a frontier model performs unprompted, made explicit as mandatory checkpoints for capable-but-not-frontier models (tuned for Claude Opus), and as a self-audit for any model. Use at session start on complex work, before experiments/edits/reports, when debugging, and whenever executing on a model below the frontier tier.
+description: Mandatory reasoning checkpoints for any model below the strongest available tier, and a self-audit for the rest — the ground/gate/verify/report/learn moves a frontier model performs unprompted. Use at session start on complex work, before experiments, edits, or reports, when debugging, and whenever the executing model is not the top tier.
+license: MIT
 ---
 
 # Reasoning Moves

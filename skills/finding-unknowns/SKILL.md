@@ -1,6 +1,7 @@
 ---
 name: finding-unknowns
 description: Surface the operator's unknowns before, during, and after ambiguous work — blindspot pass, one-question-at-a-time reverse interview, fake-data prototype variants, volatile-decisions-first plans, implementation notes, pre-merge quiz. Use at the start of any underspecified or design-heavy task, when writing specs/prompts for agents, when output surprises anyone, and before merging significant work.
+license: MIT
 ---
 
 # Finding Unknowns

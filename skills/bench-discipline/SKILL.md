@@ -1,6 +1,7 @@
 ---
 name: bench-discipline
 description: Benchmark and experiment methodology — no test-targeted hacks, variance floors, controls and oracle ceilings, one-knob isolation, prove-the-knob-fired, cost ladder, comparability, judge validation. Use whenever designing or running benchmarks, evals, A/B tests, or tuning sweeps.
+license: MIT
 ---
 
 # Bench Discipline

@@ -1,6 +1,7 @@
 ---
 name: goal-loop
 description: Run autonomous iteration toward an explicit measurable target or acceptance checklist, including overnight work and "do not stop" mandates. The loop remains bound to the operator's outcome and approved resource envelope; a supporting subproblem cannot become the goal.
+license: MIT
 ---
 
 # Goal Loop

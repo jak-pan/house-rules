@@ -1,6 +1,7 @@
 ---
 name: agent-lanes
 description: Parallel multi-agent orchestration — lane ownership, non-colliding file sets, worktrees, per-lane cargo target dirs, GPU serialization, subagent git limits, cross-repo etiquette. Use when fanning out subagents, workflows, teammates, or background jobs.
+license: MIT
 ---
 
 # Agent Lanes

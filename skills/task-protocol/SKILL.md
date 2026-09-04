@@ -1,6 +1,8 @@
 ---
 name: task-protocol
 description: Git-native multi-agent/multi-person task management — single-writer task files, immutable handoff events, generated board. Replaces the shared NEXT.md pattern. Use when starting/claiming/finishing work in any repo using tasks/, when coordinating multiple agents or people, or when the operator asks about task state.
+license: MIT
+compatibility: bin/task requires zsh
 ---
 
 # Task Protocol

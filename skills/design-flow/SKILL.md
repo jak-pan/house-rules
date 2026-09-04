@@ -1,6 +1,7 @@
 ---
 name: design-flow
 description: Feature lifecycle — spec/architecture design, lofi/hifi prototyping, spikes, implementation, and closeout (design doc migrates to architecture/spec, task closes). Use when starting a feature, writing a spec or design doc, prototyping UX, running a spike, or closing a finished feature/PR.
+license: MIT
 ---
 
 # Design Flow

@@ -1,6 +1,7 @@
 ---
 name: spec-writing
 description: How to write specs, design docs, and system maps that pass the "buildable by a mid-level engineer without questions" bar — shape, worked examples, decision records, naming, and the reality-sweep that precedes writing. Use when writing or reviewing any spec, design doc, system map, or architecture document.
+license: MIT
 ---
 
 # Spec Writing

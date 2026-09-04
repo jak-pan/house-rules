@@ -1,6 +1,7 @@
 ---
 name: handoff-continuity
 description: Session continuity — immutable handoff files before compaction, task ledgers, AGENTS.md bible maintenance, dated reports, task filing. Use before context compaction, at session end, when work spans sessions, when spawning successor agents, or when the operator says "handover".
+license: MIT
 ---
 
 # Handoff & Continuity

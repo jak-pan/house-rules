@@ -1,6 +1,7 @@
 ---
 name: design-canon
 description: Architecture principles — raw-canonical data with rebuildable derived stores, black-box module boundaries, config over hardcoding, metadata over text heuristics, end-state-first, no pre-launch legacy, naming precision, spec-first UX. Use for design decisions, new components, refactors, specs, or architecture reviews.
+license: MIT
 ---
 
 # Design Canon

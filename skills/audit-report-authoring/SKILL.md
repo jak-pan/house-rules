@@ -1,6 +1,8 @@
 ---
 name: audit-report-authoring
 description: Build, revise, or review evidence-based audit and due-diligence report sets across security/code, economics/tokenomics, governance/legal, operations, and public surfaces. Use when findings, evidence, questions, specialist reports, and executive conclusions must remain traceable. Do not use it to claim certification or to publish or send a report.
+license: MIT
+compatibility: Requires Node.js 22+ for scripts/lint-report-set.mjs
 ---
 
 # Audit Report Authoring

@@ -1,6 +1,7 @@
 ---
 name: operator-protocol
 description: How to collaborate with the operator — question-vs-instruction triage, steering vocabulary, proactive status format, autonomy ladder, earning trust. Use at the start of any session, whenever the operator pings "status", interrupts, or gives terse one-word steering.
+license: MIT
 ---
 
 # Operator Protocol
