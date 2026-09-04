@@ -1,0 +1,67 @@
+---
+name: spec-writing
+description: How to write specs, design docs, and system maps that pass the "buildable by a mid-level engineer without questions" bar — shape, worked examples, decision records, naming, and the reality-sweep that precedes writing. Use when writing or reviewing any spec, design doc, system map, or architecture document.
+---
+
+# Spec Writing
+
+The acceptance test for every spec: **a mid-level engineer could implement the system
+from it without asking questions.** A doc that doesn't teach the product is rejected.
+Lifecycle and file placement: `design-flow` + `STRUCTURE.md`.
+
+## Before writing: sweep reality
+
+- Never spec from memory: sweep the current state first,
+  then decide. Use a multi-agent sweep for
+  cross-cutting work when delegation is permitted and fits the campaign resource
+  envelope. Otherwise perform the authoritative source sweep with the primary agent and
+  propose additional review if beneficial. Verify inherited claims against canonical code
+  (file:line), not against other documents.
+- Check for superseded decisions before re-deciding.
+  Rank conflicting sources by recency and supersession.
+- On inherited/messy codebases, invert the order: write the clean system map + spec from
+  the old code as *reference*, then classify components easy/hard to rewrite, then build.
+
+## Shape (every doc)
+
+- **TL;DR first.** Verdict/summary up front, detail below.
+- **Worked examples are mandatory**: real inputs → how they're validated/transformed →
+  what's stored. Multiple examples beat prose every time.
+- **Exact signatures, not descriptions**: real type/trait/schema definitions, module
+  layout, integration points. Prose describing code is a smell; code is shorter.
+- **Diagrams**: Mermaid, vertical orientation for flows; one high-level system map +
+  per-feature deep dives (two-tier docs). No ASCII art in Markdown.
+- **Authoritative framing**: decisions are stated as decisions ("X does Y via Z"), with
+  a Decisions section recording each choice AND its rejected alternatives with why.
+  Tentative framing ("we could maybe...") is for the open-questions list only.
+- **No development history**: docs describe the system, not the journey.
+
+## Naming (spec work is naming work)
+
+- Names are isomorphic across docs, code, and UI — one concept, one name, everywhere.
+- Grep for collisions before introducing any name; a locally-good name that collides
+  with an existing concept is rejected.
+- No unexplained shorthands anywhere. Disambiguate lookalikes explicitly
+  (`captured_at` ≠ `ingested_at` ≠ `observed_at`).
+- Split categories that carry different handling assumptions (e.g. *malformed* vs
+  *suspicious* input — wildly different security posture) into distinct named types.
+
+## Content standards
+
+- **Pipeline-order invariants are written down** as an explicit ordered list (what runs
+  before what, and why) — they're the first casualties of refactors and compactions.
+- **Truth tiers labeled**: when a system carries raw, derived, and summarized data, the
+  spec says which tier each consumer sees and what authority each tier has.
+- **Parameters derived, not asserted**: every threshold/size/scale in a spec traces to a
+  constraint or measurement; a magic constant is a bug until justified.
+- **Every policy configurable**: the spec defines defaults + the config surface, never a
+  hard-imposed behavior (see `rust-canon` config layering).
+
+## Duty to critique
+
+A spec you're handed is an input, not an order: critique it and offer the
+decisions you would make instead of following blindly. State disagreements
+with evidence and a recommendation, then follow the ruling. When implementing, deliver
+the spec literally — if it says scores/metadata/IDs, never substitute a cruder proxy;
+if the specified mechanism seems wrong mid-build, stop and say so rather than silently
+implementing a reduced version.

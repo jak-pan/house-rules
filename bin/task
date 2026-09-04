@@ -1,0 +1,205 @@
+#!/bin/zsh
+# task — git-native multi-agent task protocol (interim until a dedicated orchestrator).
+# Every file has ONE writer; TASKS.md is generated; handoffs are immutable events.
+set -euo pipefail
+
+TASKS_DIR="${TASKS_DIR:-tasks}"
+AGENT="${AGENT_NAME:-${USER:-agent}}"
+now() { date -u +%Y-%m-%dT%H:%M:%SZ }
+stamp() { date -u +%Y%m%d-%H%M%S }
+
+usage() {
+  cat <<'EOF'
+usage: task <command>
+  new "title" [P0|P1|P2|P3]     scaffold next NNN-slug/task.md (status: pending)
+  claim NNN [owner]             set owner (default $AGENT_NAME/$USER) + status: active
+  status NNN <state>            pending|active|review|blocked|done
+  done NNN [--force]            closeout gate: handoff + design-doc migration checks
+  handoff NNN                   create immutable handoff file for this session
+  index                         regenerate tasks/TASKS.md from frontmatter (idempotent)
+  board                         print live board to stdout (does not write)
+rules: task.md is edited ONLY by its owner; handoffs/ files are never edited after
+creation; TASKS.md is never hand-edited — always `task index` after frontmatter changes
+and commit task.md + TASKS.md together.
+EOF
+  exit 1
+}
+
+fm_get() { # fm_get <file> <key> — tolerates empty values ("key:")
+  awk -v k="$2" 'f==1 && $0=="---"{exit} $0=="---"{f=1;next}
+    f==1 && index($0,k":")==1 {sub("^"k":[ ]*",""); print; exit}' "$1"
+}
+
+fm_set() { # fm_set <file> <key> <value> — single-key replace inside frontmatter
+  local f="$1" k="$2" v="$3" tmp
+  tmp="$(mktemp "${TMPDIR:-/tmp}/task.XXXXXX")"
+  awk -v k="$k" -v v="$v" '
+    BEGIN{fm=0}
+    $0=="---"{n++; fm=(n==1)?1:0; print; next}
+    fm==1 && index($0,k":")==1 {print k": "v; next}
+    {print}' "$f" > "$tmp" && mv "$tmp" "$f"
+}
+
+task_dir() { # task_dir NNN
+  local -a m
+  m=("$TASKS_DIR"/"$1"-*(N/))
+  (( ${#m} > 0 )) || { echo "no task $1 in $TASKS_DIR/" >&2; exit 1; }
+  echo "${m[1]}"
+}
+
+cmd="${1:-}"; [ -n "$cmd" ] && shift || usage
+case "$cmd" in
+  new)
+    title="${1:?title required}"; prio="${2:-P2}"
+    slug=$(echo "$title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g;s/--*/-/g;s/^-//;s/-$//' | cut -c1-40)
+    existing=("$TASKS_DIR"/[0-9][0-9][0-9]-*(N/))
+    last=0
+    for e in $existing; do
+      n=${${e:t}[1,3]}
+      (( 10#$n > last )) && last=$((10#$n))
+    done
+    nnn=$(printf '%03d' $(( last + 1 )))
+    dir="$TASKS_DIR/$nnn-$slug"
+    mkdir -p "$dir/handoffs"
+    cat > "$dir/task.md" <<EOF
+---
+id: $nnn
+title: $title
+status: pending
+owner:
+priority: $prio
+depends_on:
+lane:
+design:
+pr:
+created: $(now)
+updated: $(now)
+---
+
+## Scope
+
+## Acceptance criteria
+
+## Decisions
+<!-- settled choices + rejected alternatives, with why -->
+EOF
+    echo "$dir/task.md"
+    ;;
+  claim)
+    nnn="${1:?task number required}"; shift
+    force=0; owner=""
+    for a in "$@"; do
+      [ "$a" = "--force" ] && force=1 || owner="$a"
+    done
+    owner="${owner:-$AGENT}"
+    f="$(task_dir "$nnn")/task.md"
+    cur=$(fm_get "$f" owner)
+    if [ -n "$cur" ] && [ "$cur" != "$owner" ] && [ $force -eq 0 ]; then
+      echo "REFUSED: $nnn owned by '$cur'. Take over explicitly: task claim $nnn $owner --force" >&2
+      exit 1
+    fi
+    fm_set "$f" owner "$owner"; fm_set "$f" status active; fm_set "$f" updated "$(now)"
+    echo "claimed $nnn -> $owner"
+    ;;
+  status)
+    nnn="${1:?}"; st="${2:?pending|active|review|blocked}"
+    case "$st" in
+      pending|active|review|blocked) ;;
+      done) echo "REFUSED: 'status done' bypasses the closeout gate — use: task done $nnn" >&2; exit 1;;
+      *) echo "bad status: $st" >&2; exit 1;;
+    esac
+    f="$(task_dir "$nnn")/task.md"
+    fm_set "$f" status "$st"; fm_set "$f" updated "$(now)"
+    echo "$nnn -> $st"
+    ;;
+  done)
+    nnn="${1:?}"; d="$(task_dir "$nnn")"; f="$d/task.md"
+    force="${2:-}"
+    problems=()
+    hcount=$(ls "$d/handoffs" 2>/dev/null | wc -l | tr -d ' ')
+    [ "$hcount" -gt 0 ] || problems+=("no handoff — run: task handoff $nnn (final handoff carries Decisions)")
+    dz=$(fm_get "$f" design)
+    if [ -n "$dz" ]; then
+      if [ -f "$dz" ]; then
+        ds=$(fm_get "$dz" status)
+        case "$ds" in
+          implemented|superseded) ;;
+          *) problems+=("design doc $dz status is '${ds:-none}' — migrate shipped sections to docs/architecture|specs, set status: implemented") ;;
+        esac
+      else
+        problems+=("design: points at missing file '$dz' — fix the path, or clear design: after migration")
+      fi
+    fi
+    if (( ${#problems} > 0 )) && [ "$force" != "--force" ]; then
+      echo "REFUSED: task $nnn not closeable:" >&2
+      for p in $problems; do echo "  - $p" >&2; done
+      echo "(override: task done $nnn --force — justify in the final handoff)" >&2
+      exit 1
+    fi
+    fm_set "$f" status done; fm_set "$f" updated "$(now)"
+    "$0" index >/dev/null 2>&1 || true
+    echo "$nnn -> done"
+    cat <<EOF
+closeout checklist (judgment items):
+  - PR merged, branch task/$nnn-* deleted, pr: recorded in task.md
+  - design doc shrunk to pointer or deleted after migration
+  - durable decisions promoted task.md -> AGENTS.md bible
+  - prototypes kept only if living reference; spikes killed
+  - regression tests named after behavior, green
+EOF
+    ;;
+  handoff)
+    nnn="${1:?}"; d="$(task_dir "$nnn")"
+    mkdir -p "$d/handoffs"
+    hf="$d/handoffs/$(stamp)-$AGENT.md"
+    cat > "$hf" <<EOF
+# Handoff — task $nnn — $AGENT — $(now)
+<!-- IMMUTABLE once committed. Next session writes a NEW file. -->
+
+## Objective
+<!-- standing goal, verbatim, incl. numeric targets -->
+
+## Completed
+<!-- with evidence pointers: run dirs, commits, file:line -->
+
+## Pending
+<!-- ordered, cheapest/highest-signal first -->
+
+## Blockers
+<!-- exact state: what runs, what waits on whom -->
+
+## Decisions
+<!-- settled this session + rejected alternatives (why) -->
+EOF
+    echo "$hf"
+    ;;
+  index|board)
+    rows=""
+    for f in "$TASKS_DIR"/[0-9][0-9][0-9]-*/task.md(N); do
+      id=$(fm_get "$f" id); ti=$(fm_get "$f" title); st=$(fm_get "$f" status)
+      ow=$(fm_get "$f" owner); pr=$(fm_get "$f" priority); up=$(fm_get "$f" updated)
+      lh=$(ls "${f%/task.md}/handoffs" 2>/dev/null | sort | tail -1)
+      rows+="$st|$pr|$id|$ti|${ow:--}|${up%T*}|${lh:--}\n"
+    done
+    render() {
+      echo "| id | title | status | owner | prio | updated | latest handoff |"
+      echo "|---|---|---|---|---|---|---|"
+      for st in active review blocked pending done; do
+        printf '%b' "$rows" | awk -F'|' -v s="$st" '$1==s' | sort -t'|' -k2,2 -k3,3 | \
+          awk -F'|' '{printf "| %s | %s | **%s** | %s | %s | %s | %s |\n",$3,$4,$1,$5,$2,$6,$7}'
+      done
+    }
+    if [ "$cmd" = "board" ]; then render; exit 0; fi
+    out="$TASKS_DIR/TASKS.md"
+    {
+      echo "# Task Board"
+      echo
+      echo "> GENERATED by \`task index\` — never hand-edit. Source of truth: \`tasks/NNN-*/task.md\`"
+      echo "> frontmatter (single writer: the owner). Continuation: latest file in the task's \`handoffs/\`."
+      echo
+      render
+    } > "$out"
+    echo "wrote $out"
+    ;;
+  *) usage ;;
+esac
