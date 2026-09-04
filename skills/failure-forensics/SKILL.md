@@ -41,9 +41,8 @@ effective prompt (the actual string sent) → model output + reasoning → judge
    harness; it does not automatically justify a generalized analyzer or policy engine.
 4. Re-run the exact repro and state the confirming evidence. Confirm every fix with
    runtime proof, not code inspection.
-5. On the third occurrence of the same failure class, perform the universal
-   mechanism-level reassessment. Structural redesign remains encouraged when it is the
-   simplest outcome-aligned resolution; a skill, guard, or CI check is not automatic.
+5. On the third occurrence of the same failure class, apply the three-occurrence
+   reassessment (AGENTS.md) before another repair.
 
 ## Suspicious-constant checklist ⚒
 

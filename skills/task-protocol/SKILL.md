@@ -75,7 +75,7 @@ Set `AGENT_NAME` so handoffs and claims carry the lane identity.
    `TASKS.md` together. If TASKS.md ever disagrees with frontmatter, frontmatter wins;
    regenerate.
 4. **Claim before touching.** `task claim NNN` before working a task; check `depends_on`
-   and the lane's file list to avoid colliding with active lanes (see `agent-lanes`).
+   and the lane's file list to avoid colliding with active lanes (skill `agent-lanes`).
    Release by setting status `review`/`done` or writing a handoff and clearing owner.
 5. **Decisions land in task.md** (Decisions section) while the task lives; durable,
    repo-wide decisions migrate to the bible (AGENTS.md) when the task closes.

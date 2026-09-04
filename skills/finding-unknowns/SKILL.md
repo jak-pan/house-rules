@@ -40,12 +40,11 @@ adapted to the forge lifecycle.)
    decisions most likely to change (data models, type interfaces, UX flows) and buries the
    mechanical refactors at the bottom — review effort goes where reversal is expensive.
 
-**Question discipline**: design-time questioning is cheap, expected, welcome — and uncertainty
-questions stay welcome mid-execution
-too: when genuinely unsure and the wrong choice is expensive, one precise question (options
-+ recommendation) beats a confidently-bad decision. The line is permission theater, not
-timing: never ask to confirm what you already know, never checkpoint-and-wait, never
-re-ask settled questions. Ask async and keep unblocked work moving while waiting.
+**Question discipline**: design-time and mid-execution uncertainty questions are welcome
+one precise question (options +
+recommendation) beats a confidently-bad decision. The forbidden thing is permission
+theater (skill `operator-protocol` §Asking vs permission theater). Ask async; keep
+unblocked work moving.
 
 ## During implementation
 
@@ -53,7 +52,7 @@ re-ask settled questions. Ask async and keep unblocked work moving while waiting
   (file tracker: `tasks/NNN-slug/`); every
   deviation from the plan (edge case forced a different approach) gets the what + why as
   it happens. Design-doc-affecting deviations update the design doc in the same commit
-  (`design-flow` rule).
+  (skill `design-flow` §Implement).
 - **Output as signal**: when a result surprises you or the operator, treat it as a map gap
   first, a bug second — something wasn't in the prompt/spec that should have been. Fix the
   task-local spec or bible as appropriate; draft universal skill or rule changes for
@@ -74,6 +73,5 @@ re-ask settled questions. Ask async and keep unblocked work moving while waiting
   forge skills and repo bibles after major model changes and delete rules that now just
   add noise. Rules are load-bearing or they're clutter.
 - Recurring interview answers and blindspot findings should produce proactive proposals
-  for improving the design, bible, or skills. Corrections scoped to the current task may
-  be persisted autonomously. Universal generalizations from one incident are drafted for
-  operator confirmation before promotion.
+  for improving the design, bible, or skills. Persistence follows AGENTS.md §Operator
+  correction.

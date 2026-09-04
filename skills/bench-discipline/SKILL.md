@@ -9,9 +9,8 @@ license: MIT
 The campaign ledger (`PUSH-TO-<goal>.md` in the work item's record — file tracker:
 `tasks/NNN-slug/`; paths: `STRUCTURE.md`) is the house style.
 
-Paid experiments run autonomously inside the campaign resource envelope. Statistical
-requirements, repeated baselines, and model cross-checks must fit that envelope. Crossing
-it requires a proposed expansion, not silent reduction of experimental rigor.
+Paid experiments run autonomously inside the approved envelope (AGENTS.md §Resource
+envelopes); crossing it requires a proposed expansion, never a silent reduction of rigor.
 
 ## Cardinal rule: no cheating
 
@@ -92,11 +91,11 @@ Nothing enters the pipeline that couldn't run blind in production:
   competitor scores higher; quantify headroom instead.
 - Validate the judge: check judge prompts against the paper/source, read judge traces, test
   judge strictness before trusting scores. Aggregate score never tells the full story —
-  per-question forensics does (see `failure-forensics`).
+  per-question forensics does (skill `failure-forensics`).
 
 ## Runs
 
-- Release builds, always. Measure the concurrency sweet spot, then set it as default.
+- Release builds (skill `rust-canon`). Measure the concurrency sweet spot, then set it as default.
 - I/O-bound stages run at provider-limit parallelism; anything progressing 1-by-1 is a defect.
   GPU/latency benchmarks run strictly sequentially, one process at a time.
 - Checkpoint every step so runs survive kills; artifacts (verdicts, per-question debug,

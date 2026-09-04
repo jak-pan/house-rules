@@ -6,10 +6,9 @@ license: MIT
 
 # Agent Lanes
 
-Parallelize independent primary and supporting work whenever delegation is available,
-permitted, and useful. The main thread stays interactive for the operator. Parallelism is
-autonomous inside the campaign's resource envelope and never broadens the campaign by
-itself; heavy work goes to detached agents/workflows with explicit goals.
+Mechanics for the parallel-work invariants in AGENTS.md §Parallel work. The main thread
+stays interactive for the operator; heavy work goes to detached agents/workflows with
+explicit goals.
 
 ## Lane rules
 
@@ -58,5 +57,5 @@ itself; heavy work goes to detached agents/workflows with explicit goals.
   and feeds concrete counters into status lines. Prove work is running: process name, output
   path, dashboard link.
 - **Handoff on saturation.** A lane near context limits writes a handoff and dies; a fresh
-  agent with a handoff beats a saturated one every time (see `handoff-continuity`).
+  agent with a handoff beats a saturated one every time (skill `handoff-continuity`).
 - Parallelize preparation, then launch the matrix at once.

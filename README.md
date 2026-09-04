@@ -89,6 +89,9 @@ conflict by design, so adoption is safe to do incrementally.
 
 ## Maintenance
 
+- **Each rule has one home.** `AGENTS.md` states an invariant in one line; the owning skill
+  holds the procedure; every other file references it as skill `name` §Section and never
+  restates it. A restatement is a bug: delete it.
 - The third occurrence of the same friction class triggers a mechanism review.
   Add standing law or a procedural Skill only when it is the smallest
   proportional fix, and record the evidence in EVIDENCE.md.

@@ -19,16 +19,16 @@ target.
    variance where applicable, knob map with wired/tested status, and
    tried→result→verdict log. On any context reset, re-read the ledger and AGENTS.md bible
    before acting — never re-test what the ledger already settles.
-2. **Cheap first.** Order the idea queue by cost (see `bench-discipline` cost ladder).
+2. **Cheap first.** Order the idea queue by cost (skill `bench-discipline` §Cost ladder).
    Promote to expensive runs only on cheap-tier wins.
 3. **Iterate.** Test → forensics on misses → mechanism hypothesis → targeted fix → verify
    knob fired → measure vs noise floor → log verdict → next. Every cycle records which
    target or acceptance criterion moved. A supporting result counts only when it changes
    the completion gap. Diagnostic targeted loops, never random knob hunting. Parallelize
-   independent probes via `agent-lanes`.
+   independent probes via skill `agent-lanes`.
 4. **Checkpoint everything.** Every step resumable; overnight work must survive crashes and
    kills. An empty morning result from a checkpointed campaign is your failure, not fate.
-5. **Status without stopping.** Emit `operator-protocol` status lines at milestones; keep
+5. **Status without stopping.** Emit status lines (skill `operator-protocol` §Status format) at milestones; keep
    money counters live. Surface hard failures immediately — a dead API or exhausted credits
    kills the loop loudly, never silently.
 6. **Expand only along the binding gap.** Exhausting the approved idea queue may justify
@@ -60,8 +60,8 @@ When the goal is "match this reference" or "iterate until perfect":
   step before exceeding it).
 - Credentials or an operator-only action required (name it precisely).
 - Destructive/irreversible fork, or a genuine design fork → present options + recommendation.
-- The third consecutive failure of the same class → perform the universal
-  three-occurrence reassessment before another attempt.
+- The third consecutive failure of the same class → three-occurrence reassessment
+  (AGENTS.md) before another attempt.
 - Supporting work is consuming the critical path without changing the completion gap.
 - Continuing requires a new work category or expansion of the resource envelope.
 - Target reached → verify with N-run confirmation, then full wrap-up: final score vs
@@ -71,5 +71,5 @@ These conditions pause the affected loop, not unrelated primary work.
 
 ## Not stop conditions
 
-Sub-step completion, "should I continue?", context anxiety (write a handoff instead — see
+Sub-step completion, "should I continue?", context anxiety (write a handoff instead — skill
 `handoff-continuity`), a single failed attempt, nightfall.

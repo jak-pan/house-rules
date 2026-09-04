@@ -50,9 +50,7 @@ bumps, scope checks) that raw git/cargo silently violates.
 
 ## Gates
 
-Gates must pass on the final candidate. During iteration, use the narrowest gate that
-proves the affected behavior, then run the complete required matrix once the candidate is
-stable or when a change invalidates previous complete evidence.
+Gates must pass on the final candidate; iteration cadence per AGENTS.md §Verification.
 
 ```
 cargo fmt --all --check
@@ -91,5 +89,5 @@ built-in sane defaults → versioned TOML (profiles/presets) → env vars → CL
 ## Storage
 
 - Raw data canonical: Markdown vault + YAML frontmatter (Obsidian-compatible) or append-only
-  event log. SQLite and vector indexes are rebuildable caches — see `design-canon`.
+  event log. SQLite and vector indexes are rebuildable caches — skill `design-canon`.
 - Prefer one store over parallel legacy stores; batch rebuild beats compat migration.

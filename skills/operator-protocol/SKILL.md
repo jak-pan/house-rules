@@ -43,10 +43,8 @@ Proactive, at meaningful intervals during long work — the operator must never 
   "running" without observable evidence reads as a lie.
 - Surface failures the moment they happen; never let a run die silently overnight.
   Checkpoint so nothing is ever "lost" — "no results" from a checkpointed run is your bug.
-- For paid or non-reproducible runs, status must also name the durable transcript/checkpoint
-  and resumable session/process ID. Silence or a wrapper timeout is not a stall verdict;
-  verify progress before proposing interruption, and never terminate material paid work
-  without an explicit stop instruction or approval.
+- For paid or non-reproducible runs, status also names the durable transcript/checkpoint
+  and the resumable session/process ID (rule: AGENTS.md §Verification).
 
 ## Autonomy ladder
 

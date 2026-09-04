@@ -1,7 +1,8 @@
 # AGENTS.md — Universal
 
 Repo-local law — `CONTEXT.md` and any repo-specific sections appended below — overrides
-the universal sections of this file on conflict.
+the universal sections of this file on conflict. Each rule has one home: this file states
+invariants; the named skill holds the procedure; nothing is restated.
 
 ## Applicability and loading
 
@@ -37,17 +38,19 @@ Classify substantive work by its relationship to the operator's requested outcom
 - **Divergent:** unrelated to the current outcome or disproportionate to its value.
 
 Execute primary and proportional supporting work autonomously. Propose opportunistic
-improvements proactively and record them, but do not let them delay the critical path.
-Do not execute divergent work. When a primary-path action is available, supporting work
-may displace it only when it currently blocks that action. Supporting work may run in
-parallel when it does not materially delay or deprive the primary path of resources.
+improvements proactively and record them, but never let them delay the critical path.
+Do not execute divergent work. Supporting work displaces an available primary-path action
+only when it blocks that action; otherwise it runs alongside without starving the primary
+path.
 
 ### Resource envelopes
 
 A standing or campaign-specific resource envelope may define allowed agents,
 providers/models, concurrency, cost/token/runtime boundaries, review rounds, and stop
 conditions. Once the operator approves an envelope, orchestrate, parallelize, retry, and
-reassign resources inside it without per-call approval.
+reassign resources inside it without per-call approval. A retry of the same failed
+operation stays inside the envelope; a new provider, work category, or broad review round
+is a new decision.
 
 An explicit request to use agents or a named provider authorizes the requested work inside
 the stated campaign, but does not silently authorize unrelated work or recursively
@@ -92,9 +95,10 @@ When the operator reports scope drift, waste, repetition, or says to stop, immed
 halt new work and paid activity. Perform only safe containment needed to prevent
 continuing cost or damage. Reconcile the requested outcome before resuming.
 
-A correction to the current task may be persisted normally. A new universal rule
-generalized from an incident must be drafted and confirmed by the operator before it is
-written.
+Rule provenance: a correction to the current task may be persisted normally. A new
+universal rule generalized from an incident is drafted and confirmed by the operator
+before it is written, and states its boundary, not just its direction — the scope it
+applies to, the scope it does not, and the source incident.
 
 ## Prime rules
 
@@ -115,30 +119,26 @@ written.
 7. **Debug, don't assume.** Trace the real path end-to-end; blame our code before
    libraries; measure, don't estimate; re-run the exact repro after every fix.
 8. **Scripts for mechanical work; LLM calls for judgment.**
-9. **Mechanism over repetition, proportional to the outcome.** Repeated in-scope
-   friction should become structurally easier, but does not automatically justify a new
-   skill, guard, analyzer, framework, or abstraction. At the third occurrence, apply the
-   reassessment above. Prefer deletion and simplification. Build permanent machinery only
-   when it directly protects a documented product invariant and is cheaper than the
-   recurring problem.
+9. **Mechanism over repetition, proportional to the outcome.** Repeated friction becomes
+   structurally easier only when the mechanism is cheaper than the problem and protects a
+   documented invariant; at the third occurrence apply the reassessment above. Prefer
+   deletion.
 10. **Settled stays settled.** Recorded decisions and postponed scope stay that way absent
     new evidence; never rebuild or rerun what already exists.
 11. **Persist, don't acknowledge.** Settled task-local corrections and operator-confirmed
-    universal rules go into files immediately; knowledge lives in repo docs; harness
-    memory (e.g. Claude Code auto-memory) may hold pointers, never the facts. A rule born from one correction states its boundary, not just its
-    direction — scope it applies to, scope it doesn't, source incident; draft and confirm
-    the generalization before persisting it universally.
+    universal rules go into files immediately (provenance: §Operator correction).
+    Knowledge lives in repo docs; harness memory (e.g. Claude Code auto-memory) may hold
+    pointers, never the facts.
 12. **Simplicity first.** Prefer deletion; one way to do things; five-whys before adding
     code; clean code even in experiments.
 13. **No speculative delivery dates.** Size plans by S/M/L/XL, chunk count, risk, and
     dependencies rather than inventing completion ETAs. Paid, external, or long-running
     work still requires an explicit maximum cost/token/runtime boundary before launch.
-14. **Surface unknowns** (skill `finding-unknowns`). Blindspot pass + one-question-at-a-time
-    interview for ambiguous work. A precise question beats a bad decision at any stage;
-    permission theater (confirming the obvious, checkpoint-and-wait, re-asking settled
-    questions) is forbidden. Ask async; keep unblocked lanes moving. Surprising output is
-    a map gap — fix the task-local spec or bible as appropriate; draft universal skill or
-    rule changes for operator confirmation.
+14. **Surface unknowns** (skill `finding-unknowns`): blindspot pass and one-question-at-a-
+    time interview for ambiguous work. Precise questions are welcome at any stage;
+    permission theater is forbidden (skill `operator-protocol` §Asking vs permission
+    theater). Ask async; keep unblocked lanes moving. Surprising output is a map gap — fix
+    the task-local spec or bible; universal changes follow §Operator correction.
 
 ## Autonomy
 
@@ -156,11 +156,11 @@ written.
 
 ## Verification
 
-- Product defects and documented invariants get focused red→green regression tests named
-  after the behavior. Failures in secondary test infrastructure do not automatically
-  justify expanding that infrastructure. Prefer direct product-behavior evidence;
-  simplify or delete a nonessential harness when maintaining it becomes more complex than
-  the invariant it protects.
+- Product defects and documented invariants get red→green regression tests named after
+  the behavior. A harness defect gets only the smallest proof that restores trust in the
+  harness (skill `failure-forensics` §Fix protocol); prefer direct product-behavior
+  evidence, and simplify or delete a nonessential harness that costs more than the
+  invariant it protects.
 - Fixes are confirmed by re-running the repro; results without test output are incomplete.
 - E2E means the real stack — with mocks it's an integration test, not proof.
 - During iteration, run the smallest gate that proves the current change. Run the complete
@@ -168,26 +168,15 @@ written.
   full-gate evidence. Do not repeatedly run the full matrix after changes that cannot
   affect it.
 - Long-running checks fail on no-progress, not wall-clock.
-- **Authorized, bounded, and durable before expensive.** Before expensive work, verify
-  that it is primary or proportional supporting work and fits a standing or campaign
-  resource envelope. Once inside an approved envelope, no per-call permission is
-  required. Before starting any paid, long-running, or
-  non-reproducible agent/model/tool run, establish a durable transcript or checkpoint in
-  the owning workspace and record its session/process identifier. Never treat a wrapper
-  timeout, quiet stream, or missing terminal output as proof the run is stalled. Before
-  interrupting, restarting, or replacing it, inspect process state, durable-output growth,
-  and native resume/session state; preserve the latest recoverable output first. If the
-  run is materially paid or unique and the operator did not explicitly request the stop,
-  termination requires operator approval. An explicit stop or an immediate safety action
-  still takes precedence; preserve evidence without delaying the stop. If durability
-  cannot be established, do not start a substantial paid/non-reproducible run without the
-  operator accepting the loss risk. This applies to external agents, model CLIs, remote
-  jobs, benchmarks, and crawls; it does not burden routine short, cheap, reproducible
-  commands. Source incident: 2026-08-19, a live paid Claude review was interrupted before
-  its ephemeral stream had been persisted.
-  Record actual cumulative spend against the envelope at meaningful milestones. A retry
-  of the same failed operation is autonomous inside the envelope; a new provider, new
-  work category, or new broad review round is not the same retry.
+- **Authorized, bounded, and durable before expensive.** Paid, long-running, or
+  non-reproducible runs must (1) be primary or proportional supporting work inside an
+  approved envelope, (2) have a durable transcript or checkpoint and a recorded session ID
+  before the first substantive call, (3) record spend at milestones, and (4) never be
+  stopped on silence or a wrapper timeout without inspecting process state — stopping
+  material paid work needs operator approval unless the operator ordered it or safety
+  requires it. Routine short, cheap, reproducible commands are exempt. Procedure: skill
+  `handoff-continuity` §Authorized, bounded, and durable external runs. Source incident
+  2026-08-19 (EVIDENCE.md #13).
 
 ## Git
 
@@ -204,22 +193,19 @@ written.
 
 ## Layout
 
-Canonical paths and naming: `forge/STRUCTURE.md`. Non-negotiables: derived views (boards,
-indexes, generated docs) are never hand-edited — regenerate from source; temp storage
-per `STRUCTURE.md` (`.debug-session/`, `.tmp/`, tool scratchpads) — never repo root; large
-artifacts outside the repo; work from repo root (path args over `cd`); English only;
-Mermaid for diagrams; names say what things do — rename confusion on sight.
+Canonical paths, naming, and temp-storage classes: `forge/STRUCTURE.md`. Non-negotiables:
+derived views (boards, indexes, generated docs) are regenerated from source, never
+hand-edited; nothing generated in repo root; large artifacts outside the repo; work from
+repo root (path args over `cd`); English only; Mermaid for diagrams; names say what things
+do — rename confusion on sight.
 
 ## Stack & architecture
 
-Stack defaults and quality gates: skill `rust-canon`. Architecture principles: skill
-`design-canon`. Feature lifecycle: skill `design-flow`. Specs: skill `spec-writing`.
-Reasoning checkpoints: skill `reasoning-moves` — mandatory unless the executing model is
-the strongest tier available; when in doubt, apply; self-audit otherwise.
-
-- **Rust builds are `--release` by default** — anything executed, run, measured, or
-  long-running. Debug builds only when actively debugging (debug assertions, debugger
-  symbols, or a tight edit-compile loop while iterating on a fix).
+Stack defaults and quality gates (including the release-build default): skill `rust-canon`.
+Architecture principles: skill `design-canon`. Feature lifecycle: skill `design-flow`.
+Specs: skill `spec-writing`. Reasoning checkpoints: skill `reasoning-moves` — mandatory
+unless the executing model is the strongest tier available; when in doubt, apply;
+self-audit otherwise.
 
 ## Experiments
 
@@ -231,14 +217,13 @@ everything; log cost.
 
 ## Parallel work
 
-Parallelize independent primary and supporting work whenever delegation is available,
-permitted, and useful; keep the main thread interactive. Parallelism is autonomous inside
-the campaign's resource envelope and never broadens the campaign by itself. Lanes own
-disjoint files (verify your diff stayed in-lane); shared spine files are append-only; GPU/latency
-benchmarks run sequentially; one memory-heavy local process at a time. **Multi-repo work
-across owned repos is normal** — the work item declares every repo it touches, each repo
-gets its own work branch, and kit/API changes affecting other consumers are flagged in the
-handoff for review without blocking. Deliverables get an adversarial verify pass.
+Parallelize independent primary and supporting work whenever delegation is available and
+useful; parallelism is autonomous inside the envelope and never broadens the campaign.
+Invariants: disjoint lane ownership (verify the diff stayed in-lane); append-only shared
+spine files; sequential GPU/latency benchmarks; one memory-heavy local process at a time;
+every touched repo declared in the work item, with kit/API impacts on other consumers
+flagged in the handoff. Deliverables get an adversarial verify pass. Mechanics: skill
+`agent-lanes`.
 
 ## Security
 

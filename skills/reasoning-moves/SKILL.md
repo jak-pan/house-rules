@@ -62,11 +62,9 @@ models and what frontier models do unprompted — receipts in EVIDENCE.md.)
     and probe the mechanism before continuing. Prevents: building on a broken harness.
 13. **Keep an attempt ledger on iterative work** (tried → result → distance to the
     operator's requested outcome); record which target or acceptance criterion moved.
-    The first two failures of one class may expose legitimate missing scope. The third
-    triggers the universal mechanism-level reassessment before another attempt. Revert
-    anything that moved away from the reference before trying the next idea. When stuck
-    synthesizing from a reference, replicate it 1:1 first, verify parity, then swap pieces
-    one at a time. Prevents: looping; compounding hacks.
+    Revert anything that moved away from the reference before trying the next idea. When
+    stuck synthesizing from a reference, replicate it 1:1 first, verify parity, then swap
+    pieces one at a time. Prevents: looping; compounding hacks.
 14. **Questions are not stop signals.** Answer inline and keep executing to the stated
     done-condition. Scoped asks stay scoped: the one-item probe is done and reported
     before anything expands. Prevents: stalled runs; scope creep.
@@ -105,10 +103,6 @@ models and what frontier models do unprompted — receipts in EVIDENCE.md.)
     an explicit correction propagated to every artifact that carried it. Missed
     predictions are stated as misses and the forecasting method is audited. Prevents:
     silent claim drift.
-23. **Same failure class three times → reassess the mechanism.** Determine whether the
-    failure belongs to the product, its supporting machinery, or an incorrect abstraction.
-    Simplify, delete, redesign, or continue according to the outcome and resource
-    envelope. Propose permanent improvements proactively; do not create them
-    automatically when they are disproportionate. Universal rules generalized from an
-    incident require operator confirmation. Prevents: paying repeatedly for the same
-    lesson; over-generalized rules and tools.
+23. **Same failure class three times → apply the three-occurrence reassessment**
+    (AGENTS.md) before another attempt. Prevents: paying repeatedly for the same lesson;
+    over-generalized rules and tools.

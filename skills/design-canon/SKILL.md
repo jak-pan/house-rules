@@ -51,7 +51,7 @@ license: MIT
   Delete dead paths completely (code, tests, call sites) — no deprecation
   shims, no backwards compatibility for things that never shipped.
 - **Configurable, never hard-imposed.** Every policy that could vary is a versioned config
-  with sane defaults (see `rust-canon` layering). Best-case defaults are found empirically,
+  with sane defaults (skill `rust-canon` §Config layering). Best-case defaults are found empirically,
   then owned by the operator.
 - **Distrust accidental design.** A migration artefact is not a deliberate
   choice — every structure should have a defensible reason or be simplified.
@@ -70,10 +70,7 @@ license: MIT
 - Sovereignty: cloud egress of sensitive data is the operator's informed decision — neither
   a silent default nor a hard ban. Local models for private processing where hardware allows.
 - Never weaken a capability/auth/redaction boundary as a workaround — fix the actual
-  problem. A security boundary is one declared by the approved threat model,
-  specification, or shipped runtime. A proposed lint rule, test policy, or reviewer
-  concern does not become a product boundary merely by being labeled security; accidental
-  supporting machinery may be simplified or removed without weakening the product.
+  problem. What counts as a boundary: AGENTS.md §Security.
 
 ## Spec-first UX
 

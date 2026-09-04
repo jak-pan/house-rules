@@ -8,7 +8,7 @@ license: MIT
 
 The acceptance test for every spec: **a mid-level engineer could implement the system
 from it without asking questions.** A doc that doesn't teach the product is rejected.
-Lifecycle and file placement: `design-flow` + `STRUCTURE.md`.
+Lifecycle: skill `design-flow`; placement: `STRUCTURE.md`.
 
 ## Before writing: sweep reality
 
@@ -56,7 +56,7 @@ Lifecycle and file placement: `design-flow` + `STRUCTURE.md`.
 - **Parameters derived, not asserted**: every threshold/size/scale in a spec traces to a
   constraint or measurement; a magic constant is a bug until justified.
 - **Every policy configurable**: the spec defines defaults + the config surface, never a
-  hard-imposed behavior (see `rust-canon` config layering).
+  hard-imposed behavior (skill `rust-canon` §Config layering).
 
 ## Duty to critique
 
