@@ -6,8 +6,9 @@ authoring, and a feature lifecycle — as plain files: one universal `AGENTS.md`
 and a tiny zsh CLI.
 
 Named after its own core directive: **"Forge Over Hack — when the same class of
-friction recurs a third time, synthesize a proportional rule or skill."** This
-repo is that directive applied to agent collaboration itself.
+friction recurs a third time, reassess the mechanism: simplify, delete, or add the
+smallest proportional rule."** This repo is that directive applied to agent collaboration
+itself.
 
 Built by mining ~3,500 real operator messages from six production repos' agent-session
 transcripts (both polarities: corrections that show what to prevent, and praise that shows
@@ -36,7 +37,7 @@ engineering judgment (rules marked ⚒). Method and receipts: [EVIDENCE.md](EVID
 | `skills/handoff-continuity` | Handoffs, task ledgers, bible maintenance, filing rules |
 | `bin/task` | zsh CLI for the task protocol (`new/claim/status/done/handoff/index/board`) — `done` is the closeout gate |
 | `CUSTOM-INDEX.example.md` | Template for the gitignored per-machine catalog of optional Skills, plugins, MCP clients, and other capabilities |
-| `EVIDENCE.md` | Provenance: mining method, golden quotes, positive patterns, the 12 failure modes this bundle prevents |
+| `EVIDENCE.md` | Provenance: mining method, golden quotes, positive patterns, the 13 failure modes this bundle prevents |
 
 ## Install
 
