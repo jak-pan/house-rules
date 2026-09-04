@@ -12,9 +12,9 @@ usage() {
   cat <<'EOF'
 usage: task <command>
   new "title" [P0|P1|P2|P3]     scaffold next NNN-slug/task.md (status: pending)
-  claim NNN [owner]             set owner (default $AGENT_NAME/$USER) + status: active
-  status NNN <state>            pending|active|review|blocked|done
-  done NNN [--force]            closeout gate: handoff + design-doc migration checks
+  claim NNN [owner] [--force]   set owner (default $AGENT_NAME/$USER) + status: active; --force takes over
+  status NNN <state>            pending|active|review|blocked   (done: use `task done`)
+  done NNN [--check] [--force]  closeout gate: handoff + design-doc migration; --check reports, writes nothing
   handoff NNN                   create immutable handoff file for this session
   index                         regenerate tasks/TASKS.md from frontmatter (idempotent)
   board                         print live board to stdout (does not write)
@@ -32,7 +32,7 @@ fm_get() { # fm_get <file> <key> — tolerates empty values ("key:")
 
 fm_set() { # fm_set <file> <key> <value> — single-key replace inside frontmatter
   local f="$1" k="$2" v="$3" tmp
-  tmp="$(mktemp "${TMPDIR:-/tmp}/task.XXXXXX")"
+  tmp="$(mktemp "$(dirname "$f")/.task.XXXXXX")"
   awk -v k="$k" -v v="$v" '
     BEGIN{fm=0}
     $0=="---"{n++; fm=(n==1)?1:0; print; next}
@@ -113,8 +113,15 @@ EOF
     echo "$nnn -> $st"
     ;;
   done)
-    nnn="${1:?}"; d="$(task_dir "$nnn")"; f="$d/task.md"
-    force="${2:-}"
+    nnn="${1:?}"; shift; d="$(task_dir "$nnn")"; f="$d/task.md"
+    check=0; force=0
+    for a in "$@"; do
+      case "$a" in
+        --check) check=1;;
+        --force) force=1;;
+        *) echo "bad flag: $a (expected --check or --force)" >&2; exit 1;;
+      esac
+    done
     problems=()
     hcount=$(ls "$d/handoffs" 2>/dev/null | wc -l | tr -d ' ')
     [ "$hcount" -gt 0 ] || problems+=("no handoff — run: task handoff $nnn (final handoff carries Decisions)")
@@ -130,14 +137,22 @@ EOF
         problems+=("design: points at missing file '$dz' — fix the path, or clear design: after migration")
       fi
     fi
-    if (( ${#problems} > 0 )) && [ "$force" != "--force" ]; then
+    if (( check )); then
+      if (( ${#problems} > 0 )); then
+        echo "NOT CLOSEABLE: task $nnn" >&2
+        for p in $problems; do echo "  - $p" >&2; done
+        exit 1
+      fi
+      echo "closeable: task $nnn"; exit 0
+    fi
+    if (( ${#problems} > 0 )) && (( ! force )); then
       echo "REFUSED: task $nnn not closeable:" >&2
       for p in $problems; do echo "  - $p" >&2; done
       echo "(override: task done $nnn --force — justify in the final handoff)" >&2
       exit 1
     fi
     fm_set "$f" status done; fm_set "$f" updated "$(now)"
-    "$0" index >/dev/null 2>&1 || true
+    "$0" index >/dev/null
     echo "$nnn -> done"
     cat <<EOF
 closeout checklist (judgment items):

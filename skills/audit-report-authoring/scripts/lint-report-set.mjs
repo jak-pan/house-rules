@@ -214,6 +214,10 @@ for (const report of config.reports) {
     }
   }
 
+  for (const match of body.matchAll(/(?<!\]\()https?:\/\/\S+/g)) {
+    fail(report.file, `public source URL appears outside embedded evidence: ${match[0]}`, lineNumber(text, match.index));
+  }
+
   for (const match of text.matchAll(/(?:^|[\s(])(?:\.\.\/|\/Users\/|file:\/\/)/gm)) {
     fail(report.file, "contains an inaccessible workspace locator", lineNumber(text, match.index));
   }
