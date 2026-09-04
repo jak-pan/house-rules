@@ -1,8 +1,9 @@
 # forge
 
 A skill bundle that standardizes how AI coding agents work across all your repos —
-operating discipline, benchmark methodology, multi-agent work tracking, and a feature
-lifecycle — as plain files: one universal `AGENTS.md`, 13 skills, and a tiny zsh CLI.
+operating discipline, benchmark methodology, multi-agent work tracking, audit-report
+authoring, and a feature lifecycle — as plain files: one universal `AGENTS.md`, 14 skills,
+and a tiny zsh CLI.
 
 Named after its own core directive: **"Forge Over Hack — when the same class of
 friction recurs a third time, synthesize a proportional rule or skill."** This
@@ -30,6 +31,7 @@ engineering judgment (rules marked ⚒). Method and receipts: [EVIDENCE.md](EVID
 | `skills/finding-unknowns` | Unknowns-first working (after Thariq Shihipar's field guide): blindspot pass, reverse interview, prototype variants, pre-merge quiz |
 | `skills/reasoning-moves` | **The scaffold pack** — frontier-native reasoning moves as explicit checkpoints for capable-but-not-frontier models (tuned for Opus): ground/gate/verify/report/learn |
 | `skills/spec-writing` | Specs that pass the "buildable by a mid-level engineer without questions" bar: shape, worked examples, decisions+rejected, naming, reality-sweep first |
+| `skills/audit-report-authoring` | Evidence-based audit and diligence report sets: claim labels, specialist/master authority, canonical questions, report-local citations, domain lenses and structural lint |
 | `skills/task-protocol` | Multi-agent task management: single-writer task files, immutable handoffs, generated board |
 | `skills/handoff-continuity` | Handoffs, task ledgers, bible maintenance, filing rules |
 | `bin/task` | zsh CLI for the task protocol (`new/claim/status/done/handoff/index/board`) — `done` is the closeout gate |
