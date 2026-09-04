@@ -43,8 +43,7 @@ context reset. On session start and after every reset:
   - experiments/results → the work item's record and the campaign ledger
   - audits/reviews → dated `docs/reports/YYYY-MM-DD-topic.md`
   - operational knowledge → RUNBOOK.md; architecture → docs system map + deep dives
-- Run artifacts under `runs/…` named dirs; debug clutter in gitignored `.debug-session/`,
-  scratch in `.tmp/` — never system /tmp for repo work, nothing generated in repo root.
+- Paths for runs, reports, ledgers, debug evidence, and scratch: `STRUCTURE.md`.
 - Work state (item state + regenerated board + new handoff, whatever form the tracker
   gives them) travels in the same commit as the work it describes. In legacy NEXT.md
   repos, that repo's convention stays binding until migrated.

@@ -49,10 +49,10 @@ autonomous orchestration inside it without per-call approval.
 ```bash
 task new "title" [P0-P3]   # scaffold next NNN
 task claim NNN <owner> [--force]   # refuses if owned by someone else; --force takes over
-task status NNN <state>    # pending | active | review | blocked | done
-task done NNN [--force]    # closeout GATE: refuses if no handoff exists or the linked design
-                           # doc isn't migrated (design: frontmatter → status: implemented); prints the
-                           # judgment checklist (PR merged, decisions→bible, spikes killed)
+task status NNN <state>    # pending | active | review | blocked  (done goes through `task done`)
+task done NNN [--check] [--force]   # closeout GATE: refuses if no handoff exists or the linked
+                           # design doc isn't migrated (design: frontmatter → status: implemented);
+                           # prints the judgment checklist; --check reports without writing (CI use)
 task handoff NNN           # new immutable handoff file (Objective/Completed/Pending/Blockers/Decisions)
 task index                 # regenerate tasks/TASKS.md (deterministic, idempotent)
 task board                 # print live board, writes nothing

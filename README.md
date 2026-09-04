@@ -74,16 +74,18 @@ is its append-only bible of settled decisions; a symlink would leak appends into
 shared file):
 
 ```bash
-cp <path-to-forge>/AGENTS.md AGENTS.md      # then append a "Repo-specific" section over time
+cp <path-to-forge>/AGENTS.md AGENTS.md   # then append repo-specific sections over time
+printf '@AGENTS.md\n' > CLAUDE.md          # Claude Code reads only CLAUDE.md; this imports the canon
 ```
 
-Division of law: `CONTEXT.md` holds repo rules that override forge; `AGENTS.md` holds the
-copied universal canon plus the repo's appended settled decisions (the bible).
+Division of law: `CONTEXT.md` holds repo rules; `AGENTS.md` holds the copied universal
+canon plus the repo's appended settled decisions (the bible). Both override the universal
+sections on conflict.
 
-For existing repos with rich local canon: prepend the pointer line, then delete local rules
-that merely duplicate the universal file — keep only genuinely repo-specific law (paths,
-crate maps, high-risk zones, stream tables). The universal file loses on conflict by
-design, so adoption is safe to do incrementally.
+For existing repos with a rich `AGENTS.md`: paste the universal canon above the repo's own
+sections, then delete local rules that merely duplicate it — keep only repo-specific law
+(paths, crate maps, high-risk zones, stream tables). The universal sections lose on
+conflict by design, so adoption is safe to do incrementally.
 
 ## Maintenance
 

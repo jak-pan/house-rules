@@ -12,7 +12,7 @@ itself; heavy work goes to detached agents/workflows with explicit goals.
 
 ## Lane rules
 
-- **Disjoint ownership.** Each lane owns an explicit file set; shared code is additive-only.
+- **Disjoint ownership.** Each lane owns an explicit file set; shared spine files are append-only.
   Before merging a lane's work, verify its diff touched only its assigned files.
 - **Isolation.** Lanes work in worktrees/branches; the main repo checkout stays untouched.
   Rust lanes pass `--target-dir .tmp/cargo-target/<lane>` so parallel cargo doesn't deadlock

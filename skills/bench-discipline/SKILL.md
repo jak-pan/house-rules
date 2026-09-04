@@ -5,8 +5,8 @@ description: Benchmark and experiment methodology — no test-targeted hacks, va
 
 # Bench Discipline
 
-The campaign ledger (`PUSH-TO-<goal>.md`, kept in the campaign's work-item record) is the
-house style.
+The campaign ledger (`PUSH-TO-<goal>.md` in the work item's record — file tracker:
+`tasks/NNN-slug/`; paths: `STRUCTURE.md`) is the house style.
 
 Paid experiments run autonomously inside the campaign resource envelope. Statistical
 requirements, repeated baselines, and model cross-checks must fit that envelope. Crossing
@@ -51,7 +51,8 @@ Nothing enters the pipeline that couldn't run blind in production:
   config downstream. Audit for silent no-op knobs (a yaml that never loads is a classic).
 - Drastic change with ~zero effect = pipeline-bug hypothesis first, finding second.
 - Every experimental lever: config/env-gated, default OFF, byte-identical when unset.
-  Keep tested options as switches; set measured sweet spots as defaults (act + notify).
+  Keep tested options as switches; set measured sweet spots as experiment-lever defaults
+  (act + notify) — shipped product defaults follow the `operator-protocol` ladder.
 - **Defaults ARE the settled config.** The baseline run is the bare default run — zero
   tuning env vars; flags exist only for the lever under test. A canonical command that
   needs a wall of pins is config drift: promote the settled values into shipped defaults
@@ -101,5 +102,5 @@ Nothing enters the pipeline that couldn't run blind in production:
   gold-eval) are the source of truth, named run dirs under `runs/…`.
 - Record a run manifest: git sha, config hash, model IDs + reasoning effort, params, cost. ⚒
 - Report p95/p98 for latency and rank metrics, not means.
-- Log the running ledger (PUSH-TO-*.md style): baseline table, knob map with wired-status,
+- Log the running ledger (`PUSH-TO-<goal>.md`): baseline table, knob map with wired-status,
   tried → result → verdict. Future sessions must be able to continue without re-testing.

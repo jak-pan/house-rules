@@ -12,7 +12,7 @@ target.
 
 ## Loop contract
 
-1. **Ledger first.** Open/refresh the campaign ledger (`PUSH-TO-*.md` style): operator
+1. **Ledger first.** Open/refresh the campaign ledger (`PUSH-TO-<goal>.md`, paths: `STRUCTURE.md`): operator
    outcome, measurable target or acceptance checklist, current completion gap, approved
    resource envelope, allowed primary/supporting work categories, baseline with measured
    variance where applicable, knob map with wired/tested status, and

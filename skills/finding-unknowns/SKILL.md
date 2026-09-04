@@ -48,7 +48,8 @@ re-ask settled questions. Ask async and keep unblocked work moving while waiting
 
 ## During implementation
 
-- **Implementation notes**: keep `implementation-notes.md` in the work item's record (file-tracker default: the task dir); every
+- **Implementation notes**: keep `implementation-notes.md` in the work item's record
+  (file tracker: `tasks/NNN-slug/`); every
   deviation from the plan (edge case forced a different approach) gets the what + why as
   it happens. Design-doc-affecting deviations update the design doc in the same commit
   (`design-flow` rule).
@@ -59,8 +60,8 @@ re-ask settled questions. Ask async and keep unblocked work moving while waiting
 
 ## After implementation
 
-- **Pitch doc**: package prototype + spec + implementation notes into one shareable
-  artifact, demo first (screenshot/GIF), for review — the task's closing handoff links it.
+- **Pitch doc** (`PITCH.md` in the work item's record): prototype + spec + implementation
+  notes in one shareable artifact, demo first (screenshot/GIF) — the closing handoff links it.
 - **Pre-merge quiz**: before closeout on significant work (P0/P1, or any diff spanning multiple modules), generate a short self-quiz
   from the diff — the questions a reviewer would ask (why this boundary? what breaks if X?
   which invariant guards Y?) — and answer from evidence. Anything you can't answer from

@@ -1,6 +1,7 @@
 # AGENTS.md — Universal
 
-Repo canon (`CONTEXT.md` / repo-local rules) overrides this file on conflict.
+Repo-local law — `CONTEXT.md` and any repo-specific sections appended below — overrides
+the universal sections of this file on conflict.
 
 ## Applicability and loading
 
@@ -13,7 +14,7 @@ project work, and load procedural skills on demand rather than loading every ski
 Keep model selection, permissions, MCP connections, hooks, and delegation APIs in
 native tool configuration. A skill describes a procedure; it does not grant access
 or make an unavailable tool callable. Use the workspace's configured task authority;
-`task-protocol` is the file-based fallback, never a second writable task system.
+`task-protocol` is the file-based default — a workspace on another tracker never runs both.
 
 ## Session start
 
@@ -123,8 +124,8 @@ written.
 10. **Settled stays settled.** Recorded decisions and postponed scope stay that way absent
     new evidence; never rebuild or rerun what already exists.
 11. **Persist, don't acknowledge.** Settled task-local corrections and operator-confirmed
-    universal rules go into files immediately; knowledge lives in repo docs, never
-    assistant memory. A rule born from one correction states its boundary, not just its
+    universal rules go into files immediately; knowledge lives in repo docs; harness
+    memory (e.g. Claude Code auto-memory) may hold pointers, never the facts. A rule born from one correction states its boundary, not just its
     direction — scope it applies to, scope it doesn't, source incident; draft and confirm
     the generalization before persisting it universally.
 12. **Simplicity first.** Prefer deletion; one way to do things; five-whys before adding
@@ -191,9 +192,9 @@ written.
 ## Git
 
 - Stage explicit files — never `git add -A`. Never amend or force-push unless told.
-- Commit locally at logical-piece completion (tests green, lints clean, work state
-  recorded — same commit), following the repo's commit tooling and message canon. Where
-  the workspace defines no commit cadence, commit only when asked.
+- Default cadence: commit locally at logical-piece completion (gates green, work state
+  recorded — same commit), using the repo's commit tooling and message canon. A repo may
+  override the cadence in its bible.
 - **Owned repos/orgs: push work branches early and often** — remote branches are crash
   insurance and the live lane registry. Merges to main stay operator-gated; subagents
   never push main.
@@ -204,8 +205,8 @@ written.
 ## Layout
 
 Canonical paths and naming: `forge/STRUCTURE.md`. Non-negotiables: derived views (boards,
-indexes, generated docs) are never hand-edited — regenerate from source; debug artifacts
-in `.debug-session/`, scratch in `.tmp/` — never system /tmp, never repo root; large
+indexes, generated docs) are never hand-edited — regenerate from source; temp storage
+per `STRUCTURE.md` (`.debug-session/`, `.tmp/`, tool scratchpads) — never repo root; large
 artifacts outside the repo; work from repo root (path args over `cd`); English only;
 Mermaid for diagrams; names say what things do — rename confusion on sight.
 

@@ -8,6 +8,8 @@ skill `task-protocol`.
 repo/
 ├── AGENTS.md                      # copied universal canon + appended settled decisions (the bible)
 ├── CONTEXT.md                     # repo rules (wins over forge)
+├── CLAUDE.md                      # Claude Code adapter — exactly one line: @AGENTS.md
+├── .claude/rules/<name>.md        # optional, Claude-only: path-scoped rules (frontmatter paths:)
 ├── docs/
 │   ├── SYSTEM-MAP.md              # ONE high-level map (two-tier docs: map + deep dives)
 │   ├── design/                    # INTENT — approved future design
@@ -33,12 +35,16 @@ repo/
 │   └── NNN-slug/
 │       ├── task.md                # single-writer canonical state (frontmatter)
 │       ├── handoffs/YYYYMMDD-HHMMSS-<agent>.md   # immutable
-│       └── PRE-FLIGHT.md          # multi-phase only; maintained, not appended
+│       ├── PRE-FLIGHT.md          # multi-phase only; maintained, not appended
+│       ├── PUSH-TO-<goal>.md      # campaign ledger: baseline, knob map, tried→result→verdict (campaigns only)
+│       ├── implementation-notes.md # plan deviations, what + why, as they happen
+│       └── PITCH.md               # closing pitch: demo first, then spec + notes (significant work only)
 ├── runs/                          # benchmark/eval artifacts (gitignored unless promoted)
 │   └── {system}/{benchmark}/{limit}/{run_name}/  # neutral condition names, run-params.json
 ├── records/                       # curated promoted runs (same shape as runs/)
 ├── skills/<name>/SKILL.md         # repo-local skills; check before writing shell pipelines
 ├── scripts/                       # git-commit.sh, git-push.sh, ci guards, smoke gates
+├── RUNBOOK.md                     # operational knowledge: run, recover, rotate — not architecture
 ├── .debug-session/                # gitignored: logs, screenshots, debug reports
 └── .tmp/                          # gitignored: scratch, per-lane cargo targets
 ```
@@ -55,6 +61,7 @@ repo/
 | Run name | neutral benchmark condition, never debugging history | `candidate-answer-thinking` |
 | Spike | `prototypes/spikes/YYYY-MM-DD-question/` | `2026-07-06-fts-vs-vector-speed/` |
 | Handoff | `YYYYMMDD-HHMMSS-<agent>.md` | `20260706-214005-fable.md` |
+| Legacy handover | `HANDOVER-YYYY-MM-DD.md` at repo root — un-migrated repos only | `HANDOVER-2026-07-06.md` |
 | Commit | `type(scope): description` | `feat(recall): stage2 rerank` |
 | Crates | `<product>-<domain>` | `acme-intake` |
 

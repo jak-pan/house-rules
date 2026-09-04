@@ -72,7 +72,7 @@ enforces what's mechanically checkable and prints the rest:
 
 **Enforced (refuses otherwise, `--force` to override with justification in the handoff):**
 - at least one handoff exists (the final one carries Decisions)
-- the linked design doc is no longer `draft`/`approved` — it must be `implemented`
+- the linked design doc is `implemented` or `superseded` (never `draft`/`approved`)
 
 **Checklist (printed, agent's judgment):**
 - pre-merge quiz passed (skill `finding-unknowns`) on significant diffs (P0/P1 or multi-module)
@@ -83,9 +83,9 @@ enforces what's mechanically checkable and prints the rest:
 - prototypes: keep hifi if it's the living reference, else delete; spikes killed
 - regression tests named after the behavior exist and are green
 
-Automation hook (owned repos, via your PR bot/CI): a merged PR on branch `task/NNN-*` triggers
-the `task done NNN` gate in CI and comments the checklist result on the PR — close stays
-semi-automated, never silent.
+Automation hook (owned repos, via your PR bot/CI): a merged PR on branch `task/NNN-*` runs
+`task done NNN --check` (read-only) and comments the result on the PR. The owner then runs
+`task done NNN`. CI never writes `task.md` — single writer holds.
 
 ## Experimentation is a first-class lane
 

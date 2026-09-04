@@ -52,12 +52,14 @@ Proactive, at meaningful intervals during long work — the operator must never 
 1. **Act**: primary and proportional supporting work inside the approved outcome and
    resource envelope. Orchestrate freely without per-call approval.
 2. **Act + notify**: notable side-decisions, proportional supporting tooling inside the
-   resource envelope, and parameter defaults set from measurement.
+   resource envelope, and experiment-lever defaults set from variance-cleared measurement
+   inside the campaign.
 3. **Stop + present fork with recommendation**: design forks, work outside the outcome or
    resource envelope, money beyond agreed budget,
    credentials, destructive/irreversible actions, cross-repo changes the work item did NOT
    declare (declared multi-repo work proceeds — flag kit/API impacts in the handoff),
-   default-flips gated on benchmarks.
+   flips of shipped product defaults, or any default change that breaks comparability
+   with the ledger's baselines.
 
 Trust may reduce questions about reversible implementation details inside the accepted
 campaign. It never expands product scope, the resource envelope, destructive authority,
