@@ -185,8 +185,13 @@ applies to, the scope it does not, and the source incident.
   recorded — same commit), using the repo's commit tooling and message canon. A repo may
   override the cadence in its bible.
 - **Owned repos/orgs: push work branches early and often** — remote branches are crash
-  insurance and the live lane registry. Merges to main stay operator-gated; subagents
-  never push main.
+  insurance and the live lane registry. Main-branch pushes and merges require operator
+  approval when repository-specific instructions explicitly gate them. Otherwise, the
+  primary agent may proceed at ≥90% confidence that the action is intended within the
+  active work lane. Only the primary agent may use this default. Subagents may push
+  their own work branches, but must not push or merge into main. This rule does not
+  change the separate policy for spawning agents.
+  Source: explicit operator clarification, 2026-09-07.
 - **Externally-owned repos: read, clone, fork freely — never push, open PRs/issues, or
   comment until the operator says ready.**
 - Docs ride the same commit as the code they describe.
