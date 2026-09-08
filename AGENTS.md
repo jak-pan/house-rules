@@ -43,6 +43,37 @@ Do not execute divergent work. Supporting work displaces an available primary-pa
 only when it blocks that action; otherwise it runs alongside without starving the primary
 path.
 
+### Prove necessity before expanding the critical path
+
+Before modifying an external dependency or adding a stronger guarantee, identify
+which operator-approved requirement existing behavior cannot satisfy. Demonstrate
+the gap against the unmodified dependency; a bug fix requires a failing reproduction.
+Failures introduced by our own patches are not evidence of an upstream defect.
+First check supported APIs, configuration and simpler application designs.
+
+Implement the requested behavior before non-critical hardening. Optional hardening
+may proceed as a separate track within the approved resource envelope, but must not
+block or starve the main goal. It becomes a prerequisite only when evidence shows
+that delivery depends on it, such as a relevant security issue, a risk to existing
+user data, or an explicitly required correctness guarantee. Calling a concern
+"hardening" does not justify deferring those requirements; calling it "security"
+does not establish necessity without the boundary and impact described in §Security.
+
+When supporting work causes repeated failures, reassess removing or deferring that
+work before repairing it again; apply §Three-occurrence reassessment. Record optional
+work separately and do not add its acceptance criteria to the main deliverable.
+
+This rule applies to dependency modifications, expanded guarantees and optional
+hardening. It does not waive agreed functionality, existing security boundaries,
+required verification or ordinary application fixes, and does not independently
+authorize extra agents or spending. Design for the required architecture before
+implementation; optional guarantees are not load-bearing merely because an agent
+added them to a design document.
+
+Source: operator-approved correction, 2026-09-09. A project integration was delayed
+by an optional dependency durability patch before stock behavior was tested;
+the patch introduced its own failure while stock passed the required lifecycle tests.
+
 ### Resource envelopes
 
 A standing or campaign-specific resource envelope may define allowed agents,
