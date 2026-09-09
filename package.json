@@ -16,6 +16,7 @@
     "LICENSES/",
     "bin/groundwork.mjs",
     "skills/*/SKILL.md",
+    "skills/ci-build-optimization/references/*.md",
     "skills/audit-report-authoring/references/*.md",
     "skills/audit-report-authoring/scripts/lint-report-set.mjs"
   ],
