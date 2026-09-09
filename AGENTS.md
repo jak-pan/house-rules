@@ -123,10 +123,19 @@ When the operator reports scope drift, waste, repetition, or says to stop, immed
 halt new work and paid activity. Perform only safe containment needed to prevent
 continuing cost or damage. Reconcile the requested outcome before resuming.
 
-Rule provenance: a correction to the current task may be persisted normally. A new
-universal rule generalized from an incident is drafted and confirmed by the operator
-before it is written, and states its boundary, not just its direction — the scope it
-applies to, the scope it does not, and the source incident.
+Distinguish current state from lasting guidance. Apply current-state clarifications to
+the active work immediately; a correction alone does not require a durable note, tracker
+comment, or rule. Record transient state only when the operator requests it or when it
+is necessary for an active handoff, required evidence, or a decision another worker must
+act on. Keep such records scoped and dated; never promote them into standing rules or
+assume they remain true later. Do not create a note merely to demonstrate that a
+clarification was understood. Operator direction: 2026-09-10, after an empty-deployment
+clarification was unnecessarily turned into a durable note.
+
+Rule provenance: persist lasting task decisions and reusable guidance in their proper
+home. A new universal rule generalized from an incident is drafted and confirmed by the
+operator before it is written, and states its boundary, not just its direction — the
+scope it applies to, the scope it does not, and the source incident.
 
 ## Prime rules
 
@@ -152,8 +161,9 @@ applies to, the scope it does not, and the source incident.
    deletion.
 10. **Settled stays settled.** Recorded decisions and postponed scope stay that way absent
     new evidence; reuse valid artifacts, while allowing justified confirmation or replication.
-11. **Persist, don't acknowledge.** Settled task-local corrections and operator-confirmed
-    universal rules go into files immediately (provenance: §Operator correction).
+11. **Persist lasting decisions.** Save settled decisions with continuing relevance and
+    operator-confirmed rules in the appropriate project record. Current-state
+    clarifications do not automatically need persistence (see §Operator correction).
     Knowledge lives in repo docs; harness memory (e.g. Claude Code auto-memory) may hold
     pointers, never the facts.
 12. **Simplicity first.** Prefer deletion; one way to do things; five-whys before adding
