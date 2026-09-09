@@ -177,6 +177,14 @@ brevity must not remove evidence or content needed to complete the task.
   optional supporting prose. Skip ceremonial preambles, filler, redundant recaps, and
   closing pleasantries.
   Explain unfamiliar shorthand.
+- Make findings and consequential status updates self-contained. Assume the operator
+  has not read prior chat history: briefly identify the affected feature or change,
+  explain what the finding means in plain language and its practical impact, separate
+  observed facts from unknowns, and state the next action and who owns it. Distinguish
+  a problem in the running system from a risk in a proposed change. Finding IDs,
+  severity labels, commit hashes and test counts support the explanation; they cannot
+  replace it. Scale context to the consequence without repeating the whole history.
+  Operator direction: 2026-09-09, after a release-blocker report lacked this context.
 - Number sequential instructions, one bounded action per step. Answer numbered questions
   in matching order with their original numbers. Prefer lists of five or fewer items;
   group longer lists only when it helps, preserving sequence, identifiers, and coverage.
