@@ -106,6 +106,11 @@ immutable pre-edit cache seed for all arms. Do not let the second arm consume th
 first arm's newly warmed output. Distinguish cold, warm unchanged, and warm edited
 runs. If unchanged code is intentionally skipped, a no-op rebuild is not the target
 workload. Confirm that saved caches are available before dispatching consumers.
+Record the workflow event, Git ref and cache version alongside the key. Verify a
+restore in the actual consumer scope; an existing compatible archive is not enough.
+GitHub PR merge-ref caches cannot seed the default branch or other PRs; preserve a
+trusted default-branch cache producer when adopting the workflow. See
+[GitHub's cache access rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache).
 
 Record actual CPU model, available CPUs, memory and Cargo jobs, not only the runner
 label. Runner sizes can also change CPU generation. Treat a single paired run as an
