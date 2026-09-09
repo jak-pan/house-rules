@@ -19,9 +19,9 @@ engineering judgment (rules marked ⚒). Method and receipts: [EVIDENCE.md](EVID
 
 | File | Role |
 |---|---|
-| `AGENTS.md` | **Universal agent canon** — the single rules source; drop into any repo (copy), repo-local rules win on conflict |
+| `AGENTS.md` | **Universal agent canon** — the single rules source, including everyday actionable writing; drop into any repo (copy), repo-local rules win on conflict |
 | `STRUCTURE.md` | Canonical paths & naming for every artifact (docs, prototypes, spikes, runs, branches, tasks) |
-| `skills/operator-protocol` | Working with the operator: default actionable communication, steering vocabulary, question≠instruction, status, autonomy, earning trust |
+| `skills/operator-protocol` | Working with the operator: steering vocabulary, question≠instruction, status, autonomy, earning trust |
 | `skills/bench-discipline` | Benchmark/experiment methodology: no hacks, variance floors, knob-fired proof, cost ladder |
 | `skills/failure-forensics` | Per-item root-cause procedure: diff-first regressions, evidence chains, fix protocol |
 | `skills/goal-loop` | Goal-locked autonomous iteration toward numeric targets with ledger, checkpoints, honest ceilings |
