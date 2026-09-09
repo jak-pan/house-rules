@@ -1,0 +1,32 @@
+name: Checks
+
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Install zsh on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zsh
+      - name: Check shell syntax
+        run: zsh -n bin/task
+      - name: Run regression tests
+        run: node --test tests/task.test.mjs scripts/export-public.test.mjs skills/audit-report-authoring/scripts/lint-report-set.test.mjs
+      - name: Check public export
+        run: |
+          mkdir -p .tmp
+          node scripts/export-public.mjs .tmp/ci-public-export

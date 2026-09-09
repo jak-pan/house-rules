@@ -54,15 +54,28 @@ been verified to resolve to Forge (see INSTALL-AGENTS.md in the Forge source).
 task new "title" [P0-P3]   # scaffold next NNN
 task claim NNN <owner> [--force]   # refuses if owned by someone else; --force takes over
 task status NNN <state>    # pending | active | review | blocked  (done goes through `task done`)
-task done NNN [--check] [--force]   # closeout GATE: refuses if no handoff exists or the linked
-                           # design doc isn't migrated (design: frontmatter → status: implemented);
+task done NNN [--check] [--force]   # closeout GATE: requires a filled latest handoff and a
+                           # migrated linked design doc (design: → status: implemented);
                            # prints the judgment checklist; --check reports without writing (CI use)
 task handoff NNN           # new immutable handoff file (Objective/Completed/Pending/Blockers/Decisions)
+task release NNN           # require filled handoff, clear owner, set pending, regenerate board
 task index                 # regenerate tasks/TASKS.md (deterministic, idempotent)
 task board                 # print live board, writes nothing
 ```
 
-Set `AGENT_NAME` so handoffs and claims carry the lane identity.
+Set `AGENT_NAME` so handoffs and claims carry the lane identity; the fallback is `USER`.
+The recorded owner must match that identity for `status`, `handoff`, `done`, and
+`release`. An unclaimed task must be claimed first. `done --check` is read-only and
+available to anyone. `done --force` explicitly bypasses the handoff/design gates,
+never the owner check; record why in the final handoff. Takeover remains explicit
+with `claim --force`.
+
+The handoff gate checks the latest regular `.md` file by filename. Each standard
+section (Objective, Completed, Pending, Blockers, Decisions) needs content beyond
+headings and HTML comments; write `None` when appropriate. An untouched scaffold,
+empty file, or unstructured text does not satisfy the gate. This is a structural
+check, not proof that the work or its evidence is adequate. Release has no force
+override and preserves every handoff.
 IDs are positive decimal strings of 3–18 digits, padded to at least three digits;
 allocation continues from 999 to 1000. Titles are single-line text; owners use letters,
 digits, dots, underscores, or hyphens, starting with a letter or digit. Ambiguous IDs
@@ -75,7 +88,8 @@ sequence suffix even when created by the same agent in the same second.
    file, another agent's handoff, or the generated TASKS.md. This is a cooperative
    protocol: Git conflicts help detect competing edits but do not prevent simultaneous
    claims. Coordinate ownership before parallel work; a pushed branch advertises a lane,
-   not an exclusive distributed lock. The helper does not enforce ownership on every write.
+   not an exclusive distributed lock. The helper checks recorded ownership for task
+   mutations; direct file edits still depend on cooperation.
 2. **Handoffs are events.** Session end, context ~80%, or ownership change → `task handoff
    NNN`, fill it in, never touch it again. Continuation state = the latest handoff file, per
    task — not a global file. Corrections go in a NEW handoff.
@@ -84,8 +98,9 @@ sequence suffix even when created by the same agent in the same second.
    regenerate.
 4. **Claim before touching.** `task claim NNN` before working a task; check `depends_on`
    and the lane's file list to avoid colliding with active lanes (skill `agent-lanes`).
-   Status `review`/`done` retains the recorded owner. To relinquish ownership, write a
-   handoff and explicitly clear owner; status alone is not a release operation.
+   Status `review`/`done` retains the recorded owner. To relinquish unfinished work,
+   fill a handoff and run `task release NNN`; it clears owner and returns the task to
+   `pending`. Status alone is not a release operation.
 5. **Decisions land in task.md** (Decisions section) while the task lives; durable,
    repo-wide decisions migrate to the bible (AGENTS.md) when the task closes.
 6. **Humans are lanes too.** Same protocol, same files; a person claims with their name.
@@ -97,7 +112,8 @@ sequence suffix even when created by the same agent in the same second.
 start:   read AGENTS.md → task board → your task.md → latest handoff in handoffs/
 work:    claim → execute (file findings into the task dir as you go)
 pause:   handoff → index → commit (task.md + handoff + TASKS.md, one commit)
-finish:  status review/done → final handoff → index → commit
+finish:  final handoff → done → commit (done regenerates the board)
+release: final handoff → release → commit (release regenerates the board)
 ```
 
 ## Migration from NEXT.md

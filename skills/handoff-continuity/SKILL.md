@@ -32,7 +32,7 @@ unpersisted findings.
 Every repo's AGENTS.md holds durable local instructions. On session start and after every reset:
 1. Read AGENTS.md, CONTEXT.md, and the workspace's board + continuation records.
 2. Append newly settled decisions to the bible so they're never re-litigated: chosen models,
-   rejected alternatives (with the evidence), key locations (`.env.test.local`), owned
+   rejected alternatives (with the evidence), credential-provider locations (never values), owned
    defaults, environment facts that were forgotten twice.
 
 ## Filing
@@ -58,7 +58,8 @@ and stop condition. Once inside the envelope, no per-call approval is required.
 Before the first substantive call of any paid, long-running, or non-reproducible external
 agent/model/tool run:
 
-1. Choose a durable workspace path for raw stdout/stderr or the native session transcript.
+1. Choose a durable path for stdout/stderr or the native session transcript. Apply
+   AGENTS.md §Security: redact at capture and restrict any necessary sensitive raw records.
 2. Enable the tool's persistent/resumable session mode where available.
 3. Record the session/process ID, exact model/tool, start time, cost/budget boundary, and
    output path in the active work record.

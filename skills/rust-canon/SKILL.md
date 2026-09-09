@@ -1,25 +1,14 @@
 ---
 name: rust-canon
-description: Rust stack defaults and quality gates for Rust-first product ecosystems — workspace layout, dependency policy, error handling, config layering, model-stack policy, secrets. Use when writing Rust, scaffolding crates, choosing dependencies, or picking models/providers.
+description: Rust implementation defaults and quality gates for workspace layout, dependencies, errors, configuration, and applicable model integrations. Use when writing Rust or scaffolding crates; general project stack selection belongs to project-bootstrap.
 license: MIT
 ---
 
 # Rust Canon
 
-Rust is the default for products — prefer building native over porting or wrapping.
-TypeScript for standalone web libs and lightweight org tooling (Node ≥22 LTS — 24 preferred — ESM,
-pnpm, near-zero deps); Svelte 5 + Vite + plain CSS for dashboards and
-prototypes; Flutter when a multi-platform consumer app is needed. Python is throwaway
-experiment glue only — never in `src/` or shipped code; confined to `prototypes/spikes/`
-and gitignored scratch.
-
-Shipping posture: server backends are Rust or TS by
-complexity (Rust for durable/complex, TS for simple services), always runnable
-containerized — any container runtime (Docker/Podman/other OCI, or enhanced ones like
-Sysbox for system workloads), not Docker specifically — on a plain VPS or cloud
-provider, never platform-locked out of the VPS path (set your default provider in the
-repo bible). Web frontends are static Svelte + TS pages — no SSR
-unless genuinely necessary (expensive to run). Mobile is native or Flutter, not web wrappers.
+Project stack defaults live in `PREFERENCES.md` in the installed Forge root and apply
+unless overridden. This skill applies after Rust is selected. Its tooling choices are
+defaults too: preserve explicit user and repository decisions and the host's controls.
 
 ## Workspace
 
@@ -61,7 +50,7 @@ Zero warnings is the bar. Red→green regression test per bug fix. Architecture 
 (`scripts/ci-architecture-guards.sh`) run after structural changes. Env-mutating tests use
 `#[serial(env)]`; fixtures are synthetic and date-relative (no fixture rot).
 
-## Config layering (the standard way, everywhere)
+## Config layering (default for Rust products)
 
 ```
 built-in sane defaults → versioned TOML (profiles/presets) → env vars → CLI flags
@@ -76,6 +65,8 @@ built-in sane defaults → versioned TOML (profiles/presets) → env vars → CL
 
 ## Model stack policy
 
+Apply this section only to components that actually use models; do not add a model stack.
+
 - The settled model stack (embedder + dims, reranker, workhorse LLM, judge — with exact
   reasoning-effort levels per role) lives in the repo bible. Treat it as settled: never
   re-test rejected alternatives without new evidence, never substitute.
@@ -83,10 +74,11 @@ built-in sane defaults → versioned TOML (profiles/presets) → env vars → CL
   run; no expensive models outside the approved standing or campaign resource envelope.
 - Local inference where hardware allows (e.g. MLX/Ollama on Apple Silicon), with
   hardware-adaptive local/cloud routing and local redaction before any cloud egress.
-- Keys in `.env.test.local`-style files — check there before declaring credentials missing.
+- Inspect the configured credential provider without displaying values; credential
+  storage and diagnostic capture follow AGENTS.md §Security.
 
 ## Storage
 
-- Raw data canonical: Markdown vault + YAML frontmatter (Obsidian-compatible) or append-only
-  event log. SQLite and vector indexes are rebuildable caches — skill `design-canon`.
-- Prefer one store over parallel legacy stores; batch rebuild beats compat migration.
+Follow `PREFERENCES.md` and the project's selected canonical store. Use `design-canon`
+for derived-data boundaries. Preserve shipped data compatibility and recovery needs;
+rebuild is appropriate only when the required canonical data and equivalence are known.

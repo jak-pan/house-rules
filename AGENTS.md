@@ -245,13 +245,12 @@ brevity must not remove evidence or content needed to complete the task.
 - Default cadence: commit locally at logical-piece completion (gates green, work state
   recorded — same commit), using the repo's commit tooling and message canon. A repo may
   override the cadence in its bible.
-- **Owned repos/orgs: push work branches early and often** — remote branches are crash
-  insurance and the live lane registry. Main-branch pushes and merges require operator
-  approval when repository-specific instructions explicitly gate them. Otherwise, the
-  primary agent may proceed at ≥90% confidence that the action is intended within the
-  active work lane. Only the primary agent may use this default. Subagents may push
-  their own work branches, but must not push or merge into main. This rule does not
-  change the separate policy for spawning agents.
+- **Owned repos/orgs:** default to a work branch, validation, and local commits. Push work
+  branches within the recorded repository/task delivery authority. Main-branch pushes
+  and merges need explicit task or project authorization; a standing project choice
+  counts, so do not ask again when it already authorizes the action. Confidence alone
+  never grants delivery authority. Subagents must not push or merge into main. This
+  rule does not change the separate policy for spawning agents.
 - **Externally-owned repos: read, clone, fork freely — never push, open PRs/issues, or
   comment until the operator says ready.**
 - Docs ride the same commit as the code they describe.
@@ -266,7 +265,10 @@ do — rename confusion on sight.
 
 ## Stack & architecture
 
-Stack defaults and quality gates (including the release-build default): skill `rust-canon`.
+Read `PREFERENCES.md` in the installed Forge root for project/stack decisions. Its choices
+apply by default and are overridden by explicit user choices, repository rules, and an
+existing coherent stack. Use `project-bootstrap` for a new project's unsettled choices;
+do not require a questionnaire for routine work. Rust-specific quality gates: `rust-canon`.
 Architecture principles: skill `design-canon`. Feature lifecycle: skill `design-flow`.
 Specs: skill `spec-writing`. Use skill `reasoning-moves` when explicit reasoning
 checkpoints help the work; the evidence and verification requirements apply to every model.
@@ -293,11 +295,23 @@ flagged in the handoff. Deliverables get an adversarial verify pass. Mechanics: 
 ## Security
 
 Never remove or downgrade a security/architecture boundary as a workaround. Credentials
-never pass through cloud AI or land in plaintext stores or tracked files. Over-redact
-rather than leak; sensitive-data egress is the operator's explicit decision. Shared host
-resources (other projects' services, model caches) are not ours to stop or clean. Never
-delete or overwrite durable data stores (datasets, run artifacts, databases) — even
-incomplete ones — without explicit instruction naming the target.
+never enter cloud AI prompts, tracked files, reports, or routine logs. Prefer the platform
+keychain or an established secret manager, injecting credentials at runtime. When a tool
+requires a file, use an explicitly configured, untracked, access-restricted local secret
+file outside the repository; existing project arrangements require the same exclusion and
+access protections. Record locations without values. Environment variables transport
+secrets; they are not encrypted storage. Redact diagnostic output at capture. Retain any
+necessary raw sensitive records only in restricted local storage with deliberate retention;
+share sanitized extracts. Sensitive-data egress is the operator's explicit decision.
+
+Shared host resources (other projects' services, model caches) are not ours to stop or
+clean. Automatically remove only reproducible scratch produced by the current work and
+no longer used by a running process. Preserve raw inputs, paid results, user files, task
+history, and decision evidence. For unknown or expensive-to-rebuild artifacts, establish
+ownership and retention first; quarantine when appropriate. Deleting or overwriting
+durable stores, including incomplete datasets or run results, requires explicit
+authorization identifying the target. Directory names, age, or storage pressure alone
+do not grant deletion authority.
 
 A security boundary is one declared by the approved threat model, specification, or
 shipped runtime. A proposed lint rule, test policy, or reviewer concern does not become a

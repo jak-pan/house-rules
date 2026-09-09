@@ -61,7 +61,8 @@ polish — a confusing flow outranks theming.
 One question → `prototypes/spikes/YYYY-MM-DD-question/` with `SPIKE.md` (question, method,
 verdict). Throwaway by contract: code never lands in `src/`, deps never land in the
 product tree. Kill-or-promote: verdict feeds the design doc, then the spike is deletable.
-No verdict in 30 days = kill on sight.
+After 30 days without a verdict, review whether the spike is still useful. Preserve
+decision evidence and follow AGENTS.md §Security before cleanup; age alone is not authority.
 
 ## 5. Implement
 
@@ -76,7 +77,8 @@ A feature is done when the code shipped AND the paper trail moved. The `task don
 enforces what's mechanically checkable and prints the rest:
 
 **Enforced (refuses otherwise, `--force` to override with justification in the handoff):**
-- at least one handoff exists (the final one carries Decisions)
+- the latest Markdown handoff has content in all five standard sections (structural
+  validation only; the owner remains responsible for its evidence)
 - the linked design doc is `implemented` or `superseded` (never `draft`/`approved`)
 
 **Checklist (printed, agent's judgment):**

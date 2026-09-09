@@ -7,6 +7,9 @@ Unix-like systems can use symlinks.
 
 The desired result is one permanent Forge source, preserved operator settings,
 portable Forge-owned Skills, and a machine-local index of optional capabilities.
+The source includes PREFERENCES.md: its project defaults are active immediately, with
+explicit user and repository overrides. Install project-bootstrap with the other Forge
+skills; do not require users to opt into the default profile.
 External products remain responsible for installing, updating, and removing
 their own skills, clients, MCP servers, credentials, and other runtime state.
 

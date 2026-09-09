@@ -25,6 +25,7 @@ usage: task <command>
   status NNN <state>            pending|active|review|blocked   (done: use `task done`)
   done NNN [--check] [--force]  closeout gate: handoff + design-doc migration; --check reports, writes nothing
   handoff NNN                   create immutable handoff file for this session
+  release NNN                   require filled handoff, clear owner, return to pending
   index                         regenerate tasks/TASKS.md from frontmatter (idempotent)
   board                         print live board to stdout (does not write)
 rules: task.md is edited ONLY by its owner; handoffs/ files are never edited after
@@ -62,6 +63,38 @@ task_dir() { # task_dir NNN
   (( ${#m} > 0 )) || { echo "no task $1 in $TASKS_DIR/" >&2; exit 1; }
   (( ${#m} == 1 )) || die "ambiguous task ID $1: ${#m} matching directories"
   echo "${m[1]}"
+}
+
+require_owner() {
+  validate_agent "$AGENT"
+  local owner="$(fm_get "$1" owner)"
+  [[ -n "$owner" ]] || die "REFUSED: task is unclaimed — run: task claim $nnn"
+  [[ "$owner" == "$AGENT" ]] || die "REFUSED: $nnn owned by '$owner', not '$AGENT'. Take over explicitly: task claim $nnn --force"
+}
+
+filled_handoff() { # Structural gate only; humans still judge evidence and decisions.
+  local -a files
+  files=("$1"/handoffs/*.md(N.))
+  (( ${#files} > 0 )) || return 1
+  awk '
+    BEGIN { split("Objective Completed Pending Blockers Decisions", required, " ") }
+    {
+      line=$0; clean=""
+      while (length(line)) {
+        if (comment) {
+          end=index(line,"-->"); if (!end) break
+          line=substr(line,end+3); comment=0
+        } else {
+          start=index(line,"<!--")
+          if (!start) { clean=clean line; break }
+          clean=clean substr(line,1,start-1); line=substr(line,start+4); comment=1
+        }
+      }
+      if (clean ~ /^## /) { section=substr(clean,4); sub(/[[:space:]]+$/,"",section); next }
+      if (clean !~ /^#/ && clean ~ /[[:alnum:]]/) filled[section]=1
+    }
+    END { for (i in required) if (!filled[required[i]]) exit 1 }
+  ' "${files[-1]}"
 }
 
 cmd="${1:-}"; [ -n "$cmd" ] && shift || usage
@@ -138,6 +171,7 @@ EOF
       *) echo "bad status: $st" >&2; exit 1;;
     esac
     f="$(task_dir "$nnn")/task.md"
+    require_owner "$f"
     fm_set "$f" status "$st"; fm_set "$f" updated "$(now)"
     echo "$nnn -> $st"
     ;;
@@ -151,9 +185,9 @@ EOF
         *) echo "bad flag: $a (expected --check or --force)" >&2; exit 1;;
       esac
     done
+    (( check )) || require_owner "$f"
     problems=()
-    hcount=$(ls "$d/handoffs" 2>/dev/null | wc -l | tr -d ' ')
-    [ "$hcount" -gt 0 ] || problems+=("no handoff — run: task handoff $nnn (final handoff carries Decisions)")
+    filled_handoff "$d" || problems+=("latest Markdown handoff needs content in Objective, Completed, Pending, Blockers and Decisions — run: task handoff $nnn and fill it in")
     dz=$(fm_get "$f" design)
     if [ -n "$dz" ]; then
       if [ -f "$dz" ]; then
@@ -196,6 +230,7 @@ EOF
     (( $# == 1 )) || usage
     validate_agent "$AGENT"
     nnn="${1:?}"; d="$(task_dir "$nnn")"
+    require_owner "$d/task.md"
     mkdir -p "$d/handoffs"
     prefix="$d/handoffs/$(stamp)-$AGENT"
     sequence=1
@@ -226,6 +261,15 @@ EOF
 <!-- settled this session + rejected alternatives (why) -->
 EOF
     echo "$hf"
+    ;;
+  release)
+    (( $# == 1 )) || usage
+    nnn="$1"; d="$(task_dir "$nnn")"; f="$d/task.md"
+    require_owner "$f"
+    filled_handoff "$d" || die "REFUSED: release needs a filled latest Markdown handoff (Objective, Completed, Pending, Blockers, Decisions)"
+    fm_set "$f" owner ""; fm_set "$f" status pending; fm_set "$f" updated "$(now)"
+    "$0" index >/dev/null
+    echo "released $nnn -> pending (unclaimed)"
     ;;
   index|board)
     (( $# == 0 )) || usage

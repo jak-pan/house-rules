@@ -77,8 +77,8 @@ inspectable, deliberately prunable, and inside the project's backup boundary.
 
 | Class | Where | Lifecycle |
 |---|---|---|
-| Evidence — screenshots, debug logs, run reports you will open | `.debug-session/` | keep until the owning task closes |
-| Machine scratch — build targets, caches, never opened by a human | `.tmp/` | delete anytime, no questions |
+| Evidence — screenshots, debug logs, run reports you will open | `.debug-session/` | retain according to the task/project evidence policy; task closure alone does not authorize deletion |
+| Machine scratch — build targets, caches, never opened by a human | `.tmp/` | remove only under AGENTS.md §Security ownership, reproducibility, and active-process checks |
 | Tool-provided session scratchpads (agent-harness temp dirs) | wherever the tool puts them | ephemeral by definition — copy anything worth keeping into the repo before session end |
 
 The two-dir split is a retention policy, not taxonomy — evidence and scratch have different
@@ -93,4 +93,4 @@ and safe to lose.
   sections migrated to architecture/spec, doc shrinks to a pointer or is deleted —
   clearing the work item's `design:` field; superseded = replaced by a newer design)
 - Spike: `open → promoted | killed` (in SPIKE.md verdict; spikes older than 30 days without
-  a verdict are killed on sight)
+  a verdict need review; cleanup follows AGENTS.md §Security)

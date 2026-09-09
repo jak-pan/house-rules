@@ -18,7 +18,7 @@ explicit goals.
   Rust lanes pass `--target-dir .tmp/cargo-target/<lane>` so parallel cargo doesn't deadlock
   on `target/` or leak artifacts.
 - **Git limits.** Subagents never push main. On owned repos, lanes push their own task
-  branches freely — remote branches are crash insurance and the live lane registry.
+  branches within the delivery authority recorded under AGENTS.md §Git.
   Commits follow the repo's canon; lanes report exactly which files they touched.
 - **Multi-repo work (owned repos) is normal.** One work item, a branch per repo touched
   (named per the workspace convention; the file tracker uses `task/NNN-slug/<agent>`),
@@ -44,7 +44,8 @@ explicit goals.
 - Bound memory-heavy concurrency by verified host capacity and the approved envelope.
   Isolate competing GPU/latency measurements unless contention is the declared study;
   record the intended concurrency and measurement conditions before launch.
-- Prune disk (old runs, stale datasets) proactively; large artifacts live outside the repo.
+- Cleanup follows AGENTS.md §Security. Identify ownership and retention before pruning;
+  old runs and datasets are not automatically disposable. Large artifacts live outside the repo.
 - Never build `--release` in a shared tree while a paused run may depend on the existing
   binary — release builds clobber it; use your lane's target dir.
 

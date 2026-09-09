@@ -6,11 +6,16 @@ license: MIT
 
 # Design Canon
 
+Use the overridable project defaults in `PREFERENCES.md` in the installed Forge root.
+Apply these procedures to the actual product; examples do not require a memory system,
+retrieval pipeline, or model stack in an unrelated application.
+
 ## Data
 
-- **Raw is truth; derived is a cache.** Markdown vault / append-only event log is the source
-  of truth. SQLite, vector indexes, distillations are additive, provenance-linked, and
-  rebuildable from raw — byte-identical rebuild is the test. Rebuild beats in-place mutation.
+- **Canonical data and derived views.** Identify the authoritative store chosen for the
+  product. Derived indexes and summaries link back to it and are rebuildable. Verify the
+  required semantic or byte equivalence; nondeterministic summaries need not be identical
+  bytes. A transactional database may be canonical, not merely a cache.
 - **Provenance escalation.** Derived layers link back to raw; recall escalates depth on
   demand (distilled → raw detail). Context tiers are labeled by truth level (raw convo /
   distilled / brief) — each has different fact authority.
@@ -46,8 +51,8 @@ license: MIT
 
 ## Decisions
 
-- **End-state first.** Design for the final multi-tenant product; no "fix it in v2" for
-  load-bearing structure. Ask about tenancy/distribution scope rather than assuming.
+- **End-state first.** Design load-bearing structure for the agreed product. Resolve
+  material tenancy/distribution requirements without assuming a multi-tenant service.
 - **No legacy pre-launch.** Delete dead paths completely (code, tests, call sites) — no deprecation
   shims, no backwards compatibility for things that never shipped.
 - **Configurable, never hard-imposed.** Every policy that could vary is a versioned config
@@ -63,9 +68,8 @@ license: MIT
 
 ## Security & sovereignty
 
-- Fail-safe on secrets: over-redact rather than leak. Raw credentials never reach cloud
-  models or plaintext stores; storage classes (plaintext vault / encrypted secrets / blobs)
-  never mix.
+- Keep credentials separate from ordinary product data. Storage and diagnostic capture
+  follow AGENTS.md §Security; do not invent conflicting secret-file rules here.
 - Sovereignty: cloud egress of sensitive data is the operator's informed decision — neither
   a silent default nor a hard ban. Local models for private processing where hardware allows.
 - Never weaken a capability/auth/redaction boundary as a workaround — fix the actual

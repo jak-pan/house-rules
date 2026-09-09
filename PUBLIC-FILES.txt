@@ -1,11 +1,13 @@
 # Explicit distribution allowlist. Review each addition; private development records stay out.
 .gitignore
+.github/workflows/checks.yml
 AGENTS.md
 CUSTOM-INDEX.example.md
 INSTALL-AGENTS.md
 LICENSE
 LICENSES/i-have-adhd.txt
 NOTICE.md
+PREFERENCES.md
 PUBLIC-FILES.txt
 README.md
 STRUCTURE.md
@@ -27,6 +29,7 @@ skills/finding-unknowns/SKILL.md
 skills/goal-loop/SKILL.md
 skills/handoff-continuity/SKILL.md
 skills/operator-protocol/SKILL.md
+skills/project-bootstrap/SKILL.md
 skills/reasoning-moves/SKILL.md
 skills/rust-canon/SKILL.md
 skills/spec-writing/SKILL.md

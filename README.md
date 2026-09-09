@@ -10,22 +10,25 @@ friction recurs a third time, reassess the mechanism: simplify, delete, or add t
 smallest proportional rule."** This repo is that directive applied to agent collaboration
 itself.
 
-Forge provides a shared operating foundation while keeping project decisions and user
-preferences separate. Skills supply procedures only when their scope applies.
+Forge provides opinionated defaults that apply immediately and remain overridable.
+Explicit user choices, repository rules, and an existing coherent stack take precedence.
+Skills supply procedures only when their scope applies.
 
 ## Layout
 
 | File | Role |
 |---|---|
 | `AGENTS.md` | **Universal agent canon** — global base rules, including everyday actionable writing; repository-local instructions override shared preferences |
+| `PREFERENCES.md` | Default stack and architecture choices, with explicit project/user overrides |
 | `STRUCTURE.md` | Canonical paths & naming for every artifact (docs, prototypes, spikes, runs, branches, tasks) |
 | `skills/operator-protocol` | Working with the operator: steering vocabulary, question≠instruction, status, autonomy, earning trust |
+| `skills/project-bootstrap` | Apply defaults, inspect constraints, and ask only unsettled consequential project questions |
 | `skills/experiment-planning` | Evidence-first experiment questionnaire; records only unsettled consequential choices |
 | `skills/bench-discipline` | Controlled comparisons, appropriate uncertainty, proof that changes took effect, and bounded cost |
 | `skills/failure-forensics` | Per-item root-cause procedure: evidence-led diagnosis, environmental checks, multiple causes and confirmation |
 | `skills/goal-loop` | Goal-locked autonomous iteration toward numeric targets with ledger, checkpoints, honest ceilings |
 | `skills/agent-lanes` | Parallel agent orchestration: lane ownership, worktrees, resource budgets, cross-repo rules |
-| `skills/rust-canon` | Stack defaults: Rust workspace rules, quality gates, config layering, model-stack policy, secrets |
+| `skills/rust-canon` | Rust implementation defaults, workspace rules, quality gates, and configuration |
 | `skills/design-canon` | Architecture principles: raw-canonical data, black-box boundaries, end-state-first, naming |
 | `skills/design-flow` | Feature lifecycle: spec/design → lofi/hifi prototype → spike → implement → closeout with doc migration |
 | `skills/finding-unknowns` | Unknowns-first working (after Thariq Shihipar's field guide): blindspot pass, reverse interview, prototype variants, pre-merge quiz |
@@ -34,7 +37,7 @@ preferences separate. Skills supply procedures only when their scope applies.
 | `skills/audit-report-authoring` | Evidence-based audit and diligence report sets: claim labels, specialist/master authority, canonical questions, report-local citations, domain lenses and structural lint |
 | `skills/task-protocol` | Multi-agent task management: single-writer task files, immutable handoffs, generated board |
 | `skills/handoff-continuity` | Handoffs, task ledgers, bible maintenance, filing rules |
-| `bin/task` | zsh CLI for the task protocol (`new/claim/status/done/handoff/index/board`) — `done` is the closeout gate |
+| `bin/task` | zsh CLI for the task protocol — ownership, release, handoff, closeout, and derived board |
 | `CUSTOM-INDEX.example.md` | Template for the gitignored per-machine catalog of optional Skills, plugins, MCP clients, and other capabilities |
 | `NOTICE.md` | Public attribution for adapted material |
 | `scripts/export-public.mjs` | Build a file-only release from the explicit public file list; excludes local history and configuration |
@@ -84,6 +87,19 @@ See the installation guide for ownership, receipt, update, and removal rules.
 
 Git-backed `tasks/` is the default tracker. The optional zsh helper manages those same
 files; using it does not require a hosted tracker, MCP server, or database.
+
+For a new project, `project-bootstrap` uses [PREFERENCES.md](PREFERENCES.md) automatically.
+The defaults favor Rust for durable native/systems applications, TypeScript on Node for
+ordinary backends and scripts, and static Svelte frontends. Select only what the project
+needs, preserve established stacks, and allow domain-specific choices such as Python
+for analysis. A repository override can be as simple as “This project uses Python and
+FastAPI; retain that stack.” No extra approval or opt-in profile is required.
+
+## Checks
+
+Run `node --test tests/task.test.mjs scripts/export-public.test.mjs skills/audit-report-authoring/scripts/lint-report-set.test.mjs`
+and `zsh -n bin/task`. GitHub CI runs these checks and a public export on Linux and macOS.
+CI does not establish native agent discovery; report that separately during installation.
 
 ## Preparing a public bundle
 
