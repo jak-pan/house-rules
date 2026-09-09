@@ -68,6 +68,10 @@ Embed enough of each evidence record to understand the supported claim without o
 an internal workspace. Put public URLs and source-specific limits in the evidence record,
 not as naked links in the report body. Cite report-local evidence Wikipedia-style next to
 the supported sentence, bullet, or table row: `[3](#evidence-sec-e03)`.
+Declare each evidence target explicitly on its own line immediately before the matching
+record heading: `<a id="evidence-sec-e03"></a>` (blank lines allowed). Follow the exact
+syntax and placement in the report contract; a semantic evidence tag alone creates no
+portable link target. Check that the chosen renderer preserves these anchors.
 
 One citation may support several nearby claims only when the evidence actually supports
 all of them. Reuse its number; do not create duplicate evidence records. Structural lint

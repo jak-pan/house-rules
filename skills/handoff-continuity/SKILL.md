@@ -6,7 +6,7 @@ license: MIT
 
 # Handoff & Continuity
 
-"A fresh agent with a handoff file outperforms a saturated agent every time."
+Durable continuation preserves useful context across sessions.
 
 ## The 80% rule
 
@@ -25,13 +25,11 @@ item; legacy repos → a dated HANDOVER-YYYY-MM-DD.md. Same required contents ev
 
 Handoffs are events, not documents you maintain: never edit an existing handoff —
 corrections go in a new one. Never continue degraded, and never let a compaction eat
-unpersisted findings. Write the full plan and
-next steps down for the next agent.
+unpersisted findings.
 
 ## The bible (AGENTS.md)
 
-Every repo's AGENTS.md is the persistent bible, re-read after every
-context reset. On session start and after every reset:
+Every repo's AGENTS.md holds durable local instructions. On session start and after every reset:
 1. Read AGENTS.md, CONTEXT.md, and the workspace's board + continuation records.
 2. Append newly settled decisions to the bible so they're never re-litigated: chosen models,
    rejected alternatives (with the evidence), key locations (`.env.test.local`), owned
@@ -40,7 +38,7 @@ context reset. On session start and after every reset:
 ## Filing
 
 - Findings go where they belong, as they happen — not dumped in chat and not in assistant
-  memory — they belong in runbooks and docs:
+  memory:
   - experiments/results → the work item's record and the campaign ledger
   - audits/reviews → dated `docs/reports/YYYY-MM-DD-topic.md`
   - operational knowledge → RUNBOOK.md; architecture → docs system map + deep dives
@@ -84,8 +82,7 @@ a cheaper/reproducible probe instead.
 
 Boundary: this gate applies to external agents, model CLIs, remote jobs, benchmarks,
 crawls, and similarly costly or unique work. It does not add ceremony to ordinary short,
-cheap, reproducible commands. Source incident: 2026-08-19 paid Claude review interrupted
-while useful output existed only in an ephemeral wrapper stream.
+cheap, reproducible commands.
 
 ## Resuming
 

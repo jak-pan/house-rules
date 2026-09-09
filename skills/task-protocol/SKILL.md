@@ -8,8 +8,8 @@ compatibility: bin/task requires zsh
 # Task Protocol
 
 **The default implementation** of the tracker-agnostic invariants in AGENTS.md (one owner
-per item, single-writer state, immutable handoff events, derived boards) — interim until a
-dedicated orchestration system ships. Any other tracker (orchestrator, hosted issues) must
+per item, single-writer state, immutable handoff events, derived boards). Git remains the
+default; an explicitly selected alternative tracker (orchestrator, hosted issues) must
 implement the same contract; this one applies the architecture canon to PM itself: **raw
 canonical shards, one writer per file, aggregates are rebuildable caches, history is an
 append-only event log**. Everything is plain files + git, so a future orchestrator can
@@ -27,7 +27,7 @@ tasks/
   NNN-slug/
     task.md                   # canonical state; ONE writer: the owner in frontmatter
     handoffs/
-      YYYYMMDD-HHMMSS-<agent>.md   # IMMUTABLE session handoffs (append-only dir)
+      YYYYMMDD-HHMMSS-<agent>-000001.md   # IMMUTABLE; sequence avoids timestamp collisions
     PRE-FLIGHT.md                   # multi-phase work only (2+ phases): verified facts,
                                     #   wrong assumptions to avoid, decision history —
                                     #   maintained and pruned, deleted when stale
@@ -46,7 +46,9 @@ autonomous orchestration inside it without per-call approval.
 
 ## The tool
 
-`forge/bin/task` (zsh, no deps):
+Invoke the installed Forge root's `bin/task` from the target repository. It requires
+zsh and standard Unix utilities. The examples use `task` only when that command has
+been verified to resolve to Forge (see INSTALL-AGENTS.md in the Forge source).
 
 ```bash
 task new "title" [P0-P3]   # scaffold next NNN
@@ -61,13 +63,19 @@ task board                 # print live board, writes nothing
 ```
 
 Set `AGENT_NAME` so handoffs and claims carry the lane identity.
+IDs are positive decimal strings of 3–18 digits, padded to at least three digits;
+allocation continues from 999 to 1000. Titles are single-line text; owners use letters,
+digits, dots, underscores, or hyphens, starting with a letter or digit. Ambiguous IDs
+refuse mutation. Existing handoff names remain readable; new handoffs reserve a unique
+sequence suffix even when created by the same agent in the same second.
 
 ## Rules (the contract)
 
 1. **One writer per file.** Only the owner edits `task.md`. Never edit another lane's task
-   file, another agent's handoff, or the generated TASKS.md. A concurrent double-claim
-   surfaces as a git conflict — that IS the lock working, not a bug. (The claim commit on
-   `task.md` is the lock; the pushed work branch advertises the live lane.)
+   file, another agent's handoff, or the generated TASKS.md. This is a cooperative
+   protocol: Git conflicts help detect competing edits but do not prevent simultaneous
+   claims. Coordinate ownership before parallel work; a pushed branch advertises a lane,
+   not an exclusive distributed lock. The helper does not enforce ownership on every write.
 2. **Handoffs are events.** Session end, context ~80%, or ownership change → `task handoff
    NNN`, fill it in, never touch it again. Continuation state = the latest handoff file, per
    task — not a global file. Corrections go in a NEW handoff.
@@ -76,7 +84,8 @@ Set `AGENT_NAME` so handoffs and claims carry the lane identity.
    regenerate.
 4. **Claim before touching.** `task claim NNN` before working a task; check `depends_on`
    and the lane's file list to avoid colliding with active lanes (skill `agent-lanes`).
-   Release by setting status `review`/`done` or writing a handoff and clearing owner.
+   Status `review`/`done` retains the recorded owner. To relinquish ownership, write a
+   handoff and explicitly clear owner; status alone is not a release operation.
 5. **Decisions land in task.md** (Decisions section) while the task lives; durable,
    repo-wide decisions migrate to the bible (AGENTS.md) when the task closes.
 6. **Humans are lanes too.** Same protocol, same files; a person claims with their name.

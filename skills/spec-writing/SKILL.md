@@ -7,19 +7,16 @@ license: MIT
 # Spec Writing
 
 The acceptance test for every spec: **a mid-level engineer could implement the system
-from it without asking questions.** A doc that doesn't teach the product is rejected.
-Lifecycle: skill `design-flow`; placement: `STRUCTURE.md`.
+from it without asking questions.** The document must explain the product and its implementation boundaries. Lifecycle: skill `design-flow`; placement: `STRUCTURE.md`.
 
 ## Before writing: sweep reality
 
-- Never spec from memory: sweep the current state first,
-  then decide. Use a multi-agent sweep for
+- Inspect the current implementation and constraints before writing. Use a multi-agent sweep for
   cross-cutting work when delegation is permitted and fits the campaign resource
   envelope. Otherwise perform the authoritative source sweep with the primary agent and
   propose additional review if beneficial. Verify inherited claims against canonical code
   (file:line), not against other documents.
-- Check for superseded decisions before re-deciding.
-  Rank conflicting sources by recency and supersession.
+- Check for superseded decisions before re-deciding. Rank conflicting sources by recency and supersession.
 - On inherited/messy codebases, invert the order: write the clean system map + spec from
   the old code as *reference*, then classify components easy/hard to rewrite, then build.
 
@@ -35,7 +32,7 @@ Lifecycle: skill `design-flow`; placement: `STRUCTURE.md`.
 - **Authoritative framing**: decisions are stated as decisions ("X does Y via Z"), with
   a Decisions section recording each choice AND its rejected alternatives with why.
   Tentative framing ("we could maybe...") is for the open-questions list only.
-- **No development history**: docs describe the system, not the journey.
+- **No development history**: docs describe the system, not the editing history.
 
 ## Naming (spec work is naming work)
 
@@ -60,8 +57,7 @@ Lifecycle: skill `design-flow`; placement: `STRUCTURE.md`.
 
 ## Duty to critique
 
-A spec you're handed is an input, not an order: critique it and offer the
-decisions you would make instead of following blindly. State disagreements
+Review a supplied spec against evidence and the requested outcome. State disagreements
 with evidence and a recommendation, then follow the ruling. When implementing, deliver
 the spec literally — if it says scores/metadata/IDs, never substitute a cruder proxy;
 if the specified mechanism seems wrong mid-build, stop and say so rather than silently

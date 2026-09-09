@@ -1,0 +1,63 @@
+---
+name: experiment-planning
+description: Establish an evidence-backed experiment plan by inspecting prior work and asking only consequential unsettled questions. Use before a new benchmark, evaluation, A/B test, or tuning campaign, or when its decision or design changes; skip a questionnaire for a simple reproduction or an already-settled run.
+license: MIT
+---
+
+# Experiment Planning
+
+Produce the smallest durable plan that makes the study interpretable and bounded.
+Use existing repository evidence and the operator's choices before asking questions.
+This procedure does not expand authorization; AGENTS.md defines decision authority,
+collaboration mode, resource limits, and security requirements.
+
+## Inspect before asking
+
+Read the work item, acceptance criteria, prior runs, campaign ledger if present, and the
+actual harness or measurement path. Identify what is already known, what can be checked
+cheaply, and which unresolved choices would change the decision or cost materially.
+Reuse settled answers; do not make the operator recite information already available.
+
+For a routine reproduction or rerun under an existing valid plan, record any relevant
+change and proceed. A full questionnaire is unnecessary. Scale the plan to the study;
+exploratory probes may have a qualitative next-step criterion rather than a numerical
+success threshold.
+
+## Resolve consequential choices
+
+These are coverage prompts, not a script to ask verbatim. Ask only what remains
+unsettled after inspection, following the collaboration mode in AGENTS.md. Present a
+recommendation and its trade-off for choices requiring operator input. Continue safe
+independent preparation while an answer is pending; do not launch dependent work or
+infer approval from silence.
+
+- **Outcome and decision:** What decision should the evidence support? Define the primary
+  metric, units, improvement direction, guardrails, and meaningful acceptance criterion.
+- **Comparison and mechanism:** What is the baseline or control, and what independent
+  variable changes? Explain the mechanism being tested and which conditions must stay
+  comparable. Describe planned bundles or interactions explicitly.
+- **Population and uncertainty:** Which workload or population does the claim cover?
+  Select the sampling unit, sample selection, repeat strategy, any pairing or shared
+  seeds, aggregation, and uncertainty method appropriate to the data and decision.
+  State precision limits when the available budget cannot resolve the desired effect.
+- **Inputs and validity:** Which information is available in production? Establish data
+  provenance, tuning versus evaluation separation, prior exposure, grader validity,
+  and any diagnostic oracle access. Keep test-only information out of the evaluated
+  production path. Apply the project's privacy and security boundaries.
+- **Resources and stopping:** Record the approved compute/provider, cost or usage and
+  runtime bounds where required, expected concurrency, checkpoints, and the criteria
+  for advancing, stopping, or seeking a new decision. Stronger applicable resource
+  policies remain in force. Check for reusable artifacts and in-flight work first.
+
+## Persist and use
+
+Write the answers, evidence links, unresolved limits, and the next-run decision criterion
+in the existing Git-tracked task record. For sustained iteration, use its campaign
+ledger (`task-protocol`, `STRUCTURE.md`); do not create a separate tracker. Distinguish
+operator decisions, evidence-backed settings, and provisional assumptions. A provisional
+assumption cannot replace required authorization.
+
+Use `bench-discipline` to execute and interpret the planned comparison. Record actual
+conditions, results, cost, deviations, and the next decision with each run. If conditions
+change enough to invalidate the plan, update it before relying on the new comparison;
+preserve earlier versions through Git and label exploratory findings honestly.

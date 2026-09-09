@@ -28,8 +28,9 @@ explicit goals.
   declare are the actual sin.
 - **Externally-owned repos are read/fork-only.** No pushes, PRs, issues, or comments until
   the operator explicitly says ready — anti-spam is a hard rule.
-- **Audits have round boundaries.** A requested audit round includes the audit, repair of
-  its material outcome-relevant findings, and confirmation of those repairs. A new
+- **Audits have round boundaries.** An audit-only request produces findings and proposed
+  fixes. Repair and confirmation belong to the round when the operator requested them;
+  do not infer mutation authority from a request to inspect or explain. A new
   independent auditor, new broad pass, or different work category is another round unless
   the resource envelope explicitly includes it. Audit lanes surface opportunistic
   findings, but those findings enter the queue rather than automatically preempting the
@@ -40,22 +41,24 @@ explicit goals.
 - Respect global provider concurrency across ALL lanes combined (e.g. "provider A under
   500 total, provider B under 2000 in total") — budgets are fleet-wide, not per-lane.
   ⚒ Make one lane the budget owner when several hit the same provider.
-- One memory-heavy local process at a time: two 20GB Python lanes once killed the machine.
-  GPU/latency benchmarks are strictly sequential — parallel runs invalidate them.
+- Bound memory-heavy concurrency by verified host capacity and the approved envelope.
+  Isolate competing GPU/latency measurements unless contention is the declared study;
+  record the intended concurrency and measurement conditions before launch.
 - Prune disk (old runs, stale datasets) proactively; large artifacts live outside the repo.
 - Never build `--release` in a shared tree while a paused run may depend on the existing
   binary — release builds clobber it; use your lane's target dir.
 
-## Orchestration patterns the operator expects
+## Orchestration patterns
 
 - **Recon sweep → design → build → proportional critique → gate → fix.** Use an adversarial
   verifier when required by an acceptance criterion or included in the approved review
   plan. Verification stays inside its approved agent, round, and resource boundary.
-- **STOP-at-fork agents.** A lane that hits a design decision stops and reports options +
-  recommendation instead of forcing a change; the operator picks one.
+- **Decision handling.** Lanes follow the collaboration mode in AGENTS.md §Autonomy.
+  Escalate choices beyond delegated authority with options and a recommendation; continue
+  ordinary implementation choices inside the recorded agreement.
 - **Background monitors.** Every detached run has a watcher that surfaces failures instantly
   and feeds concrete counters into status lines. Prove work is running: process name, output
   path, dashboard link.
 - **Handoff on saturation.** A lane near context limits writes a handoff and dies; a fresh
   agent with a handoff beats a saturated one every time (skill `handoff-continuity`).
-- Parallelize preparation, then launch the matrix at once.
+- Parallelize independent preparation and launch only the planned, resource-bounded work.

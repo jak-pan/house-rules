@@ -6,7 +6,7 @@ license: MIT
 
 # Design Flow
 
-The lifecycle every non-trivial feature moves through. Paths and naming: `forge/STRUCTURE.md`.
+The lifecycle every non-trivial feature moves through. Paths and naming: `STRUCTURE.md` in the installed Forge root.
 Principles behind the gates: skill `design-canon`. `task …` operations below refer to the
 workspace's tracker — the file-based default is `bin/task` (skill `task-protocol`); on any
 other tracker, map the operations (create/claim/close-gate/handoff) 1:1 onto its primitives.
@@ -34,13 +34,17 @@ the unknowns before writing the spec, not after implementing the wrong one. Then
 - **Key decisions with rejected alternatives** (why) — this section is what survives migration
 - end-state first: design for the final product; no "fix in v2" for load-bearing structure
 
-Gate: ≥85% conviction → mark `approved`, inform operator, proceed (they review async).
-Below 85% → `status: draft`, list the open forks with a recommendation, wait.
+Gate: apply AGENTS.md §Autonomy and its recorded collaboration mode. In autonomous mode,
+a design entirely inside the approved outcome and decision boundaries may be marked
+`approved` at the base confidence threshold, with evidence recorded and the operator
+informed. Otherwise keep `draft` and ask about the consequential unresolved choice.
+Record whether approval came from the operator or delegated authority; do not imply
+operator review when it did not happen. Priorities follow the base definitions.
 P2/P3 may skip the doc but still need a plan note in `task.md`.
 
 ## 3. Prototype (UX-heavy features only)
 
-Order is fixed (learned the hard way):
+Use this sequence for work that needs both prototype stages:
 
 1. **System map + micro-specs**: mermaid + md per screen/flow in the design doc
 2. **Lofi**: `prototypes/NNN-feature/lofi/` — flows, wireframes, single-file html sketches

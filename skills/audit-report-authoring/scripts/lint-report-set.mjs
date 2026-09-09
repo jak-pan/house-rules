@@ -35,6 +35,30 @@ function headingSlugs(text) {
   return slugs;
 }
 
+// This is the report contract's narrow anchor syntax, not a general HTML parser.
+function declaredEvidenceAnchors(text) {
+  const lines = text.replace(/<!--[\s\S]*?(?:-->|$)/g, comment => comment.replace(/[^\n]/g, " ")).split("\n");
+  const anchors = [];
+  let fence = null;
+  for (const [index, line] of lines.entries()) {
+    const delimiter = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    if (fence) {
+      if (delimiter && delimiter[1][0] === fence[0] && delimiter[1].length >= fence.length && !delimiter[2].trim()) fence = null;
+      continue;
+    }
+    if (delimiter) {
+      fence = delimiter[1];
+      continue;
+    }
+    const declaration = line.match(/^<a id="(evidence-[a-z][a-z0-9]*-e\d{2})"><\/a>\r?$/);
+    if (!declaration) continue;
+    let headingLine = index + 1;
+    while (headingLine < lines.length && !lines[headingLine].trim()) headingLine++;
+    anchors.push({ id: declaration[1], line: index + 1, headingLine: headingLine + 1 });
+  }
+  return anchors;
+}
+
 function readJson(path, label) {
   if (!existsSync(path)) throw new Error(`${label} does not exist: ${path}`);
   try {
@@ -143,6 +167,19 @@ for (const report of config.reports) {
   }
   if (!evidenceTags.length) fail(report.file, "contains no embedded evidence records");
 
+  const anchors = declaredEvidenceAnchors(text);
+  const anchorIds = new Set();
+  for (const anchor of anchors) {
+    if (anchorIds.has(anchor.id)) fail(report.file, `duplicate evidence anchor ${anchor.id}`, anchor.line);
+    anchorIds.add(anchor.id);
+    const id = anchor.id.slice("evidence-".length).toUpperCase();
+    const attached = evidenceTags.some((match) => match[1] === id
+      && match.index >= appendixStart && appendixStart >= 0
+      && lineNumber(text, match.index) === anchor.headingLine
+      && lines[anchor.headingLine - 1].startsWith(`### [[EVIDENCE:${id}]] `));
+    if (!attached) fail(report.file, `evidence anchor ${anchor.id} must immediately precede its matching appendix record (blank lines allowed)`, anchor.line);
+  }
+
   const numberByEvidence = new Map();
   for (const match of evidenceTags) {
     const id = match[1];
@@ -152,6 +189,10 @@ for (const report of config.reports) {
     const expected = numberByEvidence.size + 1;
     numberByEvidence.set(id, expected);
     const heading = lines[lineNumber(text, match.index) - 1] ?? "";
+    const anchorId = `evidence-${id.toLowerCase()}`;
+    if (!anchors.some((anchor) => anchor.id === anchorId && anchor.headingLine === lineNumber(text, match.index))) {
+      fail(report.file, `evidence ${id} requires explicit anchor <a id="${anchorId}"></a> immediately before its heading`, lineNumber(text, match.index));
+    }
     if (!heading.startsWith(`### [[EVIDENCE:${id}]] [${expected}] `)) {
       fail(report.file, `evidence ${id} must be numbered [${expected}] in appendix order`, lineNumber(text, match.index));
     }
@@ -207,8 +248,11 @@ for (const report of config.reports) {
     }
     if (fragment) {
       const linkedText = readFileSync(linkedPath, "utf8");
-      const evidenceAnchors = new Set([...linkedText.matchAll(evidencePattern)].map((entry) => `evidence-${entry[1].toLowerCase()}`));
-      if (!headingSlugs(linkedText).has(fragment) && !evidenceAnchors.has(fragment)) {
+      const evidenceAnchors = new Set(declaredEvidenceAnchors(linkedText).map((entry) => entry.id));
+      const exists = fragment.startsWith("evidence-")
+        ? evidenceAnchors.has(fragment)
+        : headingSlugs(linkedText).has(fragment);
+      if (!exists) {
         fail(report.file, `missing fragment #${fragment} in ${linkedFile}`, lineNumber(text, match.index));
       }
     }

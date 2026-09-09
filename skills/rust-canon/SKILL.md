@@ -8,7 +8,7 @@ license: MIT
 
 Rust is the default for products — prefer building native over porting or wrapping.
 TypeScript for standalone web libs and lightweight org tooling (Node ≥22 LTS — 24 preferred — ESM,
-pnpm, near-zero deps); Svelte 5 + Vite + plain CSS (no SSR) for dashboards and
+pnpm, near-zero deps); Svelte 5 + Vite + plain CSS for dashboards and
 prototypes; Flutter when a multi-platform consumer app is needed. Python is throwaway
 experiment glue only — never in `src/` or shipped code; confined to `prototypes/spikes/`
 and gitignored scratch.
@@ -27,8 +27,7 @@ unless genuinely necessary (expensive to run). Mobile is native or Flutter, not 
 - `rust-toolchain.toml` pinned and committed in every Rust repo; rustup only (no brew rust).
 - Feature gates for optional subsystems (`sqlite`, `http`, `cli`, `experimental-*`);
   experimental features default OFF and byte-identical when off.
-- Minimal dependencies — hand-roll small things before importing heavy deps (a JSON-RPC
-  hand-roll beat rmcp to keep regex/tokio-util out). Household set: serde, serde_json,
+- Minimal dependencies — hand-roll small things before importing heavy deps. Household set: serde, serde_json,
   thiserror, anyhow, chrono, clap (derive), tokio, reqwest, rusqlite, axum, tracing.
 
 ## Code rules

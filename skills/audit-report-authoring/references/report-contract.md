@@ -95,6 +95,8 @@ Evidence appendix marker and record:
 
 [[EVIDENCE-APPENDIX:OPEN]]
 
+<a id="evidence-sec-e01"></a>
+
 ### [[EVIDENCE:SEC-E01]] [1] Released source inspection
 
 **Supports:** SEC-03
@@ -117,6 +119,15 @@ appendix order without gaps, and are reused for repeated citations:
 ```markdown
 The release path accepts an unverified state transition. [1](#evidence-sec-e01)
 ```
+
+Every evidence record requires a unique explicit anchor using exactly
+`<a id="evidence-<lowercase-evidence-id>"></a>` on an unindented line immediately before
+its matching `###` record heading in the appendix; only blank lines may intervene.
+The `evidence-` fragment namespace is reserved for these declarations. A semantic tag
+does not declare an anchor. Do not wrap declarations or records in code fences, HTML
+comments, or other HTML containers. The linter checks this narrow declaration syntax,
+uniqueness, and attachment; it does not parse arbitrary HTML or prove renderer behavior.
+Use a renderer that preserves these anchors and verify the rendered citation links.
 
 Every evidence record is cited from the body. Every material finding is named by at least
 one record's `Supports` field. A URL appears only inside the evidence appendix beside the

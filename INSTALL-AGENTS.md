@@ -12,9 +12,10 @@ their own skills, clients, MCP servers, credentials, and other runtime state.
 
 ## Prompt for the destination agent
 
-Replace the bundle location, then give the destination agent this prompt:
+Replace `<FORGE_SOURCE>` with the downloaded bundle or permanent source location, then
+give the destination agent this prompt:
 
-> Install Forge from the attached bundle or extracted directory. Read its
+> Install Forge globally from `<FORGE_SOURCE>`. Read its
 > INSTALL-AGENTS.md completely and follow it. Keep Forge in a permanent,
 > user-owned location; preserve existing instructions and native settings;
 > discover this machine's operating system, agent products, configuration
@@ -89,7 +90,7 @@ For each selected product:
    ```
 
 3. Inside that block, instruct the agent to read the permanent Forge
-   `AGENTS.md` before non-trivial work, load only relevant Forge Skills, use
+   `AGENTS.md` at the start of every session, load only relevant Forge Skills, use
    `STRUCTURE.md` for artifact placement, and keep native product configuration
    outside Forge. Use resolved absolute paths from this computer. Install this
    exact adapter text, replacing `<FORGE_ROOT>` with the permanent absolute
@@ -99,7 +100,7 @@ For each selected product:
    <!-- forge:begin -->
    # Shared operating foundation (Forge)
 
-   Before non-trivial work, read `<FORGE_ROOT>/AGENTS.md`. It is the canonical
+   At the start of every session, read `<FORGE_ROOT>/AGENTS.md`. It is the canonical
    source for collaboration, verification, autonomy, and durable execution
    rules. Repository-local rules supply project details and win over shared
    preferences; all work remains subject to the host's instruction hierarchy
@@ -113,15 +114,23 @@ For each selected product:
    ```
 4. Preserve all content outside the managed block. Duplicate, incomplete, or
    reversed markers are a conflict requiring inspection; do not guess.
-5. Codex loads `$CODEX_HOME/AGENTS.override.md` instead of `AGENTS.md` when it exists.
+5. Preserve human-authored existing rules in place unless the operator chooses a merge.
+   For consolidation, first copy them to a machine-local
+   `custom/external-rules/<tool>.md`, excluding third-party managed blocks. Review the
+   proposed text and duplicates, then replace only that agreed original content with
+   an explicit instruction to read the external file at session start. Keep tool-specific
+   rules separate when their meanings differ. Record ownership and a backup in the receipt.
+   This is an ordinary referenced file, not a new native instruction-discovery feature.
+   Never move another product's managed block out of the file it updates.
+6. Codex loads `$CODEX_HOME/AGENTS.override.md` instead of `AGENTS.md` when it exists.
    If an override file is present, place the block there or remove the override
    deliberately; otherwise the Forge block is never read.
-6. Install each Forge-owned Skill into `~/.agents/skills/` for Codex and Kimi.
+7. Install each Forge-owned Skill into `~/.agents/skills/` for Codex and Kimi.
    Do not use the legacy `$CODEX_HOME/skills/` location as the portable target.
-7. Install the same Forge-owned Skills into Claude Code's native user Skill
+8. Install the same Forge-owned Skills into Claude Code's native user Skill
    directory. A symlink may point directly to the Forge source; otherwise copy
    the complete Skill directory.
-8. Do not install anything from `custom/` as though Forge owned it. Follow the
+9. Do not install anything from `custom/` as though Forge owned it. Follow the
    ownership recorded in `custom/INDEX.md`.
 
 Writes should be staged in the destination directory and atomically renamed
@@ -129,12 +138,24 @@ where the host supports it. If a multi-file operation fails, preserve backups,
 report the partial state exactly, and either roll it back or finish it before
 claiming installation success.
 
+Do not copy the shared base into each repository. Existing repository copies are a
+migration case: compare their universal section to its known source revision, preserve
+local edits and decisions, and remove only the verified duplicate section after review.
+Unknown or conflicting content remains until reconciled. The global source owns shared
+rules; repository files own local rules.
+
 ## 4. Maintain the machine-local custom index
 
 Create `custom/INDEX.md` under the permanent Forge directory when it does not
 exist. The entire `custom/` directory is gitignored because it describes one
 machine's tools, paths, accounts, and verification state. Start from
 `CUSTOM-INDEX.example.md`.
+
+Keep a durable installation receipt in `custom/installations/<tool>.json` or an equivalent
+small Markdown table. Record the source revision or bundle digest, native instruction
+file, managed block, optional external-rule file, every link/copy destination, installed
+content hashes, backup locations, helper invocation, and filesystem/runtime verification.
+Do not record secrets. The receipt is the ownership evidence used for update and removal.
 
 The index records optional Skills, plugins, MCP clients, browsers, and related
 capabilities. For each entry record:
@@ -168,12 +189,27 @@ Filesystem verification:
 - no custom or externally managed capability was copied into Forge ownership;
 - `custom/INDEX.md` points to paths that exist and identifies their real owner.
 
+Helper availability:
+
+- The text rules and skills can be available without their executable helpers.
+- Git-backed tasks remain the default. `bin/task` needs zsh and Unix utilities. Invoke
+  the resolved `<FORGE_ROOT>/bin/task` from the target repository; do not assume a bare
+  `task` command resolves to Forge. If exposing it on PATH, check for an existing command
+  and record the link. On native Windows, use a verified compatible environment or manage
+  the Git task files directly; do not claim the zsh helper works natively.
+- The report linter and public-export helper need Node.js 22 or later. Check availability
+  only for components selected by the operator; do not install a runtime silently.
+- Resolve shared references such as STRUCTURE.md from the permanent Forge source.
+
 Runtime verification:
 
 1. Start a fresh session for every selected product.
 2. Ask it to identify its global instruction file, Forge source path, and the
    actual paths of the available Forge Skills.
-3. Invoke one small, read-only Skill check.
+3. Use the product's discovery view and a read-only prompt, for example: “Identify the
+   loaded Forge base path and available skills, then explain which rules apply to this
+   simple question without creating a task.” For selected helpers, run their documented
+   check in a disposable fixture; do not create verification tasks in a real project.
 4. Verify each external capability through its owner's supported status or
    doctor command. Do not treat a file's presence as runtime verification.
 5. Do not start paid model runs merely to test installation unless the operator
@@ -188,7 +224,9 @@ local work, update it, then repeat planning and verification. Symlinked Skills
 pick up source changes immediately; copied Skills require an explicit refresh.
 
 To remove Forge, delete only links that still resolve into this Forge source and
-copies proven to match a recorded Forge installation. Remove only the managed
+copies proven to match the receipt for this Forge installation. Preserve user-owned
+external rules; restore or retain their native pointer after reviewing newer changes.
+Remove only the managed
 Forge blocks from global instruction files. Restore a backup only after
 comparing newer operator changes.
 

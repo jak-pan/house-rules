@@ -7,6 +7,15 @@ TASKS_DIR="${TASKS_DIR:-tasks}"
 AGENT="${AGENT_NAME:-${USER:-agent}}"
 now() { date -u +%Y-%m-%dT%H:%M:%SZ }
 stamp() { date -u +%Y%m%d-%H%M%S }
+die() { print -ru2 -- "$*"; exit 1; }
+
+validate_id() {
+  [[ "$1" =~ '^[0-9]{3,18}$' ]] && (( 10#$1 > 0 )) || die "bad task ID: expected a positive decimal ID of 3–18 digits"
+}
+
+validate_agent() {
+  [[ "$1" =~ '^[A-Za-z0-9][A-Za-z0-9._-]*$' ]] || die "bad owner/agent: use letters, digits, dot, underscore or hyphen; start with a letter or digit"
+}
 
 usage() {
   cat <<'EOF'
@@ -27,44 +36,59 @@ EOF
 
 fm_get() { # fm_get <file> <key> — tolerates empty values ("key:")
   awk -v k="$2" 'f==1 && $0=="---"{exit} $0=="---"{f=1;next}
-    f==1 && index($0,k":")==1 {sub("^"k":[ ]*",""); print; exit}' "$1"
+    f==1 && index($0,k":")==1 {
+      sub("^"k":[ ]*",""); q=sprintf("%c",39)
+      if (substr($0,1,1)==q && substr($0,length($0),1)==q) {
+        $0=substr($0,2,length($0)-2); gsub(q q,q)
+      }
+      print; exit
+    }' "$1"
 }
 
 fm_set() { # fm_set <file> <key> <value> — single-key replace inside frontmatter
   local f="$1" k="$2" v="$3" tmp
   tmp="$(mktemp "$(dirname "$f")/.task.XXXXXX")"
-  awk -v k="$k" -v v="$v" '
-    BEGIN{fm=0}
+  TASK_FIELD_VALUE="$v" awk -v k="$k" '
+    BEGIN{fm=0; v=ENVIRON["TASK_FIELD_VALUE"]}
     $0=="---"{n++; fm=(n==1)?1:0; print; next}
     fm==1 && index($0,k":")==1 {print k": "v; next}
     {print}' "$f" > "$tmp" && mv "$tmp" "$f"
 }
 
 task_dir() { # task_dir NNN
+  validate_id "$1"
   local -a m
   m=("$TASKS_DIR"/"$1"-*(N/))
   (( ${#m} > 0 )) || { echo "no task $1 in $TASKS_DIR/" >&2; exit 1; }
+  (( ${#m} == 1 )) || die "ambiguous task ID $1: ${#m} matching directories"
   echo "${m[1]}"
 }
 
 cmd="${1:-}"; [ -n "$cmd" ] && shift || usage
 case "$cmd" in
   new)
+    (( $# >= 1 && $# <= 2 )) || usage
     title="${1:?title required}"; prio="${2:-P2}"
-    slug=$(echo "$title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g;s/--*/-/g;s/^-//;s/-$//' | cut -c1-40)
-    existing=("$TASKS_DIR"/[0-9][0-9][0-9]-*(N/))
+    [[ "$title" != *[[:cntrl:]]* && "$title" == *[^[:space:]]* ]] || die "title must be nonblank and contain no control characters"
+    [[ "$prio" =~ '^P[0-3]$' ]] || die "priority must be P0, P1, P2 or P3"
+    slug=$(printf '%s\n' "$title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g;s/--*/-/g;s/^-//;s/-$//' | cut -c1-40)
+    slug="${slug:-task}"
+    existing=("$TASKS_DIR"/<->-*(N/))
     last=0
     for e in $existing; do
-      n=${${e:t}[1,3]}
+      n=${${e:t}%%-*}
+      validate_id "$n"
       (( 10#$n > last )) && last=$((10#$n))
     done
     nnn=$(printf '%03d' $(( last + 1 )))
+    validate_id "$nnn"
     dir="$TASKS_DIR/$nnn-$slug"
     mkdir -p "$dir/handoffs"
+    quote="'"; serialized_title="${title//$quote/$quote$quote}"
     cat > "$dir/task.md" <<EOF
 ---
 id: $nnn
-title: $title
+title: '$serialized_title'
 status: pending
 owner:
 priority: $prio
@@ -89,9 +113,13 @@ EOF
     nnn="${1:?task number required}"; shift
     force=0; owner=""
     for a in "$@"; do
-      [ "$a" = "--force" ] && force=1 || owner="$a"
+      if [ "$a" = "--force" ]; then force=1
+      elif [[ "$a" == --* || -n "$owner" ]]; then usage
+      else owner="$a"
+      fi
     done
     owner="${owner:-$AGENT}"
+    validate_agent "$owner"
     f="$(task_dir "$nnn")/task.md"
     cur=$(fm_get "$f" owner)
     if [ -n "$cur" ] && [ "$cur" != "$owner" ] && [ $force -eq 0 ]; then
@@ -102,6 +130,7 @@ EOF
     echo "claimed $nnn -> $owner"
     ;;
   status)
+    (( $# == 2 )) || usage
     nnn="${1:?}"; st="${2:?pending|active|review|blocked}"
     case "$st" in
       pending|active|review|blocked) ;;
@@ -164,9 +193,19 @@ closeout checklist (judgment items):
 EOF
     ;;
   handoff)
+    (( $# == 1 )) || usage
+    validate_agent "$AGENT"
     nnn="${1:?}"; d="$(task_dir "$nnn")"
     mkdir -p "$d/handoffs"
-    hf="$d/handoffs/$(stamp)-$AGENT.md"
+    prefix="$d/handoffs/$(stamp)-$AGENT"
+    sequence=1
+    while true; do
+      hf="$prefix-$(printf '%06d' $sequence).md"
+      # Reserve a fresh path exclusively; never truncate an existing handoff.
+      if (setopt noclobber; : > "$hf") 2>/dev/null; then break; fi
+      [[ -e "$hf" ]] || die "cannot create handoff in $d/handoffs"
+      (( sequence++ ))
+    done
     cat > "$hf" <<EOF
 # Handoff — task $nnn — $AGENT — $(now)
 <!-- IMMUTABLE once committed. Next session writes a NEW file. -->
@@ -189,18 +228,20 @@ EOF
     echo "$hf"
     ;;
   index|board)
+    (( $# == 0 )) || usage
     rows=""
-    for f in "$TASKS_DIR"/[0-9][0-9][0-9]-*/task.md(N); do
+    for f in "$TASKS_DIR"/<->-*/task.md(N); do
       id=$(fm_get "$f" id); ti=$(fm_get "$f" title); st=$(fm_get "$f" status)
       ow=$(fm_get "$f" owner); pr=$(fm_get "$f" priority); up=$(fm_get "$f" updated)
       lh=$(ls "${f%/task.md}/handoffs" 2>/dev/null | sort | tail -1)
-      rows+="$st|$pr|$id|$ti|${ow:--}|${up%T*}|${lh:--}\n"
+      ti="${ti//|/&#124;}"
+      rows+="$st|$pr|$id|$ti|${ow:--}|${up%T*}|${lh:--}"$'\n'
     done
     render() {
       echo "| id | title | status | owner | prio | updated | latest handoff |"
       echo "|---|---|---|---|---|---|---|"
       for st in active review blocked pending done; do
-        printf '%b' "$rows" | awk -F'|' -v s="$st" '$1==s' | sort -t'|' -k2,2 -k3,3 | \
+        printf '%s' "$rows" | awk -F'|' -v s="$st" '$1==s' | sort -t'|' -k2,2 -k3,3n | \
           awk -F'|' '{printf "| %s | %s | **%s** | %s | %s | %s | %s |\n",$3,$4,$1,$5,$2,$6,$7}'
       done
     }

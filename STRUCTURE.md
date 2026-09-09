@@ -1,14 +1,14 @@
 # STRUCTURE — Canonical Paths & Naming (all repos)
 
-One reference for where every artifact lives and what it's called. Repo canon may extend
-this; it should not contradict it. Lifecycle rules: skill `design-flow`. Task mechanics:
+One reference for where every artifact lives and what it's called. Repository-specific
+rules may extend or override these shared defaults. Lifecycle rules: skill `design-flow`. Task mechanics:
 skill `task-protocol`.
 
 ```
 repo/
-├── AGENTS.md                      # copied universal canon + appended settled decisions (the bible)
+├── AGENTS.md                      # repository-specific rules and settled decisions
 ├── CONTEXT.md                     # repo rules (wins over forge)
-├── CLAUDE.md                      # Claude Code adapter — exactly one line: @AGENTS.md
+├── CLAUDE.md                      # Claude Code instructions; preserve existing content, import local AGENTS.md if used
 ├── .claude/rules/<name>.md        # optional, Claude-only: path-scoped rules (frontmatter paths:)
 ├── docs/
 │   ├── SYSTEM-MAP.md              # ONE high-level map (two-tier docs: map + deep dives)
@@ -34,7 +34,7 @@ repo/
 │   ├── TASKS.md                   # GENERATED board — never hand-edit
 │   └── NNN-slug/
 │       ├── task.md                # single-writer canonical state (frontmatter)
-│       ├── handoffs/YYYYMMDD-HHMMSS-<agent>.md   # immutable
+│       ├── handoffs/YYYYMMDD-HHMMSS-<agent>-000001.md   # immutable; collision suffix
 │       ├── PRE-FLIGHT.md          # multi-phase only; maintained, not appended
 │       ├── PUSH-TO-<goal>.md      # campaign ledger: baseline, knob map, tried→result→verdict (campaigns only)
 │       ├── implementation-notes.md # plan deviations, what + why, as they happen
@@ -53,14 +53,14 @@ repo/
 
 | Thing | Rule | Example |
 |---|---|---|
-| Task dir | `NNN-kebab-slug` (NNN monotonic per repo) | `042-rerank-stage2` |
+| Task dir | `NNN-kebab-slug` (monotonic per repo, at least three digits; continues past 999) | `042-rerank-stage2` |
 | Design doc | `docs/design/NNN-kebab.md` — carries owning task id | `docs/design/042-rerank-stage2.md` |
 | Architecture doc | `docs/architecture/kebab.md` — durable, no id | `docs/architecture/rerank-pipeline.md` |
 | Report | `docs/reports/YYYY-MM-DD-topic.md` | `2026-07-06-knob-audit.md` |
-| Branch (file-tracker default) | `task/NNN-slug/<agent>` — the remote lock registry | `task/042-rerank-stage2/fable` |
+| Branch (file-tracker default) | `task/NNN-slug/<agent>` — advertises the lane; not an exclusive lock | `task/042-rerank-stage2/agent` |
 | Run name | neutral benchmark condition, never debugging history | `candidate-answer-thinking` |
 | Spike | `prototypes/spikes/YYYY-MM-DD-question/` | `2026-07-06-fts-vs-vector-speed/` |
-| Handoff | `YYYYMMDD-HHMMSS-<agent>.md` | `20260706-214005-fable.md` |
+| Handoff | `YYYYMMDD-HHMMSS-<agent>-<sequence>.md` (legacy names still readable) | `20260706-214005-agent-000001.md` |
 | Legacy handover | `HANDOVER-YYYY-MM-DD.md` at repo root — un-migrated repos only | `HANDOVER-2026-07-06.md` |
 | Commit | `type(scope): description` | `feat(recall): stage2 rerank` |
 | Crates | `<product>-<domain>` | `acme-intake` |

@@ -1,106 +1,99 @@
 ---
 name: bench-discipline
-description: Benchmark and experiment methodology — no test-targeted hacks, variance floors, controls and oracle ceilings, one-knob isolation, prove-the-knob-fired, cost ladder, comparability, judge validation. Use whenever designing or running benchmarks, evals, A/B tests, or tuning sweeps.
+description: Design and interpret controlled benchmarks, evaluations, A/B tests, and tuning sweeps with production-valid inputs, appropriate uncertainty, and bounded costs. Use for comparative experiments, not as a prerequisite for a simple bug reproduction.
 license: MIT
 ---
 
 # Bench Discipline
 
-The campaign ledger (`PUSH-TO-<goal>.md` in the work item's record — file tracker:
-`tasks/NNN-slug/`; paths: `STRUCTURE.md`) is the house style.
+Before a new campaign, use `experiment-planning` to inspect existing evidence and settle
+the consequential study choices. Reuse the recorded plan for subsequent runs; revisit
+it when the hypothesis, workload, or decision changes. Authority, security, and resource
+limits remain governed by AGENTS.md and the applicable project rules.
 
-Paid experiments run autonomously inside the approved envelope (AGENTS.md §Resource
-envelopes); crossing it requires a proposed expansion, never a silent reduction of rigor.
+## Production-valid comparisons
 
-## Cardinal rule: no cheating
+- The evaluated system must use only information available at its intended production
+  boundary. Keep held-out answers, labels, and test-only identifiers out of its prompts,
+  training examples, routing, and heuristics. Keep evaluation access separate.
+- Category routing, regex extraction, and other deterministic logic are valid when they
+  implement a production requirement using production-available inputs. Document the
+  requirement and evaluate generalization; never special-case held-out items to raise
+  their scores.
+- Use designated development data for tuning and independent evaluation data for the
+  claimed generalization result. Record prior exposure and reuse limitations when an
+  independent holdout is unavailable.
+- Cross-check suspicious labels against the raw source and benchmark specification.
+  Record label corrections separately so they do not masquerade as system improvement.
+  An oracle or gold-assisted diagnostic may estimate a stage's headroom, but label it as
+  diagnostic and keep its artifacts separate from production-valid comparisons.
 
-Nothing enters the pipeline that couldn't run blind in production:
-- No gold answers, gold strings, or test samples in prompts, few-shot examples, or heuristics.
-- No per-question special-casing, no category routing, no substring gold-matching.
-- No hardcoded text extraction (regex dates, keyword lists) — structured metadata and IDs only.
-- Never tune to match broken gold — cross-check a "miss" against raw source first; ~40% of
-  misses can be benchmark noise.
-- Borderline idea? Flag it before building. Gaming the test must never be a plausible
-  reading of your work.
+## Controls and attribution
 
-## Cost ladder — cheapest experiment that answers the question
+- State the hypothesis, intended decision, acceptance criterion, and independent variable
+  before launch. Preserve other relevant conditions across arms: inputs, software,
+  configuration, measurement process, hardware, and runtime conditions. A model, judge,
+  concurrency level, or dataset can itself be the declared variable; explain what that
+  comparison measures and what it cannot isolate.
+- Choose an appropriate baseline or control. A feature-off arm is useful when it isolates
+  the feature; a no-op or oracle is useful only when it answers the actual question.
+  Verify that controls measure the intended behavior before interpreting the treatment.
+- Prefer a single changed factor when attributing a mechanism. A planned factorial or
+  bundled comparison is valid; attribute conclusions only as narrowly as the design
+  supports and investigate interactions when they matter to the decision.
+- Prove the change took effect through effective configuration, executed paths, or output
+  artifacts. A large change with little effect warrants a wiring check, but may also be
+  a valid null result.
+- Keep experiment settings explicit and reproducible. Name the baseline configuration;
+  do not silently change shipped defaults to simplify a benchmark command. Product
+  default changes follow the authority rules in AGENTS.md.
+- When drift or a configuration error affects a run, identify the affected measurements,
+  record their validity limits, and repeat only the comparisons whose evidence is no
+  longer usable. Preserve the original artifacts and the correction.
 
-1. Single-item repro outside the harness (~$0, seconds).
-2. Answer-only rerun on stored artifacts (<$1). Re-judge stored answers instead of re-running.
-3. Small diverse smoke set (n=5–50) → medium (~100Q) → full run, scaling up only on improvement.
-4. Reuse golden datasets/artifacts; **only launch what's missing** — never rerun work whose
-   results already exist. Finish in-flight paid runs before starting new ones.
-5. Track $ after every paid run; report cost and cost-per-point in comparison tables.
-   Verify costs against provider pricing pages, not vibes.
+## Measurement and uncertainty
 
-## Variance protocol
+- Choose the metric, direction, aggregation, sampling unit, pairing, and uncertainty
+  method for the workload and decision. Means, quantiles, ranks, and rates answer
+  different questions; no single summary is universally preferred.
+- Determine repeat counts from observed variability and the precision needed for the
+  decision, within the approved budget. A deterministic check may need no replicates;
+  one noisy observation usually supports exploration rather than a reliable comparison.
+- Account for dependencies such as repeated requests for the same item or shared seeds.
+  Pair comparable units when appropriate. Reusing stored stochastic outputs isolates
+  downstream effects; resampling them measures a different source of uncertainty.
+- Report sample size, relevant spread or uncertainty, effect size, and limitations beside
+  the result. Overlapping or separated sample ranges alone do not establish a win or a
+  null effect. If the evidence cannot resolve the decision, say so; propose a more
+  informative design within the resource envelope rather than declaring a winner.
+- Predefine any subgroup analysis used for a decision where feasible. Label exploratory
+  slices as exploratory and avoid treating repeated searches for a favorable subset as
+  independent confirmation.
 
-- Measure the noise floor first (N-run baseline, report spread).
-- One run is never a result; a single attempt is not tuning. K=2–3, report medians.
-- A lever wins only when ranges separate (ON-min > OFF-max). Inside the band = noise, say so.
-- Never re-roll nondeterministic stages (distill, think-on answering) across comparison arms —
-  keep variance low by construction, reuse the same base.
-- Comparability is sacred: same question set, same candidates, same judge across arms. If
-  settings drift polluted runs, invalidate them wholesale and rerun baselines.
+## Cost ladder — cheapest useful evidence
 
-## Knob methodology
+- Start with existing artifacts, a single-item probe, or a small smoke workload when it
+  can answer the question. Scale when the next run provides decision-relevant evidence,
+  including confirmation of a null result or a correctness check.
+- Reuse valid compatible artifacts and resume completed stages. A planned independent
+  replicate is new evidence, not redundant work. Inspect in-flight work before launching
+  duplicates; obey the approved concurrency and stop conditions.
+- Validate a judge or grader against its specification and representative source-backed
+  examples before trusting it. Inspect relevant raw traces when aggregate results are
+  surprising; use `failure-forensics` for an unexplained failure or regression.
+- Record actual usage and costs for paid runs. Use current provider units and pricing for
+  estimates, and distinguish estimated cost from billed cost.
 
-- One variable at a time: atom sweeps → additive combos → interaction matrix. Sweep with
-  bracketing points around inflections.
-- **Prove the knob fired** before crediting any delta: diff the effective prompt/evidence/
-  config downstream. Audit for silent no-op knobs (a yaml that never loads is a classic).
-- Drastic change with ~zero effect = pipeline-bug hypothesis first, finding second.
-- Every experimental lever: config/env-gated, default OFF, byte-identical when unset.
-  Keep tested options as switches; set measured sweet spots as experiment-lever defaults
-  (act + notify) — shipped product defaults follow the `operator-protocol` ladder.
-- **Defaults ARE the settled config.** The baseline run is the bare default run — zero
-  tuning env vars; flags exist only for the lever under test. A canonical command that
-  needs a wall of pins is config drift: promote the settled values into shipped defaults
-  and delete the pins. When a default flips, re-baseline (N≥2) — scores across a default
-  change are not comparable; running the old value afterwards is a pinned, named test.
-- Diagnostic targeted loops beat random knob hunting — always work from a mechanism.
+## Execution and record
 
-## Controls and ceilings
-
-- Always run the feature-off control alongside the experiment — and check the control is
-  *clean* before reading the treatment (a contaminated control means the instrument is
-  broken, not the hypothesis confirmed).
-- Oracle first, backwards: gold-path/full-context ceiling runs isolate reader ceiling from
-  retrieval before you tune retrieval. State the floor (no-op baseline) and ceiling before
-  interpreting anything between them.
-- **Pre-register each experiment**: hypothesis, predicted delta with mechanism, and the
-  numeric gate that decides the next step — written before launch; hit/miss stated after.
-- **Decompose the target into stage ceilings** (e.g. evidence-in-context % vs final score)
-  and spend only on the binding stage; a 2% lever that dominates cost is a lever to remove.
-- **Apparatus parity, stated explicitly**: same models, same reasoning effort, same
-  concurrency, same judge, same dataset version across all arms. Performance-comparison
-  arms run sequentially on shared hardware, never concurrently.
-- **A config bug invalidates the ladder**: mark every polluted run invalid and rerun the
-  baseline ladder — never mix polluted and clean numbers.
-- **Validate the judge/grader against the primary source** (the benchmark's own spec) by
-  inspecting actual runtime prompts, and audit the dataset itself when scores plateau
-  (variant? distractors present? gold labels sane?) before tuning further.
-- **Detect sub-noise levers by subset isolation**: a real lever changes a deterministic
-  subset — compare on that subset with a ≈0 noise-check on the untouched remainder.
-- When it fits the resource envelope, cross-check prompt changes on a cheaper/weaker model
-  too — improvements that only help the strongest reader are fragile.
-- Sanity-check every cost/token/time figure against the pricing unit and a Fermi estimate;
-  a 100×-off number is a bug, not a result.
-- Triage every miss by mechanism: model bug / retrieval miss / broken data / shaky gold /
-  judge-strict → compute the honest reachable ceiling. Never accept "ceiling" while a
-  competitor scores higher; quantify headroom instead.
-- Validate the judge: check judge prompts against the paper/source, read judge traces, test
-  judge strictness before trusting scores. Aggregate score never tells the full story —
-  per-question forensics does (skill `failure-forensics`).
-
-## Runs
-
-- Release builds (skill `rust-canon`). Measure the concurrency sweet spot, then set it as default.
-- I/O-bound stages run at provider-limit parallelism; anything progressing 1-by-1 is a defect.
-  GPU/latency benchmarks run strictly sequentially, one process at a time.
-- Checkpoint every step so runs survive kills; artifacts (verdicts, per-question debug,
-  gold-eval) are the source of truth, named run dirs under `runs/…`.
-- Record a run manifest: git sha, config hash, model IDs + reasoning effort, params, cost. ⚒
-- Report p95/p98 for latency and rank metrics, not means.
-- Log the running ledger (`PUSH-TO-<goal>.md`): baseline table, knob map with wired-status,
-  tried → result → verdict. Future sessions must be able to continue without re-testing.
+- Match the build profile, workload, and concurrency to the deployment or study question.
+  Define expected resource behavior before diagnosing serialization or low utilization.
+  Isolate competing performance runs unless contention is the declared subject and the
+  applicable resource policy permits it. This skill does not relax stronger shared-host,
+  provider, or hardware restrictions.
+- Checkpoint expensive or non-reproducible stages according to the continuity policy.
+  Record revision, effective configuration, dataset version, seed when applicable,
+  model/provider settings, measurement environment, output paths, and actual usage.
+- Keep the plan and tried → result → verdict record in the Git-tracked work item; use a
+  campaign ledger for sustained iteration (`task-protocol`, `STRUCTURE.md`). Store large
+  or sensitive run artifacts under the project's artifact policy and link the evidence.

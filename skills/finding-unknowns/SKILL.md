@@ -40,10 +40,9 @@ adapted to the forge lifecycle.)
    decisions most likely to change (data models, type interfaces, UX flows) and buries the
    mechanical refactors at the bottom — review effort goes where reversal is expensive.
 
-**Question discipline**: design-time and mid-execution uncertainty questions are welcome
-one precise question (options +
+**Question discipline**: design-time and mid-execution uncertainty questions are welcome; one precise question (options +
 recommendation) beats a confidently-bad decision. The forbidden thing is permission
-theater (skill `operator-protocol` §Asking vs permission theater). Ask async; keep
+theater (skill `operator-protocol` §Decisions). Ask async; keep
 unblocked work moving.
 
 ## During implementation

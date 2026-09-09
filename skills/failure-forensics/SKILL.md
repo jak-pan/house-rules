@@ -1,90 +1,82 @@
 ---
 name: failure-forensics
-description: Per-item forensic root-cause procedure for wrong results, regressions, score drops, slowdowns, and operator-reported symptoms. Use when a run underperforms, a metric moves unexpectedly, something got slower, or the operator says "investigate", "forensics", or "why".
+description: Investigate observed failures, regressions, incorrect results, and unexpected performance with evidence and cheap distinguishing probes. Use when diagnosing a concrete symptom; ordinary explanatory questions do not require this workflow.
 license: MIT
 ---
 
 # Failure Forensics
 
-## Regressions: diff first
+Scale the investigation to the observed symptom and the requested outcome. A small bug
+may need only a reproduction, a targeted fix, and confirmation. Use the work item's
+existing record; do not create an experiment campaign for every diagnostic command.
 
-Something worked before and doesn't now → the cause is in the diff, not in the cosmos:
-1. Enumerate what changed since it last worked (session edits, config churn, defaults, deps,
-   model/provider switches). A change made in this session is the prior.
-2. Bisect/difference against the last-good state; retry the old configuration to isolate.
-3. Only after the diff is exhausted do environmental hypotheses enter.
+## Establish what failed
 
-## Wrong results: per-item evidence chain
+1. Record expected and observed behavior, the affected inputs or environment, and the
+   evidence supporting the report. Separate a reported symptom from a proposed cause.
+2. Find a reproducible case or inspect the failing run's artifacts. If the issue is
+   intermittent, preserve occurrence conditions and uncertainty rather than claiming
+   that a successful retry disproves it.
+3. Identify plausible changes since the last known good state: code, configuration,
+   dependencies, data, traffic, credentials, provider behavior, or infrastructure.
+   Rank hypotheses by evidence and the cost of a distinguishing probe. An outage can
+   justify an environment check immediately; a local diff is often a useful starting
+   point, never proof of the cause.
+4. Run the cheapest informative probe. Compare with a known-good control, inspect the
+   relevant boundary, or bisect a change when appropriate. Record what the probe rules
+   in or out; a negative probe need not identify the remaining cause.
 
-Aggregate scores never tell the full story. For each failing item, pull the full chain 1:1:
+## Trace the relevant path
 
-```
-input → ingested/distilled form → retrieved candidates (ranks, scores) →
-effective prompt (the actual string sent) → model output + reasoning → judge verdict
-```
+Follow the real input through the stages relevant to the symptom. For an ordinary
+service this might be request → handler → dependency → response. For retrieval-backed
+model evaluation it might be input → ingestion → candidates → effective prompt → output
+→ grader verdict. Do not require irrelevant stages or unavailable internal reasoning.
 
-- Read the actual traces. If logs can't answer a question about the pipeline, that's a
-  logging gap — add the logging, then continue.
-- Classify each failure by mechanism (model bug / retrieval miss / data broken / gold shaky /
-  judge strict). A one-item anecdote is not forensics — do the full set difference between
-  runs (a forensic difference, not a single-question analysis).
-- Cross-check suspicious items against raw source data before "fixing" anything.
+- Inspect effective runtime values rather than inferring them only from configuration
+  code. Cross-check suspicious outputs and labels against source data.
+- If evidence is missing, add the smallest instrumentation that answers the causal
+  question. Apply AGENTS.md's credential, data, and egress policies before capturing or
+  exporting payloads; use redacted or synthetic reproductions where needed. Never dump
+  secrets merely to obtain a complete trace.
+- For an aggregate regression, compare changed items or representative failures and
+  passing controls. Expand coverage when heterogeneity or the claim requires it; do not
+  generalize from one convenient example to the whole population.
+- Retain useful observations and counterexamples. Several causes can coexist, and a
+  fully investigated result can remain unresolved within the available evidence.
+
+## Performance signals are clues
+
+State the workload, expected concurrency, rate limits, dependencies, and build profile
+before calling resource behavior defective. Serial execution, low GPU use, or a slower
+quantized model can be legitimate for a particular workload.
+
+Use utilization, queue times, completions, memory, and known-good measurements to locate
+the difference. Regular batch sizes, timeout-like durations, and exact caps suggest
+settings or queue boundaries to inspect; they do not prove a hidden limit. A lever with
+no measurable effect suggests checking whether it fired as well as whether the workload
+can benefit from it. Validate units and timing boundaries when measurements appear
+implausible. Check affected consumers before changing shared defaults.
 
 ## Fix protocol
 
-1. **Confirm first** with evidence, then fix.
-2. Fix the root cause — never suppress, weaken an assertion, skip the case, or fail-open.
-   Never mark it done with the failure "handled" by silence.
-3. Add a red→green regression test when the defect affects product behavior or a
-   documented invariant (`bm25_scorer_strips_stopwords_so_offtopic_facts_dont_win` is the
-   house style). A harness defect receives only the smallest proof needed to trust the
-   harness; it does not automatically justify a generalized analyzer or policy engine.
-4. Re-run the exact repro and state the confirming evidence. Confirm every fix with
-   runtime proof, not code inspection.
-5. On the third occurrence of the same failure class, apply the three-occurrence
-   reassessment (AGENTS.md) before another repair.
+1. Tie the proposed fix to an evidenced mechanism and the requested acceptance criterion
+   or documented invariant. If the cause remains uncertain, label a diagnostic change
+   or temporary mitigation accurately; do not call it a root-cause fix.
+2. Repair the defect without silently dropping failures, weakening required assertions,
+   or bypassing a security boundary. Follow AGENTS.md for material risk and scope changes.
+3. Add a red→green regression test for affected product behavior or a documented
+   invariant. A harness defect needs only the smallest proof that restores trust; avoid
+   growing a generalized analyzer to fix a local harness mistake.
+4. Re-run the reproduction and relevant required checks. For intermittent failures,
+   explain what the confirmation establishes and what uncertainty remains.
+5. Apply AGENTS.md's three-occurrence reassessment when that condition is reached.
 
-## Suspicious-constant checklist ⚒
+Diagnostic instrumentation is temporary unless ongoing observability is required.
+Validate new analysis tools against a hand-verified case before relying on their output;
+mark results invalid when that validation fails. Preserve useful evidence under the
+project's retention policy before removing temporary instrumentation.
 
-Round or default-looking numbers are guilty until explained:
-- 60s/120s timings ≈ some layer's default timeout
-- 512 ≈ default max_tokens; 200 ≈ default batch/page size
-- exact powers of two in throughput ≈ hidden queue/concurrency cap
-- ~zero effect from a drastic change ≈ the knob never fired
-
-## Slowdowns / parallelism
-
-- Serial-looking progress, staggered completions, low GPU %, or ballooning RSS are defects
-  with mechanisms: hidden queues, rpm/in-flight defaults, sync sections, transport limits.
-- Read the physical signals first: GPU/CPU utilization, completions-per-minute vs expected
-  parallelism, build profile (release vs debug). Idle hardware is evidence.
-- **Anomalous regularity is a signature**: perfectly staggered batches, exact powers of
-  two, 1-by-1 arrivals in a "parallel" system — a hidden constraint is speaking. Before
-  adding a global default, search for consumers it could arm (a global rpm once armed a
-  latent per-document charge and collapsed throughput 50×).
-- Compare measured throughput against known-good priors — the delta
-  is the clue.
-
-## Method rules (hard-won)
-
-- **Instrument before guessing**: full, ordered, labeled logging of each stage's I/O; if
-  logs can't answer the causal question, fixing the logs is step one. Traces stream as
-  they happen (async writer) — never buffered to end-of-run. For invisible state, add
-  debug visualization (distinct colors, overlays) before another blind attempt.
-  Diagnostic instrumentation is temporary unless production observability is an approved
-  requirement; remove it before it becomes an unrelated maintained subsystem.
-- **Debug at the raw boundary**: dump the literal payload entering each stage (the actual
-  prompt, the actual bytes) — never trust the code that supposedly builds it. Reproduce
-  one item outside the harness to confirm your model of the system.
-- **Two-worlds probes**: when a failure is ambiguous, write down the 2-3 candidate worlds
-  and design the cheapest test that distinguishes them before any recompile/rerun.
-  Substitute a known-good control at a suspect stage to localize a fault in a composite.
-- **Suspect the harness before the system** when results defy physics (quantized slower
-  than fp16, "free" step costing more than the expensive one, same inputs → different
-  outputs where determinism is expected — find the hidden recomputation).
-- **Your own previous fixes are prime suspects**: layered compensating hacks cause the
-  next regression; strip fudge factors before adding new ones.
-- **One evidenced root cause** is the deliverable. A list of theories is not.
-- Validate any new analysis tool against a hand-verified case before trusting its output;
-  a tool that fails self-validation gets its results discarded explicitly.
-- Present findings as one cohesive narrative: symptom → mechanism → evidence → exact fix.
+Report the symptom, supported cause or causes, evidence, fix or next probe, and remaining
+uncertainty in a cohesive account. Distinguish an unresolved investigation from a
+confirmed repair, and record reusable findings in the Git-tracked work item.

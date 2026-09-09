@@ -14,11 +14,12 @@ license: MIT
 - **Provenance escalation.** Derived layers link back to raw; recall escalates depth on
   demand (distilled → raw detail). Context tiers are labeled by truth level (raw convo /
   distilled / brief) — each has different fact authority.
-- **Metadata over text heuristics.** Use IDs, timestamps, structured fields — never regex
-  extraction, keyword lists, or substring matching over content. Frontmatter is canonical;
-  body is human context.
-- **Distribution-based cutoffs**, never fixed top-K: kick tail outliers by score
-  distribution.
+- **Prefer authoritative metadata.** Use available IDs, timestamps, and structured fields
+  instead of guessing their meaning from prose. Regex or keyword logic can implement a
+  real parsing/routing requirement; validate it against representative production inputs.
+- **Choose retrieval cutoffs for the requirement.** Compare fixed top-K, thresholds, or
+  distribution-based selection against quality, latency, and cost needs; no method is
+  universally required. Record the selected policy and its evidence.
 - Nothing silently dropped, skipped, or capped — chunks/blobs that can't be processed bubble
   errors up the chain.
 
@@ -47,19 +48,17 @@ license: MIT
 
 - **End-state first.** Design for the final multi-tenant product; no "fix it in v2" for
   load-bearing structure. Ask about tenancy/distribution scope rather than assuming.
-- **No legacy pre-launch.** Nothing has shipped, so build the best design.
-  Delete dead paths completely (code, tests, call sites) — no deprecation
+- **No legacy pre-launch.** Delete dead paths completely (code, tests, call sites) — no deprecation
   shims, no backwards compatibility for things that never shipped.
 - **Configurable, never hard-imposed.** Every policy that could vary is a versioned config
   with sane defaults (skill `rust-canon` §Config layering). Best-case defaults are found empirically,
   then owned by the operator.
-- **Distrust accidental design.** A migration artefact is not a deliberate
-  choice — every structure should have a defensible reason or be simplified.
+- **Distrust accidental design.** every structure should have a defensible reason or be simplified.
   Less is usually more.
 - **Now-vs-later is explicit.** Postponed scope is recorded as TODO and stays postponed;
   bleeding-edge is chosen deliberately when justified, not drifted into.
-- **Names mean what they say.** Misleading names get renamed the moment they're noticed;
-  no defaults encoded in names; timestamps disambiguated
+- **Names mean what they say.** Misleading names get renamed the moment they're noticed
+  — no defaults encoded in names; timestamps disambiguated
   (captured_at / ingested_at / observed_at).
 
 ## Security & sovereignty
@@ -80,7 +79,7 @@ prototypes exist so decisions happen before the engine is wired to the frontend.
 before polish — a confusing broken flow outranks theming every time. Design against
 personas: every persona's consumption path must exist and be satisfying.
 Full lifecycle with stage gates, artifact paths, and closeout: skill `design-flow` +
-`forge/STRUCTURE.md`.
+`STRUCTURE.md` in the installed Forge root.
 
 ## Docs
 

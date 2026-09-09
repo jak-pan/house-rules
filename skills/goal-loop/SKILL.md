@@ -28,7 +28,7 @@ target.
    independent probes via skill `agent-lanes`.
 4. **Checkpoint everything.** Every step resumable; overnight work must survive crashes and
    kills. An empty morning result from a checkpointed campaign is your failure, not fate.
-5. **Status without stopping.** Emit status lines (skill `operator-protocol` §Status format) at milestones; keep
+5. **Status without stopping.** Emit status lines (skill `operator-protocol` §Progress) at milestones; keep
    money counters live. Surface hard failures immediately — a dead API or exhausted credits
    kills the loop loudly, never silently.
 6. **Expand only along the binding gap.** Exhausting the approved idea queue may justify

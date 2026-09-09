@@ -1,7 +1,7 @@
 # AGENTS.md — Universal
 
-Repo-local law — `CONTEXT.md` and any repo-specific sections appended below — overrides
-the universal sections of this file on conflict. Each rule has one home: this file states
+Repository-local instructions and explicit operator choices override these shared
+preferences, subject to the host instruction hierarchy and access controls. Each rule has one home: this file states
 invariants; the named skill holds the procedure; nothing is restated.
 
 ## Applicability and loading
@@ -15,11 +15,12 @@ project work, and load procedural skills on demand rather than loading every ski
 Keep model selection, permissions, MCP connections, hooks, and delegation APIs in
 native tool configuration. A skill describes a procedure; it does not grant access
 or make an unavailable tool callable. Use the workspace's configured task authority;
-`task-protocol` is the file-based default — a workspace on another tracker never runs both.
+`task-protocol` is the Git-backed file default. Use another authority only when the
+workspace explicitly selects it; never maintain two writable trackers.
 
 ## Session start
 
-1. Repo `CONTEXT.md` → the workspace's work tracker (board/backlog) → your assignment's
+1. Repository `AGENTS.md` and `CONTEXT.md` when present → the workspace's work tracker (board/backlog) → your assignment's
    current state + latest handoff. (Which tracker is workspace-defined; the file-based
    default is skill `task-protocol`.)
 2. Subsystem `CONTEXT.md`/`README.md` before touching that subsystem; read context files
@@ -69,10 +70,6 @@ required verification or ordinary application fixes, and does not independently
 authorize extra agents or spending. Design for the required architecture before
 implementation; optional guarantees are not load-bearing merely because an agent
 added them to a design document.
-
-Source: operator-approved correction, 2026-09-09. A project integration was delayed
-by an optional dependency durability patch before stock behavior was tested;
-the patch introduced its own failure while stock passed the required lifecycle tests.
 
 ### Resource envelopes
 
@@ -146,15 +143,15 @@ applies to, the scope it does not, and the source incident.
 5. **Fail visible.** Errors surface immediately; nothing is silently skipped, dropped,
    capped, or degraded. Root causes — never suppression.
 6. **Done means done.** No "done" with an unmet invariant.
-7. **Debug, don't assume.** Trace the real path end-to-end; blame our code before
-   libraries; measure, don't estimate; re-run the exact repro after every fix.
+7. **Debug, don't assume.** Trace the real path end-to-end; rank causes by evidence,
+   including our code, dependencies, and environment; re-run the exact repro after a fix.
 8. **Scripts for mechanical work; LLM calls for judgment.**
 9. **Mechanism over repetition, proportional to the outcome.** Repeated friction becomes
    structurally easier only when the mechanism is cheaper than the problem and protects a
    documented invariant; at the third occurrence apply the reassessment above. Prefer
    deletion.
 10. **Settled stays settled.** Recorded decisions and postponed scope stay that way absent
-    new evidence; never rebuild or rerun what already exists.
+    new evidence; reuse valid artifacts, while allowing justified confirmation or replication.
 11. **Persist, don't acknowledge.** Settled task-local corrections and operator-confirmed
     universal rules go into files immediately (provenance: §Operator correction).
     Knowledge lives in repo docs; harness memory (e.g. Claude Code auto-memory) may hold
@@ -166,8 +163,8 @@ applies to, the scope it does not, and the source incident.
     work still requires an explicit maximum cost/token/runtime boundary before launch.
 14. **Surface unknowns** (skill `finding-unknowns`): blindspot pass and one-question-at-a-
     time interview for ambiguous work. Precise questions are welcome at any stage;
-    permission theater is forbidden (skill `operator-protocol` §Asking vs permission
-    theater). Ask async; keep unblocked lanes moving. Surprising output is a map gap — fix
+    permission theater is forbidden (skill `operator-protocol` §Decisions).
+    Ask async; keep unblocked lanes moving. Surprising output is a map gap — fix
     the task-local spec or bible; universal changes follow §Operator correction.
 
 ## Actionable communication
@@ -195,12 +192,24 @@ brevity must not remove evidence or content needed to complete the task.
 
 ## Autonomy
 
-- ≥85% conviction → proceed autonomously with primary and proportional supporting work
-  inside the approved outcome and resource envelope. Below that, or when the decision
-  crosses product scope, material risk, or the resource envelope, ask with options and a
-  recommendation. Confidence and accumulated trust never authorize consumption of
-  protected operator assets.
-- P0/P1: design doc before implementation (skill `design-flow`).
+- At the beginning of substantive work, use the recorded collaboration mode. If none
+  exists, ask once whether to proceed autonomously or pause at consequential decision
+  forks. Record the answer in the project preferences or task; do not ask every turn,
+  on a simple question, or after the operator already chose a mode. Continue independent
+  inspection while a choice is pending. A decision fork is not a new task or worktree.
+- In autonomous mode, ≥90% confidence plus evidence that the choice is reversible and
+  inside the approved outcome, risk boundaries, and resource envelope permits proceeding.
+  Confidence is a judgment, not a calibrated probability or a grant of authority.
+  Below that threshold, or when evidence is missing, present options and a recommendation.
+  In decision-fork mode, also ask before consequential design choices; ordinary steps
+  implementing an already selected option continue without repeated confirmation.
+- In either mode, changes to product scope, material risk, external-write authority, or
+  the resource envelope require a decision. Protected operator assets keep their separate
+  confirmation requirement. Explicit task instructions and host controls take precedence.
+- Priorities describe consequence: P0 is active severe harm needing immediate containment;
+  P1 materially changes architecture, user data, security, or compatibility; P2 is bounded
+  feature, fix, or review work; P3 is low-impact maintenance. P0/P1 need a design record
+  before planned implementation; urgent P0 containment comes first (skill `design-flow`).
 - Continue until finished; scoped asks stay scoped.
 - Propose useful adjacent improvements freely. Proposal is not execution, and recording
   an opportunity must not block the primary path.
@@ -228,8 +237,7 @@ brevity must not remove evidence or content needed to complete the task.
   stopped on silence or a wrapper timeout without inspecting process state — stopping
   material paid work needs operator approval unless the operator ordered it or safety
   requires it. Routine short, cheap, reproducible commands are exempt. Procedure: skill
-  `handoff-continuity` §Authorized, bounded, and durable external runs. Source incident
-  2026-08-19 (EVIDENCE.md #13).
+  `handoff-continuity` §Authorized, bounded, and durable external runs.
 
 ## Git
 
@@ -244,14 +252,13 @@ brevity must not remove evidence or content needed to complete the task.
   active work lane. Only the primary agent may use this default. Subagents may push
   their own work branches, but must not push or merge into main. This rule does not
   change the separate policy for spawning agents.
-  Source: explicit operator clarification, 2026-09-07.
 - **Externally-owned repos: read, clone, fork freely — never push, open PRs/issues, or
   comment until the operator says ready.**
 - Docs ride the same commit as the code they describe.
 
 ## Layout
 
-Canonical paths, naming, and temp-storage classes: `forge/STRUCTURE.md`. Non-negotiables:
+Canonical paths, naming, and temp-storage classes: `STRUCTURE.md` in the installed Forge root. Non-negotiables:
 derived views (boards, indexes, generated docs) are regenerated from source, never
 hand-edited; nothing generated in repo root; large artifacts outside the repo; work from
 repo root (path args over `cd`); English only; Mermaid for diagrams; names say what things
@@ -261,24 +268,24 @@ do — rename confusion on sight.
 
 Stack defaults and quality gates (including the release-build default): skill `rust-canon`.
 Architecture principles: skill `design-canon`. Feature lifecycle: skill `design-flow`.
-Specs: skill `spec-writing`. Reasoning checkpoints: skill `reasoning-moves` — mandatory
-unless the executing model is the strongest tier available; when in doubt, apply;
-self-audit otherwise.
+Specs: skill `spec-writing`. Use skill `reasoning-moves` when explicit reasoning
+checkpoints help the work; the evidence and verification requirements apply to every model.
 
 ## Experiments
 
-Procedures: skills `bench-discipline`, `failure-forensics`, `goal-loop`. Iron laws: nothing
-that couldn't run blind (no test-targeted hacks); measure the variance floor before
-trusting deltas; one gated lever at a time; verify a lever fired before crediting it;
-cheapest probe first; read actual traces — aggregates hide the story; checkpoint
-everything; log cost.
+Procedures: skills `experiment-planning`, `bench-discipline`, `failure-forensics`,
+`goal-loop`. Plan the decision, comparison, production-valid inputs, appropriate
+uncertainty, and resource bounds before a new campaign. Reuse settled plans. Verify
+effective conditions and supporting traces before interpreting results; checkpoint
+expensive work and record actual cost. A simple reproduction needs no questionnaire.
 
 ## Parallel work
 
 Parallelize independent primary and supporting work whenever delegation is available and
 useful; parallelism is autonomous inside the envelope and never broadens the campaign.
 Invariants: disjoint lane ownership (verify the diff stayed in-lane); append-only shared
-spine files; sequential GPU/latency benchmarks; one memory-heavy local process at a time;
+spine files; isolate competing performance runs unless contention is the declared study;
+bound memory-heavy concurrency by verified host capacity and the approved resource envelope;
 every touched repo declared in the work item, with kit/API impacts on other consumers
 flagged in the handoff. Deliverables get an adversarial verify pass. Mechanics: skill
 `agent-lanes`.
@@ -322,8 +329,8 @@ continuation record defined above.
 
 ## The bar
 
-> Better results beat fast results. Think, find solutions, build a test harness,
-> iterate, improve, and parallelize.
+Deliver the requested outcome with evidence, appropriate verification, and proportional
+use of iteration and parallel work.
 
 Quality applies to the requested deliverable, not unlimited process or verification
 machinery. Outcome fidelity over procedural completeness; evidence over theory;
