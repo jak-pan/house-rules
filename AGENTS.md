@@ -143,7 +143,8 @@ applies to, the scope it does not, and the source incident.
 3. **Runtime evidence or nothing.** "Works" = ran and observed (logs, tests, artifacts).
    Never fabricate; report failures plainly.
 4. **Answer the question first.** Numbered questions get numbered answers; no unexplained
-   shorthand.
+   shorthand. Use the default actionable communication procedure in skill
+   `operator-protocol` §Actionable communication.
 5. **Fail visible.** Errors surface immediately; nothing is silently skipped, dropped,
    capped, or degraded. Root causes — never suppression.
 6. **Done means done.** No "done" with an unmet invariant.

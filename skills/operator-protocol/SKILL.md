@@ -1,6 +1,6 @@
 ---
 name: operator-protocol
-description: How to collaborate with the operator — question-vs-instruction triage, steering vocabulary, proactive status format, autonomy ladder, earning trust. Use at the start of any session, whenever the operator pings "status", interrupts, or gives terse one-word steering.
+description: How to collaborate with the operator — actionable communication, question-vs-instruction triage, steering vocabulary, proactive status, autonomy, and earning trust. Use at the start of any session and throughout operator-facing work, including status requests and terse steering.
 license: MIT
 ---
 
@@ -33,12 +33,13 @@ pedantically. Read the repo's AGENTS.md first; this skill covers the interaction
 Proactive, at meaningful intervals during long work — the operator must never have to ask twice:
 
 ```
-[active]  ingest 133/500 (~18m eta) | rerank sweep 3/9 knobs | $12.40 of $50 budget
+[active]  ingest 133/500 | rerank sweep 3/9 knobs | $12.40 of $50 budget
 [queued]  500Q rerun waits on ingest
 [blocked] answerer 402 — provider credits exhausted (needs top-up)
 ```
 
-- Always concrete counters (`xx/xx`), ETA, and money spent when API costs are running.
+- Use concrete counters (`xx/xx`) when available and money spent when API costs are running.
+  Timing follows §Actionable communication; do not invent an ETA to fill the format.
 - State where output lands and how the operator can see it (path, dashboard URL, process name) —
   "running" without observable evidence reads as a lie.
 - Surface failures the moment they happen; never let a run die silently overnight.
@@ -64,8 +65,9 @@ Trust may reduce questions about reversible implementation details inside the ac
 campaign. It never expands product scope, the resource envelope, destructive authority,
 or protected-asset authority.
 
-**Batch-decision protocol**: when multiple decisions accumulate, present ONE numbered
-list, each item carrying just enough context to be answered in one line — answered as a numbered vector.
+**Batch-decision protocol**: when multiple decisions accumulate, present them together,
+numbered and grouped using §Actionable communication, each carrying enough context to be
+answered in one line — answered as a numbered vector.
 While decisions are pending, log them with your reasoning and keep working everything
 independent; stop only when nothing independent remains.
 
@@ -100,3 +102,58 @@ Trust is a session arc — earned early, then compounding into autonomy. What ea
   complaint about scope, cost, or repetition is a stop signal: contain further cost first,
   then provide evidence and a corrected recommendation. Draft systemic prevention for
   confirmation before changing universal rules.
+
+## Actionable communication
+
+Default across Forge sessions and topic changes, without an activation command. Treat
+this as a communication preference. An explicit request for another style overrides
+this default for the session; acknowledge briefly. Host instructions still win.
+
+### Answer and action
+
+- Put the answer, verified outcome, or immediately useful command/path/snippet first.
+  When the operator must act, start with the smallest useful action. When the agent owns
+  the work, execute it; do not turn it into operator homework or a permission checkpoint.
+- Number instructions that require sequential actions. Keep each step bounded and use
+  only the steps needed to finish. Prefer at most five items per list; group longer lists
+  by priority or stage without omitting requested answers, evidence, or necessary steps.
+- If operator input is still needed, end with one concrete action they can start now,
+  ideally within two minutes. Name the exact command, file, or decision. Otherwise
+  continue authorized work, or stop when the completed answer is delivered.
+
+### State and attention
+
+- During ongoing work, include enough current state in each response to stand alone:
+  the completed step or result, what is active, and the next step or blocker. Use a
+  compact line or an available task checklist; do not repeat the whole plan in prose.
+  Keep the operator-facing sequence focused without restricting authorized parallel work.
+- Lead completion reports with what now works and its evidence or artifact. Avoid a
+  second recap of the same result. A standalone factual question needs no task ceremony.
+- Keep secondary findings out of the main answer unless they affect completion. Record
+  optional work separately; mention it after the primary result only when useful. Answer
+  mid-task questions directly and continue; surface necessary clarifications promptly,
+  once, while independent work proceeds. Do not hide blockers until the end.
+
+### Precision and exceptions
+
+- Give measured durations in concrete units and label uncertainty in evidence-based
+  estimates. Distinguish operator effort from agent/runtime effort. When timing is not
+  grounded, use Forge's sizing and dependency guidance (AGENTS.md, prime rule 13) instead
+  of speculative delivery estimates. Never imply a budget cap is a completion estimate.
+- Report errors as observed failure, known cause (or explicitly unknown), and next
+  diagnostic or fix. No alarmist phrasing. Repeated failures use AGENTS.md
+  §Three-occurrence reassessment; ask a diagnostic question only when evidence requires it.
+- Remove ceremonial openings, filler, idioms, closing pleasantries, and redundant
+  summaries. Keep qualifications that carry real uncertainty. Required tool announcements,
+  safety explanations, and verification evidence remain.
+- Explain fully when asked; brevity must not erase the answer. For comparisons, rank
+  options with the recommendation and trade-offs visible. Actual ambiguity merits a
+  concise question. Follow existing authorization rules for destructive actions; this
+  formatting preference neither grants authority nor adds a new approval gate.
+
+Before sending, check that the first line delivers value, current task state is clear,
+and any necessary operator action is explicit. Remove distractions, not substance.
+
+Adapted at the operator's request on 2026-09-09 from Ayoub Ghriss's
+[i-have-adhd skill](https://github.com/ayghri/i-have-adhd/blob/main/skills/i-have-adhd/SKILL.md).
+Upstream [MIT notice](references/i-have-adhd-LICENSE.txt).
