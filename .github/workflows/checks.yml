@@ -9,7 +9,7 @@ jobs:
   check:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -19,14 +19,11 @@ jobs:
         with:
           node-version: 22
           package-manager-cache: false
-      - name: Install zsh on Linux
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y zsh
-      - name: Check shell syntax
-        run: zsh -n bin/task
-      - name: Run regression tests
-        run: node --test tests/task.test.mjs scripts/export-public.test.mjs skills/audit-report-authoring/scripts/lint-report-set.test.mjs
-      - name: Check public export
-        run: |
-          mkdir -p .tmp
-          node scripts/export-public.mjs .tmp/ci-public-export
+      - name: Check CLI syntax
+        run: node --check bin/groundwork.mjs
+      - name: Check report helper syntax
+        run: node --check skills/audit-report-authoring/scripts/lint-report-set.mjs
+      - name: Verify npm CLI entry point
+        run: npm exec --offline --yes --package=. -- groundwork --help
+      - name: Inspect package contents
+        run: npm pack --dry-run

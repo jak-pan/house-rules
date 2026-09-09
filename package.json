@@ -1,0 +1,23 @@
+{
+  "name": "@jak-pan/groundwork",
+  "version": "0.1.0",
+  "description": "Opinionated foundations for coding agents. Sensible defaults, fully overridable.",
+  "license": "MIT",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "bin": { "groundwork": "bin/groundwork.mjs" },
+  "files": [
+    "AGENTS.md",
+    "PREFERENCES.md",
+    "STRUCTURE.md",
+    "INSTALL-AGENTS.md",
+    "CUSTOM-INDEX.example.md",
+    "NOTICE.md",
+    "LICENSES/",
+    "bin/groundwork.mjs",
+    "skills/*/SKILL.md",
+    "skills/audit-report-authoring/references/*.md",
+    "skills/audit-report-authoring/scripts/lint-report-set.mjs"
+  ],
+  "publishConfig": { "access": "public" }
+}

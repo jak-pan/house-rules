@@ -6,9 +6,9 @@ license: MIT
 
 # Design Flow
 
-The lifecycle every non-trivial feature moves through. Paths and naming: `STRUCTURE.md` in the installed Forge root.
+The lifecycle every non-trivial feature moves through. Paths and naming: `STRUCTURE.md` in the installed Groundwork root.
 Principles behind the gates: skill `design-canon`. `task …` operations below refer to the
-workspace's tracker — the file-based default is `bin/task` (skill `task-protocol`); on any
+workspace's tracker — the file-based default uses `groundwork task` (skill `task-protocol`); on any
 other tracker, map the operations (create/claim/close-gate/handoff) 1:1 onto its primitives.
 
 ```

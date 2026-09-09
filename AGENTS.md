@@ -257,7 +257,7 @@ brevity must not remove evidence or content needed to complete the task.
 
 ## Layout
 
-Canonical paths, naming, and temp-storage classes: `STRUCTURE.md` in the installed Forge root. Non-negotiables:
+Canonical paths, naming, and temp-storage classes: `STRUCTURE.md` in the installed Groundwork root. Non-negotiables:
 derived views (boards, indexes, generated docs) are regenerated from source, never
 hand-edited; nothing generated in repo root; large artifacts outside the repo; work from
 repo root (path args over `cd`); English only; Mermaid for diagrams; names say what things
@@ -265,7 +265,7 @@ do — rename confusion on sight.
 
 ## Stack & architecture
 
-Read `PREFERENCES.md` in the installed Forge root for project/stack decisions. Its choices
+Read `PREFERENCES.md` in the installed Groundwork root for project/stack decisions. Its choices
 apply by default and are overridden by explicit user choices, repository rules, and an
 existing coherent stack. Use `project-bootstrap` for a new project's unsettled choices;
 do not require a questionnaire for routine work. Rust-specific quality gates: `rust-canon`.

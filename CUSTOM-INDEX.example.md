@@ -9,7 +9,7 @@ enrollment material, or copied account configuration in it.
 | Field | Value |
 |---|---|
 | Operating environment | `<macOS, Linux, Windows, or WSL>` |
-| Forge source | `<absolute path>` |
+| Groundwork source | `<absolute path>` |
 | Updated | `<YYYY-MM-DD>` |
 
 ## Capabilities
