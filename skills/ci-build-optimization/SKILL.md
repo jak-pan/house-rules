@@ -26,6 +26,10 @@ runner conditions, maximum runs/runtime/cost, and failure stopping point. Reuse
 existing valid measurements; the operator need not repeat an already settled
 experiment interview. Use `bench-discipline` for broader experimental design when
 available. A required validation run is not automatically a performance campaign.
+When authorized to reuse validation, compare source and effective gate/build-contract
+identities. A parent workflow fix can need fresh workflow validation while an unchanged
+pinned dependency retains its earlier proof. Record that reuse explicitly; never turn
+a cache hit into a claim that tests passed or silently bypass repository policy.
 
 ## Rust: recover reuse before adding cores
 
