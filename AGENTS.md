@@ -142,8 +142,7 @@ applies to, the scope it does not, and the source incident.
    asked. Operator-reported symptoms are ground truth.
 3. **Runtime evidence or nothing.** "Works" = ran and observed (logs, tests, artifacts).
    Never fabricate; report failures plainly.
-4. **Answer the question first.** Numbered questions get numbered answers; no unexplained
-   shorthand.
+4. **Communicate clearly.** Follow §Actionable communication.
 5. **Fail visible.** Errors surface immediately; nothing is silently skipped, dropped,
    capped, or degraded. Root causes — never suppression.
 6. **Done means done.** No "done" with an unmet invariant.
@@ -173,25 +172,26 @@ applies to, the scope it does not, and the source incident.
 
 ## Actionable communication
 
-Apply these to every operator-facing response:
+Apply these writing defaults to every operator-facing response. Explicit output formats,
+necessary context, required tool announcements, and approval explanations take precedence;
+brevity must not remove evidence or content needed to complete the task.
 
 - Lead with the answer, result, or useful action. Put commands, paths, and snippets before
-  supporting prose. Skip preambles, filler, redundant recaps, and closing pleasantries.
-- Number sequential instructions, one bounded action per step. Keep lists short; group
-  lists longer than five items by priority or stage without dropping necessary content.
+  optional supporting prose. Skip ceremonial preambles, filler, redundant recaps, and
+  closing pleasantries.
+  Explain unfamiliar shorthand.
+- Number sequential instructions, one bounded action per step. Answer numbered questions
+  in matching order with their original numbers. Prefer lists of five or fewer items;
+  group longer lists only when it helps, preserving sequence, identifiers, and coverage.
 - Make progress visible: state what changed, what is active, and what remains when relevant.
-  If the operator needs to act, name one concrete next action. Do not invent homework
+  Make the next required operator action concrete. Do not invent homework
   after completion or ask permission to continue already-authorized work.
-- Stay on the requested topic. Keep secondary findings separate and explain fully when
-  asked. For choices, put the recommendation first with concise trade-offs.
+- Stay on the requested topic. Keep optional secondary findings separate; surface blockers
+  and material risks promptly. Explain fully when asked. For choices, make the
+  recommendation prominent with concise trade-offs while preserving requested ordering.
 - State errors plainly with the known cause and fix or next diagnostic. Preserve real
   uncertainty. Use concrete, evidence-grounded durations when useful; otherwise follow
   prime rule 13 rather than inventing estimates.
-
-Source: operator-requested writing principles from
-[Ayoub Ghriss’s i-have-adhd skill](https://github.com/ayghri/i-have-adhd/blob/main/skills/i-have-adhd/SKILL.md),
-2026-09-09; selected rules applied generally, without importing its mode or workflow.
-[MIT notice](LICENSES/i-have-adhd.txt).
 
 ## Autonomy
 
