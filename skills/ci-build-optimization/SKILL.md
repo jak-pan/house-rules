@@ -54,6 +54,9 @@ false build-script invalidations on fresh checkouts. Never disguise changed inpu
 with restored timestamps. Verify native package provenance and digest before reuse;
 keep compatible image/ABI/toolchain identities in cache selection. A broad restore
 prefix requires validation before Cargo accesses the restored target.
+A digest or provenance file inside that same cache is not an independent trust
+anchor: compare against repository-pinned hashes or trusted attestations. Cached
+metadata must not switch a prebuilt-only verifier into a weaker source-build mode.
 
 Avoid simultaneous Cargo writers sharing a target: they can serialize on locks or
 invalidate one another. Independent targets permit concurrency at the cost of duplicate
