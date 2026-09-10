@@ -187,14 +187,32 @@ brevity must not remove evidence or content needed to complete the task.
   optional supporting prose. Skip ceremonial preambles, filler, redundant recaps, and
   closing pleasantries.
   Explain unfamiliar shorthand.
-- Make findings and consequential status updates self-contained. Assume the operator
-  has not read prior chat history: briefly identify the affected feature or change,
-  explain what the finding means in plain language and its practical impact, separate
-  observed facts from unknowns, and state the next action and who owns it. Distinguish
-  a problem in the running system from a risk in a proposed change. Finding IDs,
-  severity labels, commit hashes and test counts support the explanation; they cannot
-  replace it. Scale context to the consequence without repeating the whole history.
-  Operator direction: 2026-09-09, after a release-blocker report lacked this context.
+- For all agents, use the same explanation standard in chat, progress reports,
+  handoffs, GitHub issues, PR titles/descriptions, and review or issue comments.
+  Lead with the concrete problem or requested behavior and its practical effect.
+  Explain in this order, including only the parts relevant to the message:
+  **what broke or is missing → why → what changed or is proposed → proof → what remains**.
+  A reader unfamiliar with the investigation must understand the problem before
+  encountering implementation history. Explain technical terms in plain language;
+  retain the technical detail needed to assess the cause and fix.
+- Prefer a small before/after example, code or pseudocode, measured result, or linked
+  source/test evidence when it makes the explanation more precise. Use Mermaid only
+  when the relationships need a diagram. State what the evidence establishes and
+  what it does not. Distinguish observed causes from hypotheses, running-system
+  failures from proposed-change risks, and completed fixes from plans or deployment
+  still awaiting verification. IDs, hashes and test counts support the explanation;
+  they never substitute for the problem, mechanism or result.
+- Keep explanations concise and organized by consequence, not execution chronology.
+  Omit empty template sections, long activity logs and repeated caveats. GitHub titles
+  should name the concrete problem or change; the opening must describe the current
+  outcome. When closing or superseding work, explain what was actually delivered,
+  already completed or replaced, and link remaining work. Preserve historical
+  evidence below a clearly labeled current summary so old "unresolved" notes do not
+  contradict the current status. State the next action and owner when work remains.
+  Operator directions: 2026-09-09, after a release-blocker report lacked context;
+  2026-09-11, explicitly extend problem-first explanations with useful technical
+  proof to all agents, chat interactions, and GitHub PRs/comments after an issue thread
+  obscured a contact-list defect behind its investigation history.
 - Number sequential instructions, one bounded action per step. Answer numbered questions
   in matching order with their original numbers. Prefer lists of five or fewer items;
   group longer lists only when it helps, preserving sequence, identifiers, and coverage.
