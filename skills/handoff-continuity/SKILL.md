@@ -27,6 +27,12 @@ Handoffs are events, not documents you maintain: never edit an existing handoff 
 corrections go in a new one. Never continue degraded, and never let a compaction eat
 unpersisted findings.
 
+When preparing a handoff, capture consequential near misses caught by chance: what
+almost went wrong, what caught it, and which gap remains. Use the existing work record
+and link it from the handoff; no separate incident log or entry is needed when there
+is nothing material to preserve. A near miss does not automatically justify a new
+standing rule; follow AGENTS.md's rule-provenance requirement.
+
 ## The bible (AGENTS.md)
 
 Every repo's AGENTS.md holds durable local instructions. On session start and after every reset:

@@ -68,6 +68,11 @@ unblocked work moving.
 
 ## Map maintenance (meta)
 
+- **Before proposing another skill**, check existing coverage and whether the procedure
+  is reusable, substantial enough to need instructions, and stable enough to maintain.
+  Repetition alone does not justify a skill while its procedure is still changing;
+  keep evolving guidance in the relevant work record. A single fact belongs in existing
+  guidance. A settled, reusable procedure may be worth capturing on its first occurrence.
 - **Skill audit on model upgrades**: stronger models need less scaffolding — re-read the
   Groundwork skills and repo bibles after major model changes and delete rules that now just
   add noise. Rules are load-bearing or they're clutter.

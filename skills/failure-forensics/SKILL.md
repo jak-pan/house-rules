@@ -77,6 +77,12 @@ Validate new analysis tools against a hand-verified case before relying on their
 mark results invalid when that validation fails. Preserve useful evidence under the
 project's retention policy before removing temporary instrumentation.
 
+Before treating zero search matches as consequential evidence of absence, verify the
+intended coverage (including relevant hidden or ignored paths) and confirm the check
+detects a known matching example. Establish this when introducing or changing the check
+or its search scope; reuse valid evidence while those conditions remain unchanged.
+Routine navigation searches do not need this check.
+
 Report the symptom, supported cause or causes, evidence, fix or next probe, and remaining
 uncertainty in a cohesive account. Distinguish an unresolved investigation from a
 confirmed repair, and record reusable findings in the Git-tracked work item.
