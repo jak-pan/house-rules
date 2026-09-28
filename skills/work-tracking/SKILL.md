@@ -147,15 +147,22 @@ done
 
 Host view on GitHub. Project operations (`gh project …` and the `--project` flags) need
 the `project` token scope (read-only use needs `read:project`); the operator grants it
-with `gh auth refresh -s project`. Before first use, the operator adds In review and
-Blocked to the Status field in the project settings (`gh` cannot edit an existing field's
-options), and the `P0`–`P3` labels are created with `gh label create`. Look up the
-project's ID and the Status field and option IDs once, and record them with the project
-number in the bible:
+with `gh auth refresh -s project`. Set up a project once, before any item has a status:
+create the `P0`–`P3` labels with `gh label create`, set the Status options (the mutation
+replaces the whole option list and changes option IDs), then record the project number,
+project ID, and Status field and option IDs in the bible:
 
 ```sh
 gh project view 7 --owner OWNER --format json --jq .id
 gh project field-list 7 --owner OWNER --format json --jq '.fields[] | select(.name == "Status")'
+gh api graphql -f f=STATUS_FIELD_ID -f query='mutation($f: ID!) {
+  updateProjectV2Field(input: {fieldId: $f, singleSelectOptions: [
+    {name: "Todo", color: GRAY, description: ""},
+    {name: "In progress", color: YELLOW, description: ""},
+    {name: "In review", color: BLUE, description: ""},
+    {name: "Blocked", color: RED, description: ""},
+    {name: "Done", color: GREEN, description: ""}]}) {
+  projectV2Field { ... on ProjectV2SingleSelectField { options { id name } } } } }'
 ```
 
 Everyday use, with issue 42 on project 7:
