@@ -35,7 +35,7 @@ the unknowns before writing the spec, not after implementing the wrong one. Then
 - exact type/trait signatures (real code, not prose), module/crate layout
 - integration plan: what existing code changes; config schema if any
 - **Key decisions with rejected alternatives** (why) — this section is what survives migration
-- end-state first: design for the final product; no "fix in v2" for load-bearing structure
+- end-state first (skill `design-canon` §Decisions)
 
 Gate: apply AGENTS.md §Autonomy and its recorded collaboration mode. In autonomous mode,
 a design entirely inside the approved outcome and decision boundaries may be marked
@@ -57,23 +57,21 @@ Use this sequence for work that needs both prototype stages:
 4. Operator picks/tweaks on the prototype → decisions recorded back into the design doc
 
 Prototypes exist so decisions happen **before** the engine is wired to a frontend. They are
-never the implementation; hifi code may be quarried, not merged wholesale. Function before
-polish — a confusing flow outranks theming.
+never the implementation; hifi code may be quarried, not merged wholesale.
 
 ## 4. Spikes (technical unknowns)
 
 One question → `prototypes/spikes/YYYY-MM-DD-question/` with `SPIKE.md` (question, method,
 verdict). Throwaway by contract: code never lands in `src/`, deps never land in the
 product tree. Kill-or-promote: verdict feeds the design doc, then the spike is deletable.
-After 30 days without a verdict, review whether the spike is still useful. Preserve
-decision evidence and follow AGENTS.md §Security before cleanup; age alone is not authority.
+After 30 days without a verdict, review whether the spike is still useful; cleanup follows
+AGENTS.md §Security.
 
 ## 5. Implement
 
 Branch `task/NNN-slug/<agent>`; test-first red→green; design doc is the spec — implement it
 literally, and when reality forces a deviation, update the design doc in the same commit
-(the doc never silently diverges from what's being built). Architecture-doc updates ride
-the same commit as behavior changes, always.
+(the doc never silently diverges from what's being built).
 
 ## 6. Closeout — `task done NNN`
 
@@ -87,13 +85,13 @@ mechanically checkable and prints the rest:
 - the linked design doc is `implemented` or `superseded` (never `draft`/`approved`)
 
 **Checklist (printed, agent's judgment):**
-- pre-merge quiz passed (skill `finding-unknowns`) on significant diffs (P0/P1 or multi-module)
+- pre-merge quiz passed on significant work (skill `finding-unknowns`)
 - shipped sections migrated: design doc → `docs/architecture/feature.md` (or the repo's
   `docs/specs/{subsystem}/`); design doc shrunk to a pointer or deleted
 - PR open; `pr:` recorded in task.md frontmatter
-- durable decisions promoted from task.md → repo bible (AGENTS.md)
+- durable decisions promoted from task.md → the bible
 - prototypes: keep hifi if it's the living reference, else delete; spikes killed
-- regression tests named after the behavior exist and are green
+- regression tests required by AGENTS.md §Verification exist and are green
 
 Automation hook (owned repos, via your PR bot/CI): a PR from branch `task/NNN-*` runs
 `task done NNN --check` (read-only) and comments the result on the PR; merge after it

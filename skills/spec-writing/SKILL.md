@@ -27,8 +27,8 @@ from it without asking questions.** The document must explain the product and it
   what's stored. Multiple examples beat prose every time.
 - **Exact signatures, not descriptions**: real type/trait/schema definitions, module
   layout, integration points. Prose describing code is a smell; code is shorter.
-- **Diagrams**: Mermaid, vertical orientation for flows; one high-level system map +
-  per-feature deep dives (two-tier docs). No ASCII art in Markdown.
+- **Diagrams**: vertical orientation for flows (format: AGENTS.md §Layout; doc tiers:
+  skill `design-canon` §Docs).
 - **Authoritative framing**: decisions are stated as decisions ("X does Y via Z"), with
   a Decisions section recording each choice AND its rejected alternatives with why.
   Tentative framing ("we could maybe...") is for the open-questions list only.
@@ -39,26 +39,23 @@ from it without asking questions.** The document must explain the product and it
 - Names are isomorphic across docs, code, and UI — one concept, one name, everywhere.
 - Grep for collisions before introducing any name; a locally-good name that collides
   with an existing concept is rejected.
-- No unexplained shorthands anywhere. Disambiguate lookalikes explicitly
-  (`captured_at` ≠ `ingested_at` ≠ `observed_at`).
+- No unexplained shorthands anywhere; disambiguate lookalikes (`STRUCTURE.md` §Naming
+  rules).
 - Split categories that carry different handling assumptions (e.g. *malformed* vs
   *suspicious* input — wildly different security posture) into distinct named types.
 
 ## Content standards
 
-- **Pipeline-order invariants are written down** as an explicit ordered list (what runs
-  before what, and why) — they're the first casualties of refactors and compactions.
-- **Truth tiers labeled**: when a system carries raw, derived, and summarized data, the
-  spec says which tier each consumer sees and what authority each tier has.
+- **Pipeline-order invariants and truth tiers** are explicit in the spec: the ordered
+  list of what runs before what, and which tier each consumer sees (skill `design-canon`).
 - **Parameters derived, not asserted**: every threshold/size/scale in a spec traces to a
   constraint or measurement; a magic constant is a bug until justified.
-- **Every policy configurable**: the spec defines defaults + the config surface, never a
-  hard-imposed behavior (skill `rust-canon` §Config layering).
+- **Every policy configurable** (skill `design-canon` §Decisions).
 
 ## Duty to critique
 
-Review a supplied spec against evidence and the requested outcome. State disagreements
-with evidence and a recommendation, then follow the ruling. When implementing, deliver
+Review a supplied spec against evidence and the requested outcome; critique per skill
+`operator-protocol` §Collaboration. When implementing, deliver
 the spec literally — if it says scores/metadata/IDs, never substitute a cruder proxy.
 If the specified mechanism seems wrong mid-build, escalate per skill `operator-protocol`
 §Decisions when the change is outside the approved decision boundary; otherwise record

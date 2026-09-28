@@ -12,39 +12,31 @@ explicit goals.
 
 ## Lane rules
 
-- **Disjoint ownership.** Each lane owns an explicit file set; shared spine files are append-only.
-  Before merging a lane's work, verify its diff touched only its assigned files.
+- **Ownership.** Each lane's work item lists its explicit file set; before merging a
+  lane's work, check its diff against that list.
 - **Isolation.** Lanes work in worktrees/branches; the main repo checkout stays untouched.
   Rust lanes pass `--target-dir .tmp/cargo-target/<lane>` so parallel cargo doesn't deadlock
   on `target/` or leak artifacts.
-- **Git limits.** Subagents never push main. On owned repos, lanes push their own task
-  branches within the delivery authority recorded in the bible (policy: AGENTS.md §Git).
-  Commits follow the repo's canon; lanes report exactly which files they touched.
+- **Git limits.** Lanes push only their own task branches, within the delivery authority
+  recorded in the bible (policy: AGENTS.md §Git). Commits follow the repo's canon; lanes
+  report exactly which files they touched.
 - **Multi-repo work (owned repos) is normal.** One work item, a branch per repo touched
   (named per the workspace convention; the file tracker uses `task/NNN-slug/<agent>`),
-  and the item's lane declaration lists every repo+path. Changes to a shared
-  kit that other consumers depend on get flagged in the handoff
-  for owner review — flag, don't block. Surprise landings in a repo the task didn't
-  declare are the actual sin.
-- **Externally-owned repos are read/fork-only.** No pushes, PRs, issues, or comments until
-  the operator explicitly says ready.
+  and every repo+path in the item's lane declaration. Flag shared-kit impacts for owner
+  review — flag, don't block.
 - **Audits have round boundaries.** An audit-only request produces findings and proposed
   fixes. Repair and confirmation belong to the round when the operator requested them;
   do not infer mutation authority from a request to inspect or explain. What counts as a
-  new round: AGENTS.md §Resource envelopes. Audit lanes surface opportunistic
-  findings, but those findings enter the queue rather than automatically preempting the
-  primary path.
+  new round: AGENTS.md §Resource envelopes.
 
 ## Resource budgets
 
 - Respect global provider concurrency across ALL lanes combined (e.g. "provider A under
   500 total, provider B under 2000 in total") — budgets are fleet-wide, not per-lane.
   ⚒ Make one lane the budget owner when several hit the same provider.
-- Bound memory-heavy concurrency by verified host capacity and the approved envelope.
-  Isolate competing GPU/latency measurements unless contention is the declared study;
-  record the intended concurrency and measurement conditions before launch.
-- Cleanup follows AGENTS.md §Security. Identify ownership and retention before pruning;
-  old runs and datasets are not automatically disposable.
+- Record the intended concurrency and measurement conditions before launch (bounds and
+  isolation: AGENTS.md §Parallel work).
+- Cleanup follows AGENTS.md §Security.
 - Finishing a lane includes removing what it created to be disposable. When its PR merges or
   the work is abandoned, the lane owner removes its worktree and its build/target directory in
   the same step, after confirming the worktree holds no uncommitted or unpushed work. Shared
@@ -56,14 +48,11 @@ explicit goals.
 ## Orchestration patterns
 
 - **Recon sweep → design → build → proportional critique → gate → fix.** When to add an
-  adversarial verifier: AGENTS.md §Parallel work. Verification stays inside its approved
-  agent, round, and resource boundary.
-- **Decision handling.** Lanes follow the collaboration mode in AGENTS.md §Autonomy.
-  Escalate choices beyond delegated authority with options and a recommendation; continue
-  ordinary implementation choices inside the recorded agreement.
+  adversarial verifier: AGENTS.md §Parallel work.
+- **Decision handling.** Lanes decide and escalate per skill `operator-protocol`
+  §Decisions.
 - **Background monitors.** Every detached run has a watcher that surfaces failures instantly
   and feeds concrete counters into status lines. Prove work is running: process name, output
   path, dashboard link.
 - **Handoff on saturation.** A lane near context limits writes a handoff and dies; a fresh
   agent with a handoff beats a saturated one every time (skill `handoff-continuity`).
-- Parallelize independent preparation and launch only the planned, resource-bounded work.

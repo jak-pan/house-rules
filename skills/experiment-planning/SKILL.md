@@ -26,10 +26,8 @@ success threshold.
 ## Resolve consequential choices
 
 These are coverage prompts, not a script to ask verbatim. Ask only what remains
-unsettled after inspection, following the collaboration mode in AGENTS.md. Present a
-recommendation and its trade-off for choices requiring operator input. Continue safe
-independent preparation while an answer is pending; do not launch dependent work or
-infer approval from silence.
+unsettled after inspection, per skill `operator-protocol` §Decisions; do not launch
+dependent work while an answer is pending.
 
 - **Outcome and decision:** What decision should the evidence support? Define the primary
   metric, units, improvement direction, guardrails, and meaningful acceptance criterion.
@@ -57,7 +55,7 @@ ledger (`task-protocol`, `STRUCTURE.md`); do not create a separate tracker. Dist
 operator decisions, evidence-backed settings, and provisional assumptions. A provisional
 assumption cannot replace required authorization.
 
-Use `bench-discipline` to execute and interpret the planned comparison. Record actual
-conditions, results, cost, deviations, and the next decision with each run. If conditions
-change enough to invalidate the plan, update it before relying on the new comparison;
+Execute and interpret the planned comparison, and record each run, with skill
+`bench-discipline`. If conditions change enough to invalidate the plan, update it before
+relying on the new comparison;
 preserve earlier versions through Git and label exploratory findings honestly.

@@ -17,8 +17,8 @@ target.
    outcome, measurable target or acceptance checklist, current completion gap, approved
    resource envelope, allowed primary/supporting work categories, baseline with measured
    variance where applicable, knob map with wired/tested status, and
-   tried→result→verdict log. On any context reset, re-read the ledger and AGENTS.md bible
-   before acting — never re-test what the ledger already settles.
+   tried→result→verdict log. After a context reset, resume per skill
+   `handoff-continuity` §Resuming.
 2. **Cheap first.** Order the idea queue by cost (skill `bench-discipline` §Cost ladder).
    Promote to expensive runs only on cheap-tier wins.
 3. **Iterate.** Test → forensics on misses → mechanism hypothesis → targeted fix → verify

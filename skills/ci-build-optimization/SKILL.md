@@ -70,7 +70,7 @@ packaging and relocation scripts may still read a literal `target/release`.
 Use normal compiler progress. Temporarily enable verbose/fingerprint diagnostics to
 prove why work rebuilds, then remove them after confirming the mechanism. Preserve
 exit status through logging pipes. Probe the smallest distinguishing case before
-another expensive full build; a harness-induced failure is not an upstream defect.
+another expensive full build.
 After restructuring CI, run its complete cheap pre-build sequence in workflow order,
 including source-cleanliness checks. Individually passing fixtures can still leave
 generated files, depend on a renamed step, or expect an obsolete command form. Prove

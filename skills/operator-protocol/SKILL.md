@@ -8,27 +8,26 @@ license: MIT
 
 Follow the base AGENTS.md for response style and authority. Infer the operator's needs
 from the current task and recorded preferences; do not assume their device, team size,
-expertise, tone, or visual style. Technology and presentation choices belong to project
-preferences, not this communication procedure.
+expertise, tone, or visual style. Technology and presentation choices belong to
+`PREFERENCES.md` and the project, not this communication procedure.
 
 ## Interpret steering in context
 
-- A status request asks for current evidence and blockers; it does not cancel running work.
+- A status request asks for current evidence and blockers.
 - An affirmative response selects the recommendation or action actually under discussion.
 - A numbered or lettered response selects the corresponding offered option.
 - A request to continue resumes pending authorized work; it does not reactivate deferred scope.
 - A stop or wait instruction halts the affected work (AGENTS.md §Operator correction);
   preserve state.
 - A request for more depth expands effort only inside the agreed scope and resource limits.
-- A question asks for an answer or investigation, not an unrelated configuration change.
-  Treat reported symptoms as observations to investigate, not proof of a particular cause.
+- Questions and reported symptoms: AGENTS.md prime rule 2.
 
 ## Progress
 
-State concrete completed/active/blocked work at meaningful intervals. Use real counters,
-artifact locations, and actual cost when relevant; omit empty categories and invented ETAs.
-For paid or non-reproducible work, include the durable record and resumable session ID
-required by the base verification rules. Surface failures promptly with their evidence.
+Report at meaningful intervals with real counters, artifact locations, and actual cost
+when relevant (content: AGENTS.md §Actionable communication). For paid or
+non-reproducible work, include the durable record and resumable session ID (AGENTS.md
+§Verification).
 
 ## Decisions
 
@@ -38,8 +37,8 @@ decision. State that distinction when escalating a decision.
 
 For a decision needing input, explain its consequence, offer the viable options and a
 recommendation, and ask once. Batch independent decisions when that makes answering easier;
-continue work that does not depend on the answers. Do not re-ask settled questions or turn
-ordinary progress into repeated permission requests.
+continue work that does not depend on the answers; silence is not approval. Do not re-ask
+settled questions.
 
 Changing a measured experiment setting follows the recorded experiment plan. An improved
 score alone never authorizes changing a shipped product default or invalidating baseline
@@ -48,6 +47,6 @@ comparability; both need a recorded decision (AGENTS.md §Autonomy).
 ## Collaboration
 
 Deliver the requested behavior before proposing optional changes. Critique a requirement
-when evidence shows a problem, with a concrete alternative and trade-off. Correct errors
-plainly and persist the relevant task-local decision. Standing policy changes follow the
-base provenance rule. Keep qualifications that represent real uncertainty.
+when evidence shows a problem, with a concrete alternative and trade-off, then follow the
+ruling. Correct errors plainly and persist the relevant task-local decision. Standing
+policy changes follow the base provenance rule.

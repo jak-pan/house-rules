@@ -11,10 +11,11 @@ Durable continuation preserves useful context across sessions.
 ## The 80% rule
 
 At ~80% context (or before any compaction), write the handoff, then end the session so a
-successor resumes from it. The handoff is an **immutable
-record wherever the workspace tracker keeps them**: file protocol → `task handoff NNN`
-under `tasks/NNN-slug/handoffs/`; external tracker → a closing comment/entry on the work
-item; legacy repos → a dated HANDOVER-YYYY-MM-DD.md. Same required contents everywhere:
+successor resumes from it. Also write one at session end and on ownership change. The
+handoff is an **immutable record wherever the workspace tracker keeps them**: file
+protocol → `task handoff NNN` under `tasks/NNN-slug/handoffs/`; external tracker → a
+closing comment/entry on the work item; legacy repos → a dated HANDOVER-YYYY-MM-DD.md.
+Same required contents everywhere:
 
 ```
   Objective   — the standing goal, verbatim (incl. numeric targets)
@@ -36,31 +37,26 @@ standing rule; follow AGENTS.md's rule-provenance requirement.
 
 ## The bible (repository AGENTS.md)
 
-Every repo's AGENTS.md holds durable local instructions. On session start and after every reset:
-1. Read AGENTS.md, CONTEXT.md, and the workspace's board + continuation records.
-2. Append newly settled decisions to the bible so they're never re-litigated: chosen models,
-   rejected alternatives (with the evidence), credential-provider locations (never values), owned
-   defaults, environment facts that were forgotten twice.
+Reading order: AGENTS.md §Session start. Append newly settled decisions to the bible so
+they're never re-litigated: chosen models, rejected alternatives (with the evidence),
+credential-provider locations, owned defaults, environment facts that were forgotten twice.
 
 ## Filing
 
-- Findings go where they belong, as they happen — not dumped in chat and not in assistant
-  memory:
-  - experiments/results → the work item's record and the campaign ledger
-  - audits/reviews → dated `docs/reports/YYYY-MM-DD-topic.md`
-  - operational knowledge → RUNBOOK.md; architecture → docs system map + deep dives
-- Paths for runs, reports, ledgers, debug evidence, and scratch: `STRUCTURE.md`.
-- Work state (item state + regenerated board + new handoff, whatever form the tracker
-  gives them) travels in the same commit as the work it describes. In legacy NEXT.md
-  repos, that repo's convention stays binding until migrated.
+Destinations for findings (AGENTS.md prime rule 11):
+
+- experiments/results → the work item's record and the campaign ledger
+- audits/reviews → dated `docs/reports/YYYY-MM-DD-topic.md`
+- operational knowledge → RUNBOOK.md; architecture → docs system map + deep dives
+
+Paths for runs, reports, ledgers, debug evidence, and scratch: `STRUCTURE.md`.
 
 ## Authorized, bounded, and durable external runs
 
-Durability prevents loss; it does not authorize a run or prove that the run remains
-relevant. Before launch, verify that the work is primary or proportional supporting work
-inside the standing or campaign resource envelope. Record that envelope in the active work
-record: approved agents/providers, concurrency, round limits, cost/token/runtime boundary,
-and stop condition. Once inside the envelope, no per-call approval is required.
+Scope and authorization: AGENTS.md §Verification. Before launch, record the envelope that
+authorizes the run (AGENTS.md §Resource envelopes) in the active work record: approved
+agents/providers, concurrency, round limits, cost/token/runtime boundary, and stop
+condition.
 
 Before the first substantive call of any paid, long-running, or non-reproducible external
 agent/model/tool run:
@@ -87,15 +83,11 @@ takes precedence; capture only what can be captured without delaying it. If dura
 capture cannot be established at launch, ask the operator to accept the loss risk or use
 a cheaper/reproducible probe instead.
 
-Boundary: this gate applies to external agents, model CLIs, remote jobs, benchmarks,
-crawls, and similarly costly or unique work. It does not add ceremony to ordinary short,
-cheap, reproducible commands.
-
 ## Resuming
 
 "continue task NNN" (or "read HANDOVER-*.md and continue") is a complete instruction.
-Resume means: read the task.md + latest handoff + bible + campaign ledger, verify claimed
-state against reality (is that run still live? did the commit land?), then continue the
-Pending list — without re-testing what the ledger settles and without re-asking answered
-questions. After a crash: commit recoverable work first (when commits are authorized),
-then resume.
+Resume means: read the work item's state + latest handoff + bible + campaign ledger, verify
+claimed state against reality (is that run still live? did the commit land?), then
+continue the Pending list — without re-testing what the ledger settles and without
+re-asking answered questions. After a crash: commit recoverable work first (when commits
+are authorized), then resume.

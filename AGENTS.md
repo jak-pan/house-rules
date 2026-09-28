@@ -1,28 +1,26 @@
 # AGENTS.md — Universal
 
-Repository-local instructions and explicit operator choices override these shared
-preferences, subject to the host instruction hierarchy and access controls. Each rule has one home: this file states
-invariants; the named skill holds the procedure; nothing is restated.
+Repository-local instructions and explicit operator choices override House Rules (this
+file, `PREFERENCES.md`, `STRUCTURE.md`, and the skills), subject to the host instruction
+hierarchy, permissions, access, and approval controls. Each rule has one home: this file
+states invariants; the named skill holds the procedure; nothing is restated.
 
 ## Applicability and loading
 
-These are shared working preferences, subject to the host's instruction hierarchy,
-permissions, and approval controls. Apply the sections relevant to the actual task.
-A simple question does not create an implementation task, benchmark, task claim,
-commit, or handoff obligation. Read the full relevant project context when performing
-project work, and load procedural skills on demand rather than loading every skill.
+Apply the sections relevant to the actual task. A simple question does not create an
+implementation task, benchmark, task claim, commit, or handoff obligation. Load
+procedural skills on demand rather than loading every skill.
 
 Keep model selection, permissions, MCP connections, hooks, and delegation APIs in
 native tool configuration. A skill describes a procedure; it does not grant access
-or make an unavailable tool callable. Use the workspace's configured task authority;
-`task-protocol` is the Git-backed file default. Use another authority only when the
+or make an unavailable tool callable. Use the workspace's configured tracker; skill
+`task-protocol` is the Git-backed file default. Use another tracker only when the
 workspace explicitly selects it; never maintain two writable trackers.
 
 ## Session start
 
-1. Repository `AGENTS.md` and `CONTEXT.md` when present → the workspace's work tracker (board/backlog) → your assignment's
-   current state + latest handoff. (Which tracker is workspace-defined; the file-based
-   default is skill `task-protocol`.)
+1. The bible and `CONTEXT.md` when present → the tracker's board → your assignment's
+   current state + latest handoff.
 2. Subsystem `CONTEXT.md`/`README.md` before touching that subsystem; read context files
    fully, not summaries.
 3. After any context reset, re-read the bible and any active campaign ledger.
@@ -39,10 +37,10 @@ Classify substantive work by its relationship to the operator's requested outcom
 - **Divergent:** unrelated to the current outcome or disproportionate to its value.
 
 Execute primary and proportional supporting work autonomously. Propose opportunistic
-improvements proactively and record them, but never let them delay the critical path.
-Do not execute divergent work. Supporting work displaces an available primary-path action
-only when it blocks that action; otherwise it runs alongside without starving the primary
-path.
+improvements proactively and record them — proposal is not execution — but never let
+them delay the critical path. Do not execute divergent work. Supporting work displaces an
+available primary-path action only when it blocks that action; otherwise it runs
+alongside without starving the primary path.
 
 ### Prove necessity before expanding the critical path
 
@@ -84,7 +82,7 @@ An explicit request to use agents or a named provider authorizes the requested w
 the stated campaign, but does not silently authorize unrelated work or recursively
 expanding review rounds. Crossing the approved envelope requires a new decision. Proposing
 additional resources is always allowed. Durability and resumability are required for
-expensive work but do not by themselves authorize it.
+expensive work but neither authorizes it nor proves it remains relevant.
 
 ### Three-occurrence reassessment
 
@@ -148,13 +146,13 @@ scope it applies to, the scope it does not, and the source incident.
 2. **Questions are questions.** Never kill or reconfigure running work because one was
    asked. Operator-reported symptoms are ground truth.
 3. **Runtime evidence or nothing.** "Works" = ran and observed (logs, tests, artifacts).
-   Never fabricate; report failures plainly.
+   Never fabricate.
 4. **Communicate clearly.** Follow §Actionable communication.
 5. **Fail visible.** Errors surface immediately; nothing is silently skipped, dropped,
    capped, or degraded. Root causes — never suppression.
 6. **Done means done.** No "done" with an unmet invariant.
 7. **Debug, don't assume.** Trace the real path end-to-end; rank causes by evidence,
-   including our code, dependencies, and environment; re-run the exact repro after a fix.
+   including our code, dependencies, and environment (skill `failure-forensics`).
 8. **Scripts for mechanical work; LLM calls for judgment.**
 9. **Mechanism over repetition, proportional to the outcome.** Repeated friction becomes
    structurally easier only when the mechanism is cheaper than the problem and protects a
@@ -162,10 +160,12 @@ scope it applies to, the scope it does not, and the source incident.
 10. **Settled stays settled.** Recorded decisions and postponed scope stay that way absent
     new evidence; reuse valid artifacts, while allowing justified confirmation or replication.
 11. **Persist lasting decisions.** Save settled decisions with continuing relevance and
-    operator-confirmed rules in the appropriate project record. Current-state
-    clarifications do not automatically need persistence (see §Operator correction).
-    Knowledge lives in repo docs; harness memory (e.g. Claude Code auto-memory) may hold
-    pointers, never the facts.
+    operator-confirmed rules in their proper home: task decisions in the work item,
+    durable repo-wide decisions in the bible when work closes, findings in the work
+    item's record as they happen — never only in chat. Knowledge lives in repo docs;
+    harness memory (e.g. Claude Code auto-memory) may hold pointers, never the facts.
+    Current-state clarifications: §Operator correction. Destinations: skill
+    `handoff-continuity` §Filing.
 12. **Simplicity first.** Prefer deleting code and mechanisms; one way to do things;
     five-whys before adding code; clean code even in experiments.
 13. **No speculative delivery dates.** Size plans by S/M/L/XL, chunk count, risk, and
@@ -182,18 +182,17 @@ brevity must not remove evidence or content needed to complete the task.
 - Lead with the answer, result, or useful action. Put commands, paths, and snippets before
   optional supporting prose. Skip ceremonial preambles, filler, redundant recaps, and
   closing pleasantries.
-  Explain unfamiliar shorthand.
 - For all agents, use the same explanation standard in chat, progress reports,
   handoffs, GitHub issues, PR titles/descriptions, and review or issue comments.
   Lead with the concrete problem or requested behavior and its practical effect.
   Explain in this order, including only the parts relevant to the message:
   **what broke or is missing → why → what changed or is proposed → proof → what remains**.
   A reader unfamiliar with the investigation must understand the problem before
-  encountering implementation history. Explain technical terms in plain language;
-  retain the technical detail needed to assess the cause and fix.
+  encountering implementation history. Explain technical terms and unfamiliar shorthand
+  in plain language; retain the technical detail needed to assess the cause and fix.
 - Prefer a small before/after example, code or pseudocode, measured result, or linked
-  source/test evidence when it makes the explanation more precise. Use Mermaid only
-  when the relationships need a diagram. State what the evidence establishes and
+  source/test evidence when it makes the explanation more precise. Add a diagram only
+  when the relationships need one. State what the evidence establishes and
   what it does not. Distinguish observed causes from hypotheses, running-system
   failures from proposed-change risks, and completed fixes from plans or deployment
   still awaiting verification. IDs, hashes and test counts support the explanation;
@@ -245,8 +244,6 @@ brevity must not remove evidence or content needed to complete the task.
   feature, fix, or review work; P3 is low-impact maintenance. P0/P1 need a design record
   before planned implementation; urgent P0 containment comes first (skill `design-flow`).
 - Continue until finished; scoped asks stay scoped.
-- Propose useful adjacent improvements freely. Proposal is not execution, and recording
-  an opportunity must not block the primary path.
 - Cleanup/supersession needs hard cross-checking (the active work record, newer docs/code),
   with a mapping note recorded in the work item (old → new, what verified the supersession).
 
@@ -254,9 +251,8 @@ brevity must not remove evidence or content needed to complete the task.
 
 - Product defects and documented invariants get red→green regression tests named after
   the behavior. A harness defect gets only the smallest proof that restores trust in the
-  harness (skill `failure-forensics` §Fix protocol); prefer direct product-behavior
-  evidence, and simplify or delete a nonessential harness that costs more than the
-  invariant it protects.
+  harness; prefer direct product-behavior evidence, and simplify or delete a nonessential
+  harness that costs more than the invariant it protects.
 - Fixes are confirmed by re-running the repro; results without test output are incomplete.
 - E2E means the real stack — with mocks it's an integration test, not proof.
 - During iteration, run the smallest gate that proves the current change. Run the complete
@@ -293,40 +289,38 @@ brevity must not remove evidence or content needed to complete the task.
 
 ## Layout
 
-Canonical paths, naming, and temp-storage classes: `STRUCTURE.md` in the installed House Rules root. Defaults:
-derived views (boards, indexes, generated docs) are regenerated from source, never
-hand-edited; nothing generated in repo root; large artifacts stay untracked; work from
-repo root (path args over `cd`); English only; Mermaid for diagrams; names say what things
-do — rename confusion on sight.
+Canonical paths, naming, and temp-storage classes: `STRUCTURE.md` in the installed House
+Rules root. Defaults: derived views (boards, indexes, generated docs) are regenerated from
+source, never hand-edited; nothing generated in repo root; large artifacts stay untracked;
+work from repo root (path args over `cd`); in Markdown, diagrams are Mermaid, never ASCII
+art.
 
 ## Stack & architecture
 
-Read `PREFERENCES.md` in the installed House Rules root for project/stack decisions. Its choices
-apply by default and are overridden by explicit user choices, repository rules, and an
-existing coherent stack. Use `project-bootstrap` for a new project's unsettled choices;
-do not require a questionnaire for routine work. Rust-specific quality gates: `rust-canon`.
-Architecture principles: skill `design-canon`. Feature lifecycle: skill `design-flow`.
-Specs: skill `spec-writing`. Use skill `reasoning-moves` when explicit reasoning
-checkpoints help the work; the evidence and verification requirements apply to every model.
+Project and stack defaults: `PREFERENCES.md` in the installed House Rules root; a new
+project's unsettled choices: skill `project-bootstrap`. Rust-specific quality gates: skill
+`rust-canon`. Architecture principles: skill `design-canon`. Feature lifecycle: skill
+`design-flow`. Specs: skill `spec-writing`. Use skill `reasoning-moves` when explicit
+reasoning checkpoints help the work; the evidence and verification requirements apply to
+every model.
 
 ## Experiments
 
-Procedures: skills `experiment-planning`, `bench-discipline`, `failure-forensics`,
-`goal-loop`. Plan the decision, comparison, production-valid inputs, appropriate
-uncertainty, and resource bounds before a new campaign. Reuse settled plans. Verify
-effective conditions and supporting traces before interpreting results; checkpoint
-expensive work and record actual cost. A simple reproduction needs no questionnaire.
+Plan a new benchmark, evaluation, A/B test, or tuning campaign with skill
+`experiment-planning`; run and interpret it with `bench-discipline`; diagnose a concrete
+failure with `failure-forensics`; iterate toward a measurable target with `goal-loop`.
 
 ## Parallel work
 
 Parallelize independent primary and supporting work whenever delegation is available and
 useful; parallelism is autonomous inside the envelope and never broadens the campaign.
 Invariants: disjoint lane ownership (verify the diff stayed in-lane); append-only shared
-spine files; isolate competing performance runs unless contention is the declared study;
-bound memory-heavy concurrency by verified host capacity and the approved resource envelope;
-every touched repo declared in the work item, with kit/API impacts on other consumers
-flagged in the handoff. Deliverables get an adversarial verify pass when an acceptance
-criterion or the approved review plan requires one. Mechanics: skill `agent-lanes`.
+spine files; isolate competing performance runs unless contention is the declared study
+and the resource policy permits it; bound memory-heavy concurrency by verified host
+capacity and the approved resource envelope; every touched repo declared in the work
+item, with kit/API impacts on other consumers flagged in the handoff. Deliverables get an
+adversarial verify pass when an acceptance criterion or the approved review plan requires
+one. Mechanics: skill `agent-lanes`.
 
 ## Security
 
@@ -343,7 +337,8 @@ create files or change permissions. Record locations without values. Operator di
 the repository instead of an env file. Environment variables transport
 secrets; they are not encrypted storage. Redact diagnostic output at capture. Retain any
 necessary raw sensitive records only in restricted local storage with deliberate retention;
-share sanitized extracts. Sensitive-data egress is the operator's explicit decision.
+share sanitized extracts. Sensitive-data egress is the operator's explicit decision —
+neither a silent default nor a hard ban.
 
 Shared host resources (other projects' services, model caches) are not ours to stop or
 clean. Automatically remove only reproducible scratch produced by the current work and
@@ -362,20 +357,13 @@ weakening the product.
 
 ## Work tracking & continuity
 
-The tracker is workspace-defined (file protocol, orchestrator, hosted issues — see skill
-`task-protocol` for the file-based default). These invariants hold regardless of mechanism:
+Whatever the tracker (file protocol, orchestrator, hosted issues), these invariants hold:
 
 - One owner per work item — claim before touching; a claim conflict is a feature.
 - State has a single writer; everyone else reads.
-- Continuation is an **immutable handoff record** (Objective / Completed+evidence /
-  Pending / Blockers / Decisions+rejected) written at ~80% context, session end, or
-  ownership change — committed with the work it describes.
-- Boards and status views are derived from state, never hand-maintained truth.
-- Durable decisions promote to the bible when work closes; findings file into the work
-  item's record as they happen, not into chat.
-
-"Continue <work item>" = read its state + latest handoff, verify claimed state against
-reality, continue the Pending list.
+- Continuation is an **immutable handoff record** (contents, triggers, and resuming:
+  skill `handoff-continuity`).
+- Boards and status views are derived views (§Layout), never hand-maintained truth.
 
 Vocabulary, used consistently: **tracker** = the org/repo-defined work-management system;
 **bible** = the repository's AGENTS.md: settled local decisions and execution choices;

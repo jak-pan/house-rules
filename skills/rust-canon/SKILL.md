@@ -6,9 +6,9 @@ license: MIT
 
 # Rust Canon
 
-Project stack defaults live in `PREFERENCES.md` in the installed House Rules root and apply
-unless overridden. This skill applies after Rust is selected. Its tooling choices are
-defaults too: preserve explicit user and repository decisions and the host's controls.
+This skill applies after Rust is selected (stack choice: `PREFERENCES.md` in the installed
+House Rules root). Its tooling choices are overridable defaults like the rest of House
+Rules.
 
 ## Workspace
 
@@ -22,16 +22,15 @@ defaults too: preserve explicit user and repository decisions and the host's con
 ## Code rules
 
 - `thiserror` in libraries, `anyhow` in binaries — and never `anyhow` in hot paths.
-- Never `unwrap()` in library code (tests only). Errors bubble to the caller/operator;
-  no fail-open, no silent skip.
+- Never `unwrap()` in library code (tests only); errors bubble to the caller/operator —
+  no fail-open.
 - Async on tokio; non-blocking, multi-threaded by default.
 - `--release` by default for everything built, executed or measured, including CI checks,
   Clippy, tests and smoke artifacts. Use the development profile only for active debugging
   (assertions, symbols, tight edit-compile loops) or a named debug-only invariant. Reusing
   compiled outputs across gates: skill `ci-build-optimization`. Operator direction:
   2026-09-07, cross-repository CI correction.
-- `///` docs on public items; names say what things do (`captured_at` ≠ `ingested_at`;
-  no defaults encoded in names). Rename confusing things immediately.
+- `///` docs on public items.
 
 ## Repo tooling
 
@@ -41,7 +40,7 @@ bumps, scope checks) that raw git/cargo silently violates.
 
 ## Gates
 
-Gates must pass on the final candidate; iteration cadence per AGENTS.md §Verification.
+When to run the full gate versus a smaller one: AGENTS.md §Verification.
 
 ```
 cargo fmt --all --check
@@ -49,7 +48,7 @@ cargo clippy --release --workspace --all-targets -- -D warnings
 cargo test --release --workspace --all-features --no-fail-fast
 ```
 
-Zero warnings is the bar. Red→green regression test per bug fix. Architecture guard scripts
+Zero warnings is the bar. Architecture guard scripts
 (`scripts/ci-architecture-guards.sh`) run after structural changes. Env-mutating tests use
 `#[serial(env)]`; fixtures are synthetic and date-relative (no fixture rot).
 
@@ -71,12 +70,11 @@ built-in sane defaults → versioned TOML (profiles/presets) → env vars → CL
 Apply this section only to components that actually use models; do not add a model stack.
 
 - The settled model stack (embedder + dims, reranker, workhorse LLM, judge — with exact
-  reasoning-effort levels per role) lives in the repo bible. Treat it as settled: never
-  re-test rejected alternatives without new evidence, never substitute.
+  reasoning-effort levels per role) lives in the repo bible. Treat it as settled
+  (AGENTS.md prime rule 10); never substitute.
 - Cheap/free-first: the cheapest model that clears the quality bar wins; report cost per
   run; no expensive models outside the approved standing or campaign resource envelope.
-- Local inference where hardware allows (e.g. MLX/Ollama on Apple Silicon), with
-  hardware-adaptive local/cloud routing and local redaction before any cloud egress.
+- Local inference and cloud egress: skill `design-canon` §Security & sovereignty.
 - Inspect the configured credential provider without displaying values; credential
   storage and diagnostic capture follow AGENTS.md §Security.
 

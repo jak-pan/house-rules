@@ -65,11 +65,10 @@ implausible. Check affected consumers before changing shared defaults.
    or temporary mitigation accurately; do not call it a root-cause fix.
 2. Repair the defect without silently dropping failures, weakening required assertions,
    or bypassing a security boundary. Follow AGENTS.md for material risk and scope changes.
-3. Add a red→green regression test for affected product behavior or a documented
-   invariant. A harness defect needs only the smallest proof that restores trust; avoid
-   growing a generalized analyzer to fix a local harness mistake.
-4. Re-run the reproduction and relevant required checks. For intermittent failures,
-   explain what the confirmation establishes and what uncertainty remains.
+3. Add the regression evidence AGENTS.md §Verification requires; for a harness defect,
+   avoid growing a generalized analyzer to fix a local harness mistake.
+4. Confirm per AGENTS.md §Verification. For intermittent failures, explain what the
+   confirmation establishes and what uncertainty remains.
 5. Apply AGENTS.md's three-occurrence reassessment when that condition is reached.
 
 Diagnostic instrumentation is temporary unless ongoing observability is required.

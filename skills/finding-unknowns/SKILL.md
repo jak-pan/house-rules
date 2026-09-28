@@ -40,10 +40,10 @@ adapted to the House Rules lifecycle.)
    decisions most likely to change (data models, type interfaces, UX flows) and buries the
    mechanical refactors at the bottom — review effort goes where reversal is expensive.
 
-**Question discipline**: design-time and mid-execution uncertainty questions are welcome; one precise question (options +
-recommendation) beats a confidently-bad decision. The forbidden thing is permission
-theater (skill `operator-protocol` §Decisions). Ask async; keep
-unblocked work moving.
+**Question discipline**: design-time and mid-execution uncertainty questions are welcome;
+one precise question beats a confidently-bad decision. The forbidden thing is permission
+theater (AGENTS.md §Actionable communication). How to ask, and to keep unblocked work
+moving meanwhile: skill `operator-protocol` §Decisions.
 
 ## During implementation
 

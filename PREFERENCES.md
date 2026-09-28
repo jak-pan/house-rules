@@ -1,10 +1,9 @@
 # Project defaults
 
-These preferences apply by default when House Rules is installed. Explicit user choices and
-repository instructions override them; an existing coherent project stack takes
-precedence over defaults for new projects. Overrides need no separate approval ritual.
-Record consequential choices and their rationale in the project, and preserve the host's
-instruction hierarchy, access controls, and the authority boundaries in AGENTS.md.
+These stack defaults apply whenever House Rules is installed. Overrides follow AGENTS.md,
+and an existing coherent project stack also takes precedence over them. Overrides need
+no separate approval ritual; record consequential choices and their rationale in the
+project's CONTEXT.md. New projects: skill `project-bootstrap`.
 
 ## Choose only the components needed
 
@@ -24,18 +23,13 @@ is not required for a small tool. Reuse the pinned project toolchain; for new No
 prefer a supported LTS release, ESM, pnpm, and minimal dependencies. Do not require the
 `ts-node` package merely because TypeScript executes on Node.
 
-## Architecture and storage
+## Storage
 
-Prefer one canonical representation of each datum and rebuildable derived indexes.
 For document/vault products, start with Markdown and structured metadata; use an
 append-only log when event history is intrinsic. For transactional application state,
-a database can itself be canonical. Choose the storage and rebuild equivalence required
-by the product; do not force every application into a Markdown vault.
+use a database. Choose the storage and rebuild equivalence required by the product; do
+not force every application into a Markdown vault.
 
-Build for the agreed final product, using the simplest tenancy/deployment model that
-meets it. Do not add multi-tenancy solely because a future product might need it.
-Rust-specific tooling defaults live in `skills/rust-canon/SKILL.md`; architecture
-procedures live in `skills/design-canon/SKILL.md`.
-
-For a new project, use `project-bootstrap` to inspect constraints and settle only the
-important unknowns. Ordinary feature work uses the project's recorded choices.
+Architecture principles (canonical data, end-state design, tenancy) live in
+`skills/design-canon/SKILL.md`; Rust-specific tooling defaults live in
+`skills/rust-canon/SKILL.md`.

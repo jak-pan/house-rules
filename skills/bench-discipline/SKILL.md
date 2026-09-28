@@ -6,10 +6,8 @@ license: MIT
 
 # Bench Discipline
 
-Before a new campaign, use `experiment-planning` to inspect existing evidence and settle
-the consequential study choices. Reuse the recorded plan for subsequent runs; revisit
-it when the hypothesis, workload, or decision changes. Authority, security, and resource
-limits remain governed by AGENTS.md and the applicable project rules.
+Plan a new campaign, and revisit its plan, with skill `experiment-planning`; this skill
+executes and interprets the comparison.
 
 ## Production-valid comparisons
 
@@ -43,7 +41,7 @@ limits remain governed by AGENTS.md and the applicable project rules.
   supports and investigate interactions when they matter to the decision.
 - Prove the change took effect through effective configuration, executed paths, or output
   artifacts. A large change with little effect warrants a wiring check, but may also be
-  a valid null result.
+  a valid null result or insufficient precision; distinguish them with evidence.
 - Keep experiment settings explicit and reproducible. Name the baseline configuration;
   do not silently change shipped defaults to simplify a benchmark command (AGENTS.md
   §Autonomy).
@@ -81,19 +79,19 @@ limits remain governed by AGENTS.md and the applicable project rules.
 - Validate a judge or grader against its specification and representative source-backed
   examples before trusting it. Inspect relevant raw traces when aggregate results are
   surprising; use `failure-forensics` for an unexplained failure or regression.
-- Record actual usage and costs for paid runs. Use current provider units and pricing for
-  estimates, and distinguish estimated cost from billed cost.
+- Use current provider units and pricing for estimates, and distinguish estimated cost
+  from billed cost.
 
 ## Execution and record
 
 - Match the build profile, workload, and concurrency to the deployment or study question.
   Define expected resource behavior before diagnosing serialization or low utilization.
-  Isolate competing performance runs unless contention is the declared subject and the
-  applicable resource policy permits it. This skill does not relax stronger shared-host,
-  provider, or hardware restrictions.
+  Isolation of competing performance runs: AGENTS.md §Parallel work. This skill does not
+  relax stronger shared-host, provider, or hardware restrictions.
 - Checkpoint expensive or non-reproducible stages according to the continuity policy.
-  Record revision, effective configuration, dataset version, seed when applicable,
-  model/provider settings, measurement environment, output paths, and actual usage.
-- Keep the plan and tried → result → verdict record in the Git-tracked work item; use a
-  campaign ledger for sustained iteration (`task-protocol`, `STRUCTURE.md`). Store large
-  or sensitive run artifacts under the project's artifact policy and link the evidence.
+  Record with each run: revision, effective configuration, dataset version, seed when
+  applicable, model/provider settings, measurement environment, output paths, actual
+  usage and cost, deviations from the plan, and the next decision.
+- Keep each run's tried → result → verdict record in the Git-tracked work item, and in
+  the campaign ledger for sustained iteration (`STRUCTURE.md`). Store large or sensitive
+  run artifacts under the project's artifact policy and link the evidence.

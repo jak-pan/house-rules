@@ -1,8 +1,7 @@
 # STRUCTURE — Canonical Paths & Naming (all repos)
 
-One reference for where every artifact lives and what it's called. Repository-specific
-rules may extend or override these shared defaults. Lifecycle rules: skill `design-flow`. Task mechanics:
-skill `task-protocol`.
+One reference for where every artifact lives and what it's called. Lifecycle rules: skill
+`design-flow`. Task mechanics: skill `task-protocol`.
 
 ```
 repo/
@@ -12,10 +11,10 @@ repo/
 │                                  #   AGENTS.md only if /memory shows this version does not load it
 ├── .claude/rules/<name>.md        # optional, Claude-only: path-scoped rules (frontmatter paths:)
 ├── docs/
-│   ├── SYSTEM-MAP.md              # ONE high-level map (two-tier docs: map + deep dives)
+│   ├── SYSTEM-MAP.md              # ONE high-level system map (skill design-canon §Docs)
 │   ├── design/                    # INTENT — approved future design
 │   │   └── NNN-feature-name.md    #   NNN = owning task id; status: draft|approved|implemented
-│   ├── architecture/              # SHIPPED behavior (updated in same commit as code)
+│   ├── architecture/              # SHIPPED behavior
 │   │   └── feature-name.md        #   no task number — durable name
 │   ├── specs/                     # product/subsystem specs (where repo uses spec layout)
 │   │   └── {subsystem}/{subsystem}-spec.md
@@ -30,10 +29,8 @@ repo/
 │   └── spikes/
 │       └── YYYY-MM-DD-question/   # throwaway code answering ONE question
 │           └── SPIKE.md           #   question / method / verdict / date — kill-or-promote
-├── tasks/                         # FILE-BASED TRACKER DEFAULT (skill task-protocol) —
-│   │                              #   workspaces on another tracker keep the invariants
-│   │                              #   (one owner, single-writer state, immutable handoffs,
-│   │                              #   derived boards), not these files
+├── tasks/                         # file-tracker default (skill task-protocol); other trackers
+│   │                              #   keep AGENTS.md §Work tracking invariants, not these files
 │   ├── TASKS.md                   # GENERATED board — never hand-edit
 │   └── NNN-slug/
 │       ├── task.md                # single-writer canonical state (frontmatter)
@@ -69,7 +66,8 @@ repo/
 | Crates | `<product>-<domain>` | `acme-intake` |
 
 General: kebab-case everywhere; English only; names say what things do (no defaults in
-names, `captured_at` ≠ `ingested_at`); rename confusing names immediately.
+names; disambiguate lookalikes, `captured_at` ≠ `ingested_at` ≠ `observed_at`); rename
+confusing names the moment they're noticed.
 
 ## Temp storage — three classes, one rule
 
@@ -96,5 +94,5 @@ and safe to lose.
   sections migrated to architecture/spec, doc shrinks to a pointer (keep the work item's
   `design:` field) or is deleted (clear `design:` in the same commit); superseded =
   replaced by a newer design)
-- Spike: `open → promoted | killed` (in SPIKE.md verdict; spikes older than 30 days without
-  a verdict need review; cleanup follows AGENTS.md §Security)
+- Spike: `open → promoted | killed` (in SPIKE.md verdict; review and cleanup: skill
+  `design-flow` §Spikes)
