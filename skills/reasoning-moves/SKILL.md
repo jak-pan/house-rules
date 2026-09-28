@@ -78,6 +78,7 @@ selected collaboration mode come from AGENTS.md; these checkpoints do not redefi
 - Record negative and inconclusive results, tested conditions, and the evidence in the
   Git-tracked work item or campaign ledger. Do not infer a mechanism from a score alone.
 - Correct erroneous durable claims explicitly and propagate the correction to affected
-  reports. Preserve the original evidence and explain changed interpretations.
+  reports (a released report gets an erratum or a new dated report: `STRUCTURE.md`).
+  Preserve the original evidence and explain changed interpretations.
 - Apply AGENTS.md's three-occurrence reassessment before repeating the same failure
   class again. Reconsider the mechanism and scope, not just the next patch.

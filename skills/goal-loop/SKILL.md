@@ -71,5 +71,6 @@ These conditions pause the affected loop, not unrelated primary work.
 
 ## Not stop conditions
 
-Sub-step completion, "should I continue?", context anxiety (write a handoff instead — skill
-`handoff-continuity`), a single failed attempt, nightfall.
+Sub-step completion, "should I continue?", context pressure (write a handoff per skill
+`handoff-continuity`; the loop continues in the successor session), a single failed
+attempt, nightfall.

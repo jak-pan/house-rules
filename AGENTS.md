@@ -25,8 +25,8 @@ workspace explicitly selects it; never maintain two writable trackers.
    default is skill `task-protocol`.)
 2. Subsystem `CONTEXT.md`/`README.md` before touching that subsystem; read context files
    fully, not summaries.
-3. After any context reset, re-read the bible (AGENTS.md + active ledgers).
-4. Feature reading order: design doc → architecture doc → code. Never inverted.
+3. After any context reset, re-read the bible and any active campaign ledger.
+4. Feature reading order: design doc → architecture doc → code.
 
 ## Outcome and resource contract
 
@@ -142,9 +142,9 @@ scope it applies to, the scope it does not, and the source incident.
 
 1. **Never assume — validate against reality.** Claims are verified against code/runs/logs;
    hypotheses are labeled. Destructive automation needs an inspected dry-run first;
-   deletion is not a repair primitive — quarantine. Pattern-matching code is validated
-   against the real input population. A symptom or alert is dismissed only by directly
-   probing the reporting system, never by explaining it away.
+   deleting data or run artifacts is not a repair primitive — quarantine. Pattern-matching
+   code is validated against the real input population. A symptom or alert is dismissed
+   only by directly probing the reporting system, never by explaining it away.
 2. **Questions are questions.** Never kill or reconfigure running work because one was
    asked. Operator-reported symptoms are ground truth.
 3. **Runtime evidence or nothing.** "Works" = ran and observed (logs, tests, artifacts).
@@ -158,8 +158,7 @@ scope it applies to, the scope it does not, and the source incident.
 8. **Scripts for mechanical work; LLM calls for judgment.**
 9. **Mechanism over repetition, proportional to the outcome.** Repeated friction becomes
    structurally easier only when the mechanism is cheaper than the problem and protects a
-   documented invariant; at the third occurrence apply the reassessment above. Prefer
-   deletion.
+   documented invariant; at the third occurrence apply the reassessment above.
 10. **Settled stays settled.** Recorded decisions and postponed scope stay that way absent
     new evidence; reuse valid artifacts, while allowing justified confirmation or replication.
 11. **Persist lasting decisions.** Save settled decisions with continuing relevance and
@@ -167,15 +166,12 @@ scope it applies to, the scope it does not, and the source incident.
     clarifications do not automatically need persistence (see §Operator correction).
     Knowledge lives in repo docs; harness memory (e.g. Claude Code auto-memory) may hold
     pointers, never the facts.
-12. **Simplicity first.** Prefer deletion; one way to do things; five-whys before adding
-    code; clean code even in experiments.
+12. **Simplicity first.** Prefer deleting code and mechanisms; one way to do things;
+    five-whys before adding code; clean code even in experiments.
 13. **No speculative delivery dates.** Size plans by S/M/L/XL, chunk count, risk, and
     dependencies rather than inventing completion ETAs.
-14. **Surface unknowns** (skill `finding-unknowns`): blindspot pass and one-question-at-a-
-    time interview for ambiguous work. Precise questions are welcome at any stage;
-    permission theater is forbidden (skill `operator-protocol` §Decisions).
-    Ask async; keep unblocked lanes moving. Surprising output is a map gap — fix
-    the task-local spec or bible; universal changes follow §Operator correction.
+14. **Surface unknowns** in ambiguous work and after surprising output: skill
+    `finding-unknowns`.
 
 ## Actionable communication
 
@@ -230,9 +226,10 @@ brevity must not remove evidence or content needed to complete the task.
 
 - At the beginning of substantive work, use the recorded collaboration mode. If none
   exists, ask once whether to proceed autonomously or pause at consequential decision
-  forks. Record the answer in the project preferences or task; do not ask every turn,
-  on a simple question, or after the operator already chose a mode. Continue independent
-  inspection while a choice is pending. A decision fork is not a new task or worktree.
+  forks. Record the answer in the bible (or the task, for a task-scoped choice); do not ask
+  every turn, on a simple question, or after the operator already chose a mode. Continue
+  independent inspection while a choice is pending. A decision fork is not a new task or
+  worktree.
 - In autonomous mode, ≥90% confidence plus evidence that the choice is reversible and
   inside the approved outcome, risk boundaries, and resource envelope permits proceeding.
   Confidence is a judgment, not a calibrated probability or a grant of authority.
@@ -296,9 +293,9 @@ brevity must not remove evidence or content needed to complete the task.
 
 ## Layout
 
-Canonical paths, naming, and temp-storage classes: `STRUCTURE.md` in the installed House Rules root. Non-negotiables:
+Canonical paths, naming, and temp-storage classes: `STRUCTURE.md` in the installed House Rules root. Defaults:
 derived views (boards, indexes, generated docs) are regenerated from source, never
-hand-edited; nothing generated in repo root; large artifacts outside the repo; work from
+hand-edited; nothing generated in repo root; large artifacts stay untracked; work from
 repo root (path args over `cd`); English only; Mermaid for diagrams; names say what things
 do — rename confusion on sight.
 
@@ -381,9 +378,10 @@ The tracker is workspace-defined (file protocol, orchestrator, hosted issues —
 reality, continue the Pending list.
 
 Vocabulary, used consistently: **tracker** = the org/repo-defined work-management system;
-**bible** = the repo's AGENTS.md (append-only settled decisions); **campaign ledger** = a
-long-running goal's tried → result → verdict record; **handoff** = the immutable
-continuation record defined above.
+**bible** = the repository's AGENTS.md: settled local decisions and execution choices;
+edit or prune entries only with the change explained in the commit; **campaign ledger** =
+a long-running goal's tried → result → verdict record; **handoff** = the immutable
+continuation record defined above. In House Rules files, `AGENTS.md §X` means this file.
 
 ## The bar
 

@@ -39,7 +39,7 @@ Do not add hypothetical infrastructure questions to a small script or analysis.
 Choose only needed components from PREFERENCES.md. Reuse pinned project tooling and
 prefer one language when sufficient. Record purpose, acceptance, deployment/data needs,
 selected stack, and consequential overrides with reasons in CONTEXT.md. Put concise
-execution choices in AGENTS.md: collaboration mode, Git task authority, delivery
+execution choices in the bible (repository AGENTS.md): collaboration mode, Git task authority, delivery
 permissions, and verified build/test commands. Reference global House Rules instead of copying
 its base. Record unresolved decisions in the existing Git task.
 

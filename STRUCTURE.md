@@ -6,9 +6,10 @@ skill `task-protocol`.
 
 ```
 repo/
-├── AGENTS.md                      # repository-specific rules and settled decisions
-├── CONTEXT.md                     # repo rules (wins over House Rules)
-├── CLAUDE.md                      # Claude Code instructions; preserve existing content, import local AGENTS.md if used
+├── AGENTS.md                      # the bible: repository rules, settled decisions, execution choices
+├── CONTEXT.md                     # project purpose, acceptance, stack, overrides with reasons
+├── CLAUDE.md                      # Claude Code instructions; preserve existing content; import
+│                                  #   AGENTS.md only if /memory shows this version does not load it
 ├── .claude/rules/<name>.md        # optional, Claude-only: path-scoped rules (frontmatter paths:)
 ├── docs/
 │   ├── SYSTEM-MAP.md              # ONE high-level map (two-tier docs: map + deep dives)
@@ -19,11 +20,13 @@ repo/
 │   ├── specs/                     # product/subsystem specs (where repo uses spec layout)
 │   │   └── {subsystem}/{subsystem}-spec.md
 │   └── reports/
-│       └── YYYY-MM-DD-topic.md    # dated, immutable once written (audits, reviews, handovers)
+│       └── YYYY-MM-DD-topic.md    # dated (audits, reviews, handovers; a multi-file set is a
+│                                  #   YYYY-MM-DD-topic/ dir); immutable once released —
+│                                  #   corrections go in a new dated report or a labeled erratum
 ├── prototypes/
 │   ├── NNN-feature-name/
 │   │   ├── lofi/                  # md + mermaid flows, single-file html sketches
-│   │   └── hifi/                  # svelte + mock data, plain css, no ssr
+│   │   └── hifi/                  # project UI stack (PREFERENCES.md default) + mock data
 │   └── spikes/
 │       └── YYYY-MM-DD-question/   # throwaway code answering ONE question
 │           └── SPIKE.md           #   question / method / verdict / date — kill-or-promote
@@ -90,7 +93,8 @@ and safe to lose.
 
 - Task (`task.md`): `pending → active → review → done` (+ `blocked`)
 - Design doc: `draft → approved → implemented | superseded` (implemented = shipped
-  sections migrated to architecture/spec, doc shrinks to a pointer or is deleted —
-  clearing the work item's `design:` field; superseded = replaced by a newer design)
+  sections migrated to architecture/spec, doc shrinks to a pointer (keep the work item's
+  `design:` field) or is deleted (clear `design:` in the same commit); superseded =
+  replaced by a newer design)
 - Spike: `open → promoted | killed` (in SPIKE.md verdict; spikes older than 30 days without
   a verdict need review; cleanup follows AGENTS.md §Security)

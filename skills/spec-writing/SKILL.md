@@ -17,8 +17,8 @@ from it without asking questions.** The document must explain the product and it
   propose additional review if beneficial. Verify inherited claims against canonical code
   (file:line), not against other documents.
 - Check for superseded decisions before re-deciding. Rank conflicting sources by recency and supersession.
-- On inherited/messy codebases, invert the order: write the clean system map + spec from
-  the old code as *reference*, then classify components easy/hard to rewrite, then build.
+- On inherited/messy codebases, derive the clean system map + spec from the old code as
+  *reference*, then classify components easy/hard to rewrite, then build.
 
 ## Shape (every doc)
 
@@ -59,6 +59,8 @@ from it without asking questions.** The document must explain the product and it
 
 Review a supplied spec against evidence and the requested outcome. State disagreements
 with evidence and a recommendation, then follow the ruling. When implementing, deliver
-the spec literally — if it says scores/metadata/IDs, never substitute a cruder proxy;
-if the specified mechanism seems wrong mid-build, stop and say so rather than silently
-implementing a reduced version.
+the spec literally — if it says scores/metadata/IDs, never substitute a cruder proxy.
+If the specified mechanism seems wrong mid-build, escalate per skill `operator-protocol`
+§Decisions when the change is outside the approved decision boundary; otherwise record
+the deviation per skill `design-flow` §Implement. Never silently implement a reduced
+version.

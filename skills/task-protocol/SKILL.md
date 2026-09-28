@@ -36,7 +36,7 @@ tasks/
 `task.md` frontmatter (machine-readable): `id, title, status, owner, priority, depends_on,
 lane, design, pr, created, updated`. Body: Scope, Acceptance criteria, Decisions (settled +
 rejected, with why). `lane:` lists the file paths this task owns while active; `design:`
-links the design doc (enables the `task done` migration gate); `pr:` records the merged PR.
+links the design doc (enables the `task done` migration gate); `pr:` records the PR.
 
 Long-running campaigns that use external resources also carry an optional `Execution
 constraints` body section: Outcome, Acceptance criteria, Explicit exclusions, Resource

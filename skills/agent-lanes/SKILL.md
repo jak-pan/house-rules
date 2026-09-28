@@ -18,7 +18,7 @@ explicit goals.
   Rust lanes pass `--target-dir .tmp/cargo-target/<lane>` so parallel cargo doesn't deadlock
   on `target/` or leak artifacts.
 - **Git limits.** Subagents never push main. On owned repos, lanes push their own task
-  branches within the delivery authority recorded under AGENTS.md §Git.
+  branches within the delivery authority recorded in the bible (policy: AGENTS.md §Git).
   Commits follow the repo's canon; lanes report exactly which files they touched.
 - **Multi-repo work (owned repos) is normal.** One work item, a branch per repo touched
   (named per the workspace convention; the file tracker uses `task/NNN-slug/<agent>`),
@@ -27,7 +27,7 @@ explicit goals.
   for owner review — flag, don't block. Surprise landings in a repo the task didn't
   declare are the actual sin.
 - **Externally-owned repos are read/fork-only.** No pushes, PRs, issues, or comments until
-  the operator explicitly says ready — anti-spam is a hard rule.
+  the operator explicitly says ready.
 - **Audits have round boundaries.** An audit-only request produces findings and proposed
   fixes. Repair and confirmation belong to the round when the operator requested them;
   do not infer mutation authority from a request to inspect or explain. What counts as a
@@ -44,7 +44,7 @@ explicit goals.
   Isolate competing GPU/latency measurements unless contention is the declared study;
   record the intended concurrency and measurement conditions before launch.
 - Cleanup follows AGENTS.md §Security. Identify ownership and retention before pruning;
-  old runs and datasets are not automatically disposable. Large artifacts live outside the repo.
+  old runs and datasets are not automatically disposable.
 - Finishing a lane includes removing what it created to be disposable. When its PR merges or
   the work is abandoned, the lane owner removes its worktree and its build/target directory in
   the same step, after confirming the worktree holds no uncommitted or unpushed work. Shared

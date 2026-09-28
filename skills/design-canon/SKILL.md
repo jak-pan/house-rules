@@ -78,7 +78,7 @@ retrieval pipeline, or model stack in an unrelated application.
 ## Spec-first UX
 
 For complex products: system map → per-screen micro-specs (Mermaid + md) → lofi → hifi
-prototype (Svelte, mock data) → implementation. Component library before screens. Hifi
+prototype (project UI stack, mock data) → implementation. Component library before screens. Hifi
 prototypes exist so decisions happen before the engine is wired to the frontend. Function
 before polish — a confusing broken flow outranks theming every time. Design against
 personas: every persona's consumption path must exist and be satisfying.

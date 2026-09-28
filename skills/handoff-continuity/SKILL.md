@@ -1,6 +1,6 @@
 ---
 name: handoff-continuity
-description: Session continuity — immutable handoff files before compaction, task ledgers, AGENTS.md bible maintenance, dated reports, task filing. Use before context compaction, at session end, when work spans sessions, when spawning successor agents, or when the operator says "handover".
+description: Session continuity — immutable handoff files before compaction, task ledgers, AGENTS.md bible maintenance, dated reports, task filing, and durable paid runs. Use before context compaction, at session end, when work spans sessions, when spawning successor agents, when the operator says "handover", and before launching paid, long-running, or non-reproducible external runs.
 license: MIT
 ---
 
@@ -10,7 +10,8 @@ Durable continuation preserves useful context across sessions.
 
 ## The 80% rule
 
-At ~80% context (or before any compaction), stop and write the handoff — an **immutable
+At ~80% context (or before any compaction), write the handoff, then end the session so a
+successor resumes from it. The handoff is an **immutable
 record wherever the workspace tracker keeps them**: file protocol → `task handoff NNN`
 under `tasks/NNN-slug/handoffs/`; external tracker → a closing comment/entry on the work
 item; legacy repos → a dated HANDOVER-YYYY-MM-DD.md. Same required contents everywhere:
@@ -33,7 +34,7 @@ and link it from the handoff; no separate incident log or entry is needed when t
 is nothing material to preserve. A near miss does not automatically justify a new
 standing rule; follow AGENTS.md's rule-provenance requirement.
 
-## The bible (AGENTS.md)
+## The bible (repository AGENTS.md)
 
 Every repo's AGENTS.md holds durable local instructions. On session start and after every reset:
 1. Read AGENTS.md, CONTEXT.md, and the workspace's board + continuation records.

@@ -1,6 +1,6 @@
 ---
 name: finding-unknowns
-description: Surface the operator's unknowns before, during, and after ambiguous work — blindspot pass, one-question-at-a-time reverse interview, fake-data prototype variants, volatile-decisions-first plans, implementation notes, pre-merge quiz. Use at the start of any underspecified or design-heavy task, when writing specs/prompts for agents, when output surprises anyone, and before merging significant work.
+description: Surface the operator's unknowns before, during, and after ambiguous work — blindspot pass, reverse interview, fake-data prototype variants, volatile-decisions-first plans, implementation notes, pre-merge quiz. Use at the start of any underspecified or design-heavy task, when writing specs/prompts for agents, when output surprises anyone, and before merging significant work.
 license: MIT
 ---
 
@@ -20,7 +20,7 @@ adapted to the House Rules lifecycle.)
 | Quadrant | What it is | Your move |
 |---|---|---|
 | Known knowns | what the prompt says | **Restate the plan** in your own words before executing — cheap map-vs-territory diff |
-| Known unknowns | gaps the operator knows they haven't decided | **Reverse interview**: ask ONE question at a time, architecture-affecting first |
+| Known unknowns | gaps the operator knows they haven't decided | **Reverse interview**: architecture-affecting questions first |
 | Unknown knowns | things too obvious for the operator to write, but recognizable on sight | **Prototype variants** with fake data in deliberately different directions; **example-based spec** (the operator points at something admired → extract its structure) |
 | Unknown unknowns | what nobody has considered | **Blindspot pass**: dedicated scan for traps, unasked questions, and missing constraints before work starts |
 
@@ -30,10 +30,10 @@ adapted to the House Rules lifecycle.)
    codebase, adjacent docs, prior tasks — and report the unknown unknowns: traps, implicit
    constraints, questions the spec should have asked. This is a *report*, not twenty
    questions.
-2. **Reverse interview** for the known unknowns that survive the blindspot pass: one
-   question at a time, ordered by architectural blast radius; stop when remaining answers
-   wouldn't change the design. Answers land in the design doc's Decisions section — never
-   only in chat.
+2. **Reverse interview** for the known unknowns that survive the blindspot pass, ordered
+   by architectural blast radius: one question at a time when its answer changes the next
+   question; batch independent ones. Stop when remaining answers wouldn't change the
+   design. Answers land in the design doc's Decisions section — never only in chat.
 3. **References over descriptions**: ask for existing code/designs/docs that embody what
    the operator wants (any language); extract the structure, don't transliterate the code.
 4. **Plan with volatile decisions first**: the implementation plan leads with the

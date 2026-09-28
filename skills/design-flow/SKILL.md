@@ -11,10 +11,13 @@ Principles behind the gates: skill `design-canon`. `task …` operations below r
 workspace's tracker — the file-based default uses `house-rules task` (skill `task-protocol`); on any
 other tracker, map the operations (create/claim/close-gate/handoff) 1:1 onto its primitives.
 
-```
-task ──► design ──► [prototype] ──► implement ──► closeout
-         (P0/P1              (UX-heavy         (branch      (docs migrate,
-          mandatory)          only)             per lane)     task done)
+```mermaid
+flowchart TD
+  task --> design["design (P0/P1: before planned implementation)"]
+  design --> prototype["prototype (UX-heavy only)"]
+  design --> implement
+  prototype --> implement["implement (branch per lane)"]
+  implement --> closeout["closeout (docs migrate, task done)"]
 ```
 
 ## 1. Task first
@@ -23,7 +26,7 @@ Every feature starts as a task (`task new`). The task owns the feature's artifac
 prefixes the design doc and prototype dir, its `task.md` frontmatter links them
 (`design: docs/design/NNN-….md`). No orphan design docs.
 
-## 2. Design / spec (P0/P1: mandatory before any implementation)
+## 2. Design / spec (P0/P1: mandatory before planned implementation; urgent P0 containment comes first)
 
 Open with a **blindspot pass + reverse interview** (skill `finding-unknowns`) — surface
 the unknowns before writing the spec, not after implementing the wrong one. Then
@@ -48,8 +51,9 @@ Use this sequence for work that needs both prototype stages:
 
 1. **System map + micro-specs**: mermaid + md per screen/flow in the design doc
 2. **Lofi**: `prototypes/NNN-feature/lofi/` — flows, wireframes, single-file html sketches
-3. **Hifi**: `prototypes/NNN-feature/hifi/` — Svelte + mock data, plain CSS; component
-   library before screens (shared sizes/tokens, no per-screen one-offs)
+3. **Hifi**: `prototypes/NNN-feature/hifi/` — the project UI stack (default:
+   `PREFERENCES.md`) + mock data; component library before screens (shared sizes/tokens,
+   no per-screen one-offs)
 4. Operator picks/tweaks on the prototype → decisions recorded back into the design doc
 
 Prototypes exist so decisions happen **before** the engine is wired to a frontend. They are
@@ -73,8 +77,9 @@ the same commit as behavior changes, always.
 
 ## 6. Closeout — `task done NNN`
 
-A feature is done when the code shipped AND the paper trail moved. The `task done` gate
-enforces what's mechanically checkable and prints the rest:
+A feature is done when the code shipped AND the paper trail moved. Run `task done NNN` as
+the last commit on the task branch, before merge. The `task done` gate enforces what's
+mechanically checkable and prints the rest:
 
 **Enforced (refuses otherwise, `--force` to override with justification in the handoff):**
 - the latest Markdown handoff has content in all five standard sections (structural
@@ -85,14 +90,14 @@ enforces what's mechanically checkable and prints the rest:
 - pre-merge quiz passed (skill `finding-unknowns`) on significant diffs (P0/P1 or multi-module)
 - shipped sections migrated: design doc → `docs/architecture/feature.md` (or the repo's
   `docs/specs/{subsystem}/`); design doc shrunk to a pointer or deleted
-- PR merged / branch merged & deleted; `pr:` recorded in task.md frontmatter
+- PR open; `pr:` recorded in task.md frontmatter
 - durable decisions promoted from task.md → repo bible (AGENTS.md)
 - prototypes: keep hifi if it's the living reference, else delete; spikes killed
 - regression tests named after the behavior exist and are green
 
-Automation hook (owned repos, via your PR bot/CI): a merged PR on branch `task/NNN-*` runs
-`task done NNN --check` (read-only) and comments the result on the PR. The owner then runs
-`task done NNN`. CI never writes `task.md` — single writer holds.
+Automation hook (owned repos, via your PR bot/CI): a PR from branch `task/NNN-*` runs
+`task done NNN --check` (read-only) and comments the result on the PR; merge after it
+reports closeable, then delete the branch. CI never writes `task.md` — single writer holds.
 
 ## Experimentation is a first-class lane
 
