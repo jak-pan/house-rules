@@ -44,7 +44,7 @@ token scope.
 
 ## Verify
 
-CI checks the report linter's JavaScript syntax on Windows, macOS, and Linux. This is a
+CI checks the report linter's JavaScript syntax. This is a
 smoke check, not proof of the linter's behavior or of any agent's discovery. The source
 repository keeps no test suite; maintenance decisions are recorded in commits. Projects
 using House Rules keep their own tests.
