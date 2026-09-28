@@ -13,7 +13,8 @@ Durable continuation preserves useful context across sessions.
 At ~80% context (or before any compaction), write the handoff, then end the session so a
 successor resumes from it. Also write one at session end and on ownership change. The
 handoff is an **immutable record in the tracker** — by default a comment on the issue;
-without a Git host, an empty commit on the work branch; or the legacy ledger until the
+without a Git host or while the tracker is unreachable, an empty commit on the work
+branch; or the legacy ledger until the
 repository migrates (skill `work-tracking`). Same required
 contents everywhere:
 

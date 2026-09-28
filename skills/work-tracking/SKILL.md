@@ -72,7 +72,7 @@ it, never from memory or a status file.
 Project operations (`gh project …` and the `--project` flags) need the `project` token
 scope (read-only use needs `read:project`); the operator grants it with
 `gh auth refresh -s project`. Without it, record the pending grant (INSTALL-AGENTS.md)
-and do not claim. Before first use, the operator adds In review and Blocked to the Status
+and work as §When the tracker is unreachable describes. Before first use, the operator adds In review and Blocked to the Status
 field in the project settings (`gh` cannot edit an existing field's options), and the
 `P0`–`P3` labels are created with `gh label create`. Look up the project's ID and the Status field and option IDs
 once, and record them with the project number in the bible:
@@ -121,6 +121,14 @@ or attempt comment.
 Record work in branch names and commit messages. A handoff is an empty commit on the work
 branch (`git commit --allow-empty -F .tmp/handoff.md`); design docs and prototypes use the
 branch slug in place of an issue number. Add a host before parallel or multi-agent work.
+
+## When the tracker is unreachable
+
+When the host or its CLI is unavailable (not installed, logged out, missing scope,
+offline), continue only items you already own and write their handoffs as empty commits on
+the work branch, as above. Claim nothing new: whether an item is unassigned cannot be
+checked. Record the outage as a pending operator action. When access returns, post each
+handoff commit on the issue as a comment, oldest first, then update Status.
 
 ## Migration from Markdown ledgers
 
