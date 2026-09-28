@@ -11,13 +11,15 @@ const project = projectRoot();
 const tasks = process.env.TASKS_DIR || relative(process.cwd(), join(project, 'tasks')) || '.';
 const now = () => new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 const fail = (message) => { throw new Error(message); };
+const ownerPattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const ownerRule = 'use letters, digits, dot, underscore or hyphen, starting with a letter or digit';
 const usage = `Usage: house-rules task <command>
   new "title" [P0|P1|P2|P3]      create the next task (pending)
   claim ID [owner] [--force]     claim and activate; --force explicitly takes over
   status ID <state>              pending|active|review|blocked
   done ID [--check] [--force]    check or close; --force skips gates, never ownership
   handoff ID                     create a new handoff scaffold; fill it before closing
-  release ID                     require a filled handoff, clear owner, return to pending
+  release ID                     require the owner's filled handoff; unclaim, set pending
   index                          regenerate tasks/TASKS.md
   board                          print the current board without writing
   house-rules root               print this installation's source directory
@@ -28,7 +30,8 @@ in the target project: tasks/ is found at the Git top level (the nearest folder
 containing .git), else the current directory; TASKS_DIR overrides it. Owner
 defaults to AGENT_NAME, USER, USERNAME, then the operating-system username.
 Commit task state and the generated board together. Claims are cooperative
-ownership records, not exclusive locks across Git checkouts.`;
+records, not locks, even within one checkout; run parallel lanes in separate
+worktrees.`;
 
 // The nearest folder containing .git (a directory, or a file in a linked worktree);
 // without one, the current directory. tasks/ and design: paths resolve from it.
@@ -49,13 +52,21 @@ function id(value) {
 }
 
 function agent(value) {
-  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value || ''))
-    fail('bad owner/agent: use letters, digits, dot, underscore or hyphen; start with a letter or digit');
+  if (!ownerPattern.test(value || '')) fail(`bad owner '${value ?? ''}': ${ownerRule}`);
   return value;
 }
 
 function currentAgent() {
-  return agent(process.env.AGENT_NAME || process.env.USER || process.env.USERNAME || userInfo().username);
+  let origin = ['AGENT_NAME', 'USER', 'USERNAME'].find((name) => process.env[name]);
+  let value = origin ? process.env[origin] : '';
+  if (!origin) {
+    origin = 'the operating-system account';
+    try { value = userInfo().username; } catch { value = ''; }
+  }
+  if (ownerPattern.test(value)) return value;
+  const example = value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[^A-Za-z0-9]+|-+$/g, '') || 'your-name';
+  fail(`bad identity '${value}' from ${origin}: ${ownerRule}. Set AGENT_NAME, for example AGENT_NAME=${example}`);
 }
 
 function entries(directory) {
@@ -122,7 +133,7 @@ function update(file, fields) {
   for (const [key, value] of Object.entries(fields)) {
     const pattern = new RegExp(`^${key}:[^\\r\\n]*`, 'm');
     if (!pattern.test(header)) fail(`missing ${key}: field in ${file}`);
-    header = header.replace(pattern, () => `${key}: ${value}`);
+    header = header.replace(pattern, () => value ? `${key}: ${value}` : `${key}:`);
   }
   const temporary = join(dirname(file), `.task-${randomUUID()}.tmp`);
   try {
@@ -145,6 +156,11 @@ function latestHandoff(directory) {
     .map((entry) => entry.name).sort().at(-1);
 }
 
+// Current names: YYYYMMDD-HHMMSS-<agent>-NNNNNN.md; earlier helpers: YYYYMMDD-HHMMSS-<agent>.md.
+function handoffAuthor(name) {
+  return (/^\d{8}-\d{6}-(.+)-\d{6}\.md$/.exec(name) ?? /^\d{8}-\d{6}-(.+)\.md$/.exec(name))?.[1];
+}
+
 function filledHandoff(file) {
   const text = fs.readFileSync(file, 'utf8').replace(/<!--[\s\S]*?(?:-->|$)/g, '');
   const filled = new Set();
@@ -156,13 +172,17 @@ function filledHandoff(file) {
   return ['Objective', 'Completed', 'Pending', 'Blockers', 'Decisions'].every((name) => filled.has(name));
 }
 
-// The closeout and release gates: the latest handoff is filled in.
-function handoffProblems(directory, reference) {
+// The closeout and release gates: the latest handoff is the owner's and is filled in.
+function handoffProblems(directory, reference, owner) {
   const write = `house-rules task handoff ${reference}`;
   const latest = latestHandoff(directory);
   if (!latest) return [`no Markdown handoff in ${join(directory, 'handoffs')}; the owner writes one: ${write}`];
   const file = join(directory, 'handoffs', latest);
+  const author = handoffAuthor(latest);
   const problems = [];
+  if (!owner) problems.push(`task is unclaimed; the latest handoff ${file} must be written by the owner`);
+  else if (author !== owner)
+    problems.push(`latest handoff ${file} was written by ${author ? `'${author}'` : 'an unrecognized author'}, not the owner '${owner}'; the owner writes a new one: ${write}`);
   if (!filledHandoff(file)) problems.push(`latest handoff ${file} needs content in Objective, Completed, Pending, Blockers and Decisions`);
   return problems;
 }
@@ -230,7 +250,7 @@ function run(args) {
     return console.log(JSON.parse(fs.readFileSync(join(source, 'package.json'), 'utf8')).version);
   if (args.shift() !== 'task') fail(usage);
   const command = args.shift();
-  if (!command || command === '--help' || command === '-h') return console.log(usage);
+  if (!command || [command, ...args].some((arg) => arg === '--help' || arg === '-h')) return console.log(usage);
   if (['board', 'index'].includes(command)) {
     if (args.length) fail(usage);
     return command === 'board' ? process.stdout.write(board()) : console.log(`wrote ${index()}`);
@@ -239,6 +259,7 @@ function run(args) {
     if (args.length < 1 || args.length > 2) fail(usage);
     const [title, priority = 'P2'] = args;
     if (!title.trim() || /[\p{Cc}\p{Zl}\p{Zp}]/u.test(title)) fail('title must be nonblank and contain no control characters');
+    if (title.startsWith('--')) fail(`title must not start with "--"; it looks like an option: ${title}`);
     if (!/^P[0-3]$/.test(priority)) fail('priority must be P0, P1, P2 or P3');
     const value = nextId();
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'task';
@@ -281,8 +302,8 @@ function run(args) {
   if (command === 'done') {
     if (args.some((arg) => !['--check', '--force'].includes(arg))) fail(usage);
     const check = args.includes('--check'), force = args.includes('--force');
-    if (!check) requireOwner(file, reference);
-    const problems = handoffProblems(directory, reference);
+    const owner = check ? frontmatter(file).get('owner') : requireOwner(file, reference);
+    const problems = handoffProblems(directory, reference, owner);
     const design = frontmatter(file).get('design');
     if (design) problems.push(...designProblems(design));
     const override = `(override: house-rules task done ${reference} --force — justify in the final handoff)`;
@@ -295,14 +316,13 @@ function run(args) {
     return console.log(`${reference} -> done\nReview closeout: delivery recorded, design migrated, durable decisions promoted, and relevant verification complete.`);
   }
   if (args.length) fail(usage);
-  requireOwner(file, reference);
+  const owner = requireOwner(file, reference);
   if (command === 'release') {
-    const problems = handoffProblems(directory, reference);
-    if (problems.length) fail(`REFUSED: release needs a filled latest Markdown handoff\n  - ${problems.join('\n  - ')}`);
+    const problems = handoffProblems(directory, reference, owner);
+    if (problems.length) fail(`REFUSED: release needs a filled latest handoff written by the owner\n  - ${problems.join('\n  - ')}`);
     transition(reference, `released ${reference} -> pending (unclaimed)`, () => update(file, { owner: '', status: 'pending', updated: now() }));
     return console.log(`released ${reference} -> pending (unclaimed)`);
   }
-  const owner = currentAgent();
   const time = now();
   const stamp = time.replaceAll('-', '').replace('T', '-').replaceAll(':', '').replace('Z', '');
   fs.mkdirSync(join(directory, 'handoffs'), { recursive: true });
