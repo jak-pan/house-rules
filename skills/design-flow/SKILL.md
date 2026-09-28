@@ -42,14 +42,15 @@ a design entirely inside the approved outcome and decision boundaries may be mar
 `approved` at the base confidence threshold, with evidence recorded and the operator
 informed. Otherwise keep `draft` and ask about the consequential unresolved choice.
 Record whether approval came from the operator or delegated authority; do not imply
-operator review when it did not happen. A P1 design — one that decides where canonical
-data lives, moves or creates a security boundary, or assigns ownership between
-repositories or modules — is approved only by the operator; delegated authority and
-confidence thresholds cover P2/P3 designs, never P1. Until the operator approves, the
-design stays `draft` and its work item stays Blocked on that decision. A design that
+operator review when it did not happen. A P0 or P1 design (AGENTS.md §Autonomy), and any
+design that decides where canonical data lives, moves or creates a security boundary, or
+assigns ownership between repositories or modules, is approved only by the operator;
+delegated authority and confidence thresholds cover the remaining P2/P3 designs. Urgent P0
+containment needs no design approval. Until the operator approves, the design stays
+`draft` and its work item stays Blocked on that decision. A design that
 contradicts a recorded plan, another design, or another repository's roadmap names the
 contradiction and resolves it in the same approval. Boundary: this governs approval of the
-design record; implementation inside an approved P1 design follows the normal autonomy
+design record; implementation inside an approved P0/P1 design follows the normal autonomy
 rules. Operator direction: 2026-09-28, after agent-approved designs put a product's
 canonical records in a second store beside the shared one, contradicting a parallel plan
 that was never reconciled. Priorities follow the base definitions.
