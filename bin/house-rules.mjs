@@ -74,16 +74,19 @@ function entries(directory) {
   catch (error) { if (error.code === 'ENOENT') return []; throw error; }
 }
 
+function numberedDirectories() {
+  return entries(tasks).filter((entry) => entry.isDirectory() && /^\d+-/.test(entry.name)).map((entry) => entry.name);
+}
+
 function taskDirectories() {
   // A task is a directory holding task.md; folders Git leaves behind after a branch switch are not tasks.
-  return entries(tasks)
-    .filter((entry) => entry.isDirectory() && /^\d+-/.test(entry.name) && fs.existsSync(join(tasks, entry.name, 'task.md')))
-    .map((entry) => entry.name);
+  return numberedDirectories().filter((name) => fs.existsSync(join(tasks, name, 'task.md')));
 }
 
 function nextId() {
+  // Count leftover folders too, so a new task never lands on a leftover folder's name.
   let last = 0n;
-  for (const name of taskDirectories()) {
+  for (const name of numberedDirectories()) {
     const value = BigInt(id(name.split('-')[0]));
     if (value > last) last = value;
   }

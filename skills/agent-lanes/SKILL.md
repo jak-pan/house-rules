@@ -41,7 +41,8 @@ explicit goals.
   the work is abandoned, the lane owner removes its worktree and its build/target directory in
   the same step, after confirming the worktree holds no uncommitted or unpushed work,
   `git status --ignored` shows no evidence, run results or secret files to keep
-  (`.debug-session/`, `runs/`, `.env.local`; move those to the main checkout first), and no
+  (`.debug-session/`, `runs/`, `.env.local`; move those to the main checkout first, without
+  overwriting existing files), and no
   running process uses its build directory. `git worktree remove` deletes ignored files. Shared
   caches (compiler cache, model caches) stay. Operator direction: 2026-09-28, after merged-PR
   worktrees and per-lane build directories cut free disk to 56 GB.
