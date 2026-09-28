@@ -1,6 +1,7 @@
 ---
 name: ci-build-optimization
 description: Diagnose and reduce CI build time and cost, especially Rust cache reuse, runner sizing, and safe parallel scheduling. Use for CI performance work; application runtime tuning belongs elsewhere.
+license: MIT
 ---
 
 # CI build optimization

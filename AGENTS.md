@@ -144,7 +144,8 @@ scope it applies to, the scope it does not, and the source incident.
    code is validated against the real input population. A symptom or alert is dismissed
    only by directly probing the reporting system, never by explaining it away.
 2. **Questions are questions.** Never kill or reconfigure running work because one was
-   asked. Operator-reported symptoms are ground truth.
+   asked. Operator-reported symptoms are ground truth that the symptom occurred, not
+   proof of its cause.
 3. **Runtime evidence or nothing.** "Works" = ran and observed (logs, tests, artifacts).
    Never fabricate.
 4. **Communicate clearly.** Follow §Actionable communication.
@@ -229,10 +230,11 @@ brevity must not remove evidence or content needed to complete the task.
   every turn, on a simple question, or after the operator already chose a mode. Continue
   independent inspection while a choice is pending. A decision fork is not a new task or
   worktree.
-- In autonomous mode, ≥90% confidence plus evidence that the choice is reversible and
-  inside the approved outcome, risk boundaries, and resource envelope permits proceeding.
-  Confidence is a judgment, not a calibrated probability or a grant of authority.
-  Below that threshold, or when evidence is missing, present options and a recommendation.
+- In autonomous mode, proceed when you judge the choice at least 90% likely to be right
+  and evidence shows it is reversible and inside the approved outcome, risk boundaries,
+  and resource envelope. The 90% is a judgment threshold, not a calibrated probability
+  or a grant of authority. Below it, or when evidence is missing, present options and a
+  recommendation.
   In decision-fork mode, also ask before consequential design choices; ordinary steps
   implementing an already selected option continue without repeated confirmation.
 - In either mode, changes to product scope, shipped product defaults, material risk,
@@ -282,7 +284,7 @@ brevity must not remove evidence or content needed to complete the task.
   and merges need explicit task or project authorization; a standing project choice
   counts, so do not ask again when it already authorizes the action. Confidence alone
   never grants delivery authority. Subagents must not push or merge into main. This
-  rule does not change the separate policy for spawning agents.
+  rule does not change when agents may be spawned (§Resource envelopes, §Parallel work).
 - **Externally-owned repos: read, clone, fork freely — never push, open PRs/issues, or
   comment until the operator says ready.**
 - Docs ride the same commit as the code they describe.

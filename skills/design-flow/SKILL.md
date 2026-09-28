@@ -77,14 +77,15 @@ literally, and when reality forces a deviation, update the design doc in the sam
 
 A feature is done when the code shipped AND the paper trail moved. Run `task done NNN` as
 the last commit on the task branch, before merge. The `task done` gate enforces what's
-mechanically checkable and prints the rest:
+mechanically checkable; the rest is the agent's checklist (the gate prints only a one-line
+reminder):
 
 **Enforced (refuses otherwise, `--force` to override with justification in the handoff):**
 - the latest Markdown handoff has content in all five standard sections (structural
   validation only; the owner remains responsible for its evidence)
 - the linked design doc is `implemented` or `superseded` (never `draft`/`approved`)
 
-**Checklist (printed, agent's judgment):**
+**Checklist (agent's judgment):**
 - pre-merge quiz passed on significant work (skill `finding-unknowns`)
 - shipped sections migrated: design doc → `docs/architecture/feature.md` (or the repo's
   `docs/specs/{subsystem}/`); design doc shrunk to a pointer or deleted

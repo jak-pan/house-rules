@@ -1,6 +1,6 @@
 ---
 name: goal-loop
-description: Run autonomous iteration toward an explicit measurable target or acceptance checklist, including overnight work and "do not stop" mandates. The loop remains bound to the operator's outcome and approved resource envelope; a supporting subproblem cannot become the goal.
+description: Run autonomous iteration toward an explicit measurable target or acceptance checklist. Use when the operator sets such a target, including overnight work and "do not stop" mandates. The loop remains bound to the operator's outcome and approved resource envelope; a supporting subproblem cannot become the goal.
 license: MIT
 ---
 
@@ -43,8 +43,8 @@ When the goal is "match this reference" or "iterate until perfect":
 
 - Store the reference artifact locally; **diff every iteration against it before
   reporting** — never claim "closer" without having looked.
-- Keep the attempt ledger: tried → result → distance-to-goal. If a change moved away
-  from the reference, revert before the next idea.
+- Log each attempt in the campaign ledger as tried → result → distance-to-goal. If a
+  change moved away from the reference, revert before the next idea.
 - Set an iteration budget inside the resource envelope (for example, after the approved
   number of attempts without convergence, stop patching and restart from a simpler base).
   Record the budget as a standing rule for the task.
@@ -64,8 +64,9 @@ When the goal is "match this reference" or "iterate until perfect":
   (AGENTS.md) before another attempt.
 - Supporting work is consuming the critical path without changing the completion gap.
 - Continuing requires a new work category or expansion of the resource envelope.
-- Target reached → verify with N-run confirmation, then full wrap-up: final score vs
-  baseline, what moved the needle, what didn't, updated ledger, docs.
+- Target reached → confirm with repeated runs sized per skill `bench-discipline`
+  §Measurement and uncertainty, then full wrap-up: final score vs baseline, what moved
+  the needle, what didn't, updated ledger, docs.
 
 These conditions pause the affected loop, not unrelated primary work.
 

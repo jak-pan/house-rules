@@ -94,4 +94,4 @@ executes and interprets the comparison.
   usage and cost, deviations from the plan, and the next decision.
 - Keep each run's tried → result → verdict record in the Git-tracked work item, and in
   the campaign ledger for sustained iteration (`STRUCTURE.md`). Store large or sensitive
-  run artifacts under the project's artifact policy and link the evidence.
+  run artifacts under the project's retention policy and link the evidence.

@@ -13,7 +13,8 @@ Rules.
 ## Workspace
 
 - Cargo workspace, crates prefixed `<product>-<name>`; edition 2024 for new crates.
-- `rust-toolchain.toml` pinned and committed in every Rust repo; rustup only (no brew rust).
+- `rust-toolchain.toml` pinned and committed in every Rust repo; install Rust with rustup,
+  not a system package manager.
 - Feature gates for optional subsystems (`sqlite`, `http`, `cli`, `experimental-*`);
   experimental features default OFF and byte-identical when off.
 - Minimal dependencies — hand-roll small things before importing heavy deps. Household set: serde, serde_json,
@@ -48,8 +49,8 @@ cargo clippy --release --workspace --all-targets -- -D warnings
 cargo test --release --workspace --all-features --no-fail-fast
 ```
 
-Zero warnings is the bar. Architecture guard scripts
-(`scripts/ci-architecture-guards.sh`) run after structural changes. Env-mutating tests use
+Zero warnings is the bar. The repo's architecture guard scripts, if any, run after
+structural changes. Env-mutating tests use
 `#[serial(env)]`; fixtures are synthetic and date-relative (no fixture rot).
 
 ## Config layering (default for Rust products)
@@ -59,7 +60,8 @@ built-in sane defaults → versioned TOML (profiles/presets) → env vars → CL
 ```
 
 - Per-product config crates — the same kit gets different settings per consuming product.
-- Model/provider settings layer general → provider → provider-model (foundation owns them);
+- Model/provider settings layer general → provider → provider-model (the shared
+  configuration crate owns them);
   no blanket rpm/tpm defaults buried in code.
 - Env-var tuning (ad-hoc `MYAPP_*` knobs) is for experiments, not a production artifact —
   promote proven knobs into typed config keys.

@@ -1,6 +1,6 @@
 ---
 name: operator-protocol
-description: Interpret operator instructions, report progress, and handle decisions within the chosen collaboration mode. Use during substantive work, status requests, interruptions, and decision handling.
+description: Interpret operator instructions, report progress, and handle decisions within the chosen collaboration mode. Use when answering a status request, interpreting steering (yes, continue, stop, a numbered reply), reporting progress on long-running work, or escalating a decision.
 license: MIT
 ---
 

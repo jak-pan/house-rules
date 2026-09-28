@@ -15,8 +15,8 @@ explicit goals.
 - **Ownership.** Each lane's work item lists its explicit file set; before merging a
   lane's work, check its diff against that list.
 - **Isolation.** Lanes work in worktrees/branches; the main repo checkout stays untouched.
-  Rust lanes pass `--target-dir .tmp/cargo-target/<lane>` so parallel cargo doesn't deadlock
-  on `target/` or leak artifacts.
+  Rust lanes pass `--target-dir .tmp/cargo-target/<lane>` so parallel cargo doesn't block
+  on the shared `target/` lock or leak artifacts.
 - **Git limits.** Lanes push only their own task branches, within the delivery authority
   recorded in the bible (policy: AGENTS.md §Git). Commits follow the repo's canon; lanes
   report exactly which files they touched.

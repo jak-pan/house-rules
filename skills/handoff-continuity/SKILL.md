@@ -13,7 +13,8 @@ Durable continuation preserves useful context across sessions.
 At ~80% context (or before any compaction), write the handoff, then end the session so a
 successor resumes from it. Also write one at session end and on ownership change. The
 handoff is an **immutable record wherever the workspace tracker keeps them**: file
-protocol → `task handoff NNN` under `tasks/NNN-slug/handoffs/`; external tracker → a
+protocol → `house-rules task handoff NNN` (skill `task-protocol`) under
+`tasks/NNN-slug/handoffs/`; external tracker → a
 closing comment/entry on the work item; legacy repos → a dated HANDOVER-YYYY-MM-DD.md.
 Same required contents everywhere:
 
@@ -88,6 +89,6 @@ a cheaper/reproducible probe instead.
 "continue task NNN" (or "read HANDOVER-*.md and continue") is a complete instruction.
 Resume means: read the work item's state + latest handoff + bible + campaign ledger, verify
 claimed state against reality (is that run still live? did the commit land?), then
-continue the Pending list — without re-testing what the ledger settles and without
-re-asking answered questions. After a crash: commit recoverable work first (when commits
+continue the Pending list — without re-testing what the ledger settles absent new
+evidence and without re-asking answered questions. After a crash: commit recoverable work first (when commits
 are authorized), then resume.

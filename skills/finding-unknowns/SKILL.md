@@ -42,8 +42,9 @@ adapted to the House Rules lifecycle.)
 
 **Question discipline**: design-time and mid-execution uncertainty questions are welcome;
 one precise question beats a confidently-bad decision. The forbidden thing is permission
-theater (AGENTS.md §Actionable communication). How to ask, and to keep unblocked work
-moving meanwhile: skill `operator-protocol` §Decisions.
+theater: asking to continue work that is already authorized (AGENTS.md §Actionable
+communication). How to ask, and to keep unblocked work moving meanwhile: skill
+`operator-protocol` §Decisions.
 
 ## During implementation
 
@@ -59,9 +60,12 @@ moving meanwhile: skill `operator-protocol` §Decisions.
 
 ## After implementation
 
-- **Pitch doc** (`PITCH.md` in the work item's record): prototype + spec + implementation
-  notes in one shareable artifact, demo first (screenshot/GIF) — the closing handoff links it.
-- **Pre-merge quiz**: before closeout on significant work (P0/P1, or any diff spanning multiple modules), generate a short self-quiz
+Significant work means P0/P1, or any diff spanning multiple modules.
+
+- **Pitch doc** on significant work (`PITCH.md` in the work item's record): prototype +
+  spec + implementation notes in one shareable artifact, demo first (screenshot/GIF) —
+  the closing handoff links it.
+- **Pre-merge quiz**: before closeout on significant work, generate a short self-quiz
   from the diff — the questions a reviewer would ask (why this boundary? what breaks if X?
   which invariant guards Y?) — and answer from evidence. Anything you can't answer from
   the actual code/runs is an unknown that escaped; chase it before merge.

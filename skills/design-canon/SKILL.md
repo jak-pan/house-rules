@@ -32,7 +32,7 @@ model stack in an unrelated application.
 - **Black-box modules.** Hosts never see internals of a kit they consume (a host app must
   have zero knowledge of its memory kit's store internals).
   Facades + adapters + capability manifests; standalone reusable products with semver deps,
-  nothing "bench-owned" or host-owned.
+  nothing owned by a benchmark harness or a single host.
 - **One parameterized pipeline** with skip/reuse flags — never forked ad-hoc flows tweaked
   independently. **One mechanism per concept**: duplicate paths doing "basically the same
   thing" get merged; dead or rule-violating paths get deleted completely.

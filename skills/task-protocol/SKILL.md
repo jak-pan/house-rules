@@ -54,11 +54,11 @@ command. Registry-based npx usage is available only after the npm package is pub
 
 ```bash
 task new "title" [P0-P3]   # scaffold next NNN
-task claim NNN <owner> [--force]   # refuses if owned by someone else; --force takes over
+task claim NNN [owner] [--force]   # owner defaults to your identity (below); refuses if owned by someone else; --force takes over
 task status NNN <state>    # pending | active | review | blocked  (done goes through `task done`)
 task done NNN [--check] [--force]   # closeout GATE: requires a filled latest handoff and a
-                           # migrated linked design doc (design: → status: implemented);
-                           # prints the judgment checklist; --check reports without writing (CI use)
+                           # migrated linked design doc (design: → status: implemented or superseded);
+                           # prints a closeout reminder; --check reports without writing (CI use)
 task handoff NNN           # new immutable handoff file (Objective/Completed/Pending/Blockers/Decisions)
 task release NNN           # require filled handoff, clear owner, set pending, regenerate board
 task index                 # regenerate tasks/TASKS.md (deterministic, idempotent)

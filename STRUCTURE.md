@@ -13,7 +13,7 @@ repo/
 ├── docs/
 │   ├── SYSTEM-MAP.md              # ONE high-level system map (skill design-canon §Docs)
 │   ├── design/                    # INTENT — approved future design
-│   │   └── NNN-feature-name.md    #   NNN = owning task id; status: draft|approved|implemented
+│   │   └── NNN-feature-name.md    #   NNN = owning task id; statuses: see below
 │   ├── architecture/              # SHIPPED behavior
 │   │   └── feature-name.md        #   no task number — durable name
 │   ├── specs/                     # product/subsystem specs (where repo uses spec layout)
@@ -65,9 +65,10 @@ repo/
 | Commit | `type(scope): description` | `feat(recall): stage2 rerank` |
 | Crates | `<product>-<domain>` | `acme-intake` |
 
-General: kebab-case everywhere; English only; names say what things do (no defaults in
-names; disambiguate lookalikes, `captured_at` ≠ `ingested_at` ≠ `observed_at`); rename
-confusing names the moment they're noticed.
+General: kebab-case for directories and slugs; UPPERCASE for fixed canonical file names
+(`TASKS.md`, `SPIKE.md`, `PITCH.md`); English only; names say what things do (no
+defaults in names; disambiguate lookalikes, `captured_at` ≠ `ingested_at` ≠
+`observed_at`); rename confusing names the moment they're noticed.
 
 ## Temp storage — three classes, one rule
 
@@ -78,7 +79,7 @@ inspectable, deliberately prunable, and inside the project's backup boundary.
 
 | Class | Where | Lifecycle |
 |---|---|---|
-| Evidence — screenshots, debug logs, run reports you will open | `.debug-session/` | retain according to the task/project evidence policy; task closure alone does not authorize deletion |
+| Evidence — screenshots, debug logs, run reports you will open | `.debug-session/` | retain per the project's retention policy (none recorded: AGENTS.md §Security); task closure alone does not authorize deletion |
 | Machine scratch — build targets, caches, never opened by a human | `.tmp/` | remove only under AGENTS.md §Security ownership, reproducibility, and active-process checks |
 | Tool-provided session scratchpads (agent-harness temp dirs) | wherever the tool puts them | ephemeral by definition — copy anything worth keeping into the repo before session end |
 
