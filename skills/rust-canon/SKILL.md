@@ -25,8 +25,11 @@ defaults too: preserve explicit user and repository decisions and the host's con
 - Never `unwrap()` in library code (tests only). Errors bubble to the caller/operator;
   no fail-open, no silent skip.
 - Async on tokio; non-blocking, multi-threaded by default.
-- `--release` by default for everything executed or measured; debug builds only when
-  actively debugging (assertions, symbols, tight edit-compile loops).
+- `--release` by default for everything built, executed or measured, including CI checks,
+  Clippy, tests and smoke artifacts. Use the development profile only for active debugging
+  (assertions, symbols, tight edit-compile loops) or a named debug-only invariant. Reusing
+  compiled outputs across gates: skill `ci-build-optimization`. Operator direction:
+  2026-09-07, cross-repository CI correction.
 - `///` docs on public items; names say what things do (`captured_at` ≠ `ingested_at`;
   no defaults encoded in names). Rename confusing things immediately.
 
@@ -42,8 +45,8 @@ Gates must pass on the final candidate; iteration cadence per AGENTS.md §Verifi
 
 ```
 cargo fmt --all --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace --all-features --no-fail-fast
+cargo clippy --release --workspace --all-targets -- -D warnings
+cargo test --release --workspace --all-features --no-fail-fast
 ```
 
 Zero warnings is the bar. Red→green regression test per bug fix. Architecture guard scripts
