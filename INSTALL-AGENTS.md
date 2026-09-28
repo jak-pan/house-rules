@@ -181,14 +181,9 @@ exist. The entire `custom/` directory is gitignored because it describes one
 machine's tools, paths, accounts, and verification state. Start from
 `CUSTOM-INDEX.example.md`.
 
-In a downloaded npm archive, `.gitignore` may be absent. Before creating machine-local
-records, add `custom/` to the permanent source's `.gitignore` if missing, preserving
-existing entries. Do not copy that source ignore file into projects using House Rules.
-
 Keep one durable installation receipt per product home in `custom/installations/` (JSON
 or a small Markdown table) and list the receipts in `custom/INDEX.md`. Record the source
-root and any previous roots, the source revision (`git rev-parse HEAD`) or the npm tarball
-integrity value, native instruction file, managed block, optional external-rule file,
+root and any previous roots, the source revision (`git rev-parse HEAD`), native instruction file, managed block, optional external-rule file,
 every link/copy destination, installed content hashes, backup locations, helper
 invocation, and filesystem/runtime verification. Do not record secrets. The receipt is
 the ownership evidence used for update and removal.
@@ -232,13 +227,9 @@ Helper availability:
 - The text rules and skills can be available without their executable helpers.
 - Git-backed tasks remain the default. The optional helper and report linter need Node.js
   22 or later. Invoke `node "<HOUSE_RULES_ROOT>/bin/house-rules.mjs" task ...` from the target
-  repository, or `npm exec --package="<HOUSE_RULES_ROOT>" -- house-rules task ...`. Use native
-  Windows paths when appropriate; no shell utilities are required. Check the runtime only
-  when selecting helpers; do not install it silently. Git task files can be edited directly.
-- The npm package is prepared but not published. Do not assume registry npx commands are
-  available. An npm execution cache is temporary: never use it as the permanent source
-  for native instruction pointers, skill links, or installation receipts. Unpack/download
-  the distribution to a stable user-owned directory for global rules and skills.
+  repository. Use native Windows paths when appropriate; no shell utilities are required.
+  Check the runtime only when selecting helpers; do not install it silently. Git task
+  files can be edited directly.
 - Existing helper links to the old zsh `bin/task` need updating. Identify them from the
   installation receipt and replace only House Rules links or aliases. Do not claim a
   bare `task` or `house-rules` command is ours without verifying its resolution.
@@ -267,12 +258,10 @@ Report filesystem and runtime verification separately.
 ## 6. Update and remove
 
 `custom/` holds this machine's index, receipts, backups and any external rules, inside the
-source folder. Never use an npm global install or npx cache folder as the source:
-updating or removing that package deletes `custom/`.
+source folder. Never use a temporary folder such as a downloads folder or a package-manager
+cache as the source.
 
-To update a Git checkout, pull. To update from an archive, extract it into a new sibling
-folder, compare it with the permanent source, move `custom/` into it, then swap the
-folders. Then repeat planning and verification. Compare the Skill list with the receipt:
+To update, pull the Git checkout, then repeat planning and verification. Compare the Skill list with the receipt:
 link new Skills and remove owned links to Skills that no longer exist. Symlinked Skills
 pick up source changes immediately; copied Skills require an explicit refresh.
 

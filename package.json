@@ -1,27 +1,10 @@
 {
   "name": "@jak-pan/house-rules",
   "version": "0.1.0",
+  "private": true,
   "description": "Opinionated foundations for coding agents. Sensible defaults, fully overridable.",
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/jak-pan/house-rules.git" },
-  "homepage": "https://github.com/jak-pan/house-rules#readme",
-  "bugs": { "url": "https://github.com/jak-pan/house-rules/issues" },
   "type": "module",
   "engines": { "node": ">=22" },
-  "bin": { "house-rules": "bin/house-rules.mjs" },
-  "files": [
-    "AGENTS.md",
-    "PREFERENCES.md",
-    "STRUCTURE.md",
-    "INSTALL-AGENTS.md",
-    "CUSTOM-INDEX.example.md",
-    "NOTICE.md",
-    "LICENSES/",
-    "bin/house-rules.mjs",
-    "skills/*/SKILL.md",
-    "skills/ci-build-optimization/references/*.md",
-    "skills/audit-report-authoring/references/*.md",
-    "skills/audit-report-authoring/scripts/lint-report-set.mjs"
-  ],
-  "publishConfig": { "access": "public" }
+  "bin": { "house-rules": "bin/house-rules.mjs" }
 }

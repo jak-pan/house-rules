@@ -16,9 +16,9 @@ enrollment material, or copied account configuration in it.
 
 One receipt per product home, in `custom/installations/`.
 
-| Receipt | Product and home | Source revision or tarball integrity | Date |
+| Receipt | Product and home | Source revision | Date |
 |---|---|---|---|
-| `<file>` | `<e.g. Codex, ~/.codex>` | `<git rev-parse HEAD or npm integrity>` | `<YYYY-MM-DD>` |
+| `<file>` | `<e.g. Codex, ~/.codex>` | `<git rev-parse HEAD>` | `<YYYY-MM-DD>` |
 
 ## Capabilities
 
