@@ -333,9 +333,14 @@ flagged in the handoff. Deliverables get an adversarial verify pass. Mechanics: 
 Never remove or downgrade a security/architecture boundary as a workaround. Credentials
 never enter cloud AI prompts, tracked files, reports, or routine logs. Prefer the platform
 keychain or an established secret manager, injecting credentials at runtime. When a tool
-requires a file, use an explicitly configured, untracked, access-restricted local secret
-file outside the repository; existing project arrangements require the same exclusion and
-access protections. Record locations without values. Environment variables transport
+requires a file, use an explicitly configured, owner-only local secret file that Git never
+tracks: a `.env.local`-style file inside the repository once `git check-ignore` confirms it
+is ignored, otherwise a file outside the repository; existing project arrangements require
+the same exclusion and access protections. When the operator must supply a value, the agent
+creates that file with variable names only and opens it for them; the operator never has to
+create files or change permissions. Record locations without values. Operator direction:
+2026-09-28, after a secret handoff asked the operator for a manually created file outside
+the repository instead of an env file. Environment variables transport
 secrets; they are not encrypted storage. Redact diagnostic output at capture. Retain any
 necessary raw sensitive records only in restricted local storage with deliberate retention;
 share sanitized extracts. Sensitive-data egress is the operator's explicit decision.

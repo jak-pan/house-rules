@@ -46,6 +46,11 @@ explicit goals.
   record the intended concurrency and measurement conditions before launch.
 - Cleanup follows AGENTS.md §Security. Identify ownership and retention before pruning;
   old runs and datasets are not automatically disposable. Large artifacts live outside the repo.
+- Finishing a lane includes removing what it created to be disposable. When its PR merges or
+  the work is abandoned, the lane owner removes its worktree and its build/target directory in
+  the same step, after confirming the worktree holds no uncommitted or unpushed work. Shared
+  caches (compiler cache, model caches) stay. Operator direction: 2026-09-28, after merged-PR
+  worktrees and per-lane build directories cut free disk to 56 GB.
 - Never build `--release` in a shared tree while a paused run may depend on the existing
   binary — release builds clobber it; use your lane's target dir.
 
