@@ -81,8 +81,8 @@ mechanically checkable; the rest is the agent's checklist (the gate prints only 
 reminder):
 
 **Enforced (refuses otherwise, `--force` to override with justification in the handoff):**
-- the latest Markdown handoff has content in all five standard sections (structural
-  validation only; the owner remains responsible for its evidence)
+- the latest Markdown handoff is written by the current owner and has content in all five
+  standard sections (structural validation only; the owner remains responsible for its evidence)
 - the linked design doc is `implemented` or `superseded` (never `draft`/`approved`)
 
 **Checklist (agent's judgment):**
