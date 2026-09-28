@@ -46,7 +46,7 @@ repo/
 | Design doc | `docs/design/<issue>-kebab.md` — carries the owning issue number | `docs/design/42-rerank-stage2.md` |
 | Architecture doc | `docs/architecture/kebab.md` — durable, no id | `docs/architecture/rerank-pipeline.md` |
 | Report | `docs/reports/YYYY-MM-DD-topic.md` | `2026-07-06-knob-audit.md` |
-| Branch | `<issue>-<slug>` — advertises the lane; not an exclusive lock | `42-rerank-stage2` |
+| Branch | `<issue>-<slug>`, or `<slug>` until the issue exists; holds the item's Git record (skill `work-tracking`) | `42-rerank-stage2` |
 | Run name | neutral benchmark condition, never debugging history | `candidate-answer-thinking` |
 | Spike | `prototypes/spikes/YYYY-MM-DD-question/` | `2026-07-06-fts-vs-vector-speed/` |
 | Legacy ledger | `tasks/`, `NEXT.md`, or `HANDOVER-YYYY-MM-DD.md` — un-migrated repos only (skill `work-tracking` §Migration) | `HANDOVER-2026-07-06.md` |

@@ -75,7 +75,7 @@ literally, and when reality forces a deviation, update the design doc in the sam
 ## 6. Closeout — the PR merge closes the issue
 
 A feature is done when the code shipped AND the paper trail moved. The PR closes the issue
-on merge (skill `work-tracking` §Branches and PRs) and carries this checklist:
+on merge (skill `work-tracking` §The host view) and carries this checklist:
 
 - pre-merge quiz passed on significant work (skill `finding-unknowns`)
 - design doc `implemented` or `superseded` (never `draft`/`approved`); shipped sections
@@ -85,7 +85,8 @@ on merge (skill `work-tracking` §Branches and PRs) and carries this checklist:
 - durable decisions promoted from the issue → the bible
 - prototypes: keep hifi if it's the living reference, else delete; spikes killed
 - regression tests required by AGENTS.md §Verification exist and are green
-- final handoff comment by the current owner, every section filled (`None` when empty;
+- final handoff record by the current owner, mirrored to the issue, every section filled
+  (`None` when empty;
   skill `handoff-continuity`)
 
 Merge only when the checklist holds, then delete the branch.

@@ -37,10 +37,12 @@ uses Python and FastAPI; retain that stack.”
 
 ## Track work
 
-By default, projects track work as issues on their Git host's project board instead of
-Markdown status files. The [work-tracking](skills/work-tracking/SKILL.md) skill covers claims,
-handoffs, branches, and pull requests; on GitHub, agents use `gh` with the `project`
-token scope.
+By default, work is recorded in Git: claims, handoffs, and experiment attempts are
+commits on each item's work branch, so tracking works offline. When the Git host is
+reachable, they are mirrored to issues on its project board. The
+[work-tracking](skills/work-tracking/SKILL.md) skill covers claims, handoffs, offline
+sync, branches, and pull requests; on GitHub, agents use `gh` with the `project` token
+scope.
 
 ## Verify
 

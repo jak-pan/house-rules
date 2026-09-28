@@ -49,7 +49,7 @@ communication). How to ask, and to keep unblocked work moving meanwhile: skill
 ## During implementation
 
 - **Implementation notes**: every deviation from the plan (edge case forced a different
-  approach) gets the what + why as an issue comment as it happens. Design-doc-affecting
+  approach) gets the what + why in the message of the commit that deviates, as it happens. Design-doc-affecting
   deviations update the design doc in the same commit (skill `design-flow` §Implement).
 - **Output as signal**: when a result surprises you or the operator, treat it as a map gap
   first, a bug second — something wasn't in the prompt/spec that should have been. Fix the

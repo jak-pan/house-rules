@@ -12,11 +12,9 @@ Durable continuation preserves useful context across sessions.
 
 At ~80% context (or before any compaction), write the handoff, then end the session so a
 successor resumes from it. Also write one at session end and on ownership change. The
-handoff is an **immutable record in the tracker** — by default a comment on the issue;
-without a Git host or while the tracker is unreachable, an empty commit on the work
-branch; or the legacy ledger until the
-repository migrates (skill `work-tracking`). Same required
-contents everywhere:
+handoff is an **immutable record** — by default a handoff record (an empty commit on the
+work branch, mirrored to the issue when the host is reachable), or the legacy ledger until
+the repository migrates (skill `work-tracking`). Same required contents everywhere:
 
 ```
   Objective   — the standing goal, verbatim (incl. numeric targets)
@@ -90,9 +88,10 @@ a cheaper/reproducible probe instead.
 
 ## Resuming
 
-"continue #NNN" (or "continue" with a legacy ledger in an un-migrated repo) is a complete
-instruction. Resume means: read the work item's state + latest handoff + bible + campaign
-ledger, verify claimed state against reality (is that run still live? did the commit
+"continue #NNN" (or "continue <branch>", or "continue" with a legacy ledger in an
+un-migrated repo) is a complete instruction. Resume means: read the work item's latest
+handoff record and claim snapshot on its work branch, its host state when reachable, the
+bible, and its campaign ledger, verify claimed state against reality (is that run still live? did the commit
 land?), then continue the Pending list — without re-testing what the ledger settles
 absent new evidence and without re-asking answered questions. After a crash: commit
 recoverable work first (when commits are authorized), then resume.

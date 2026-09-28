@@ -17,7 +17,8 @@ target.
    holds the operator outcome, measurable target or acceptance checklist, current
    completion gap, approved resource envelope, allowed primary/supporting work categories,
    baseline with measured variance where applicable, and knob map with wired/tested
-   status; its campaign ledger holds the tried→result→verdict log. After a context reset,
+   status; its campaign ledger — attempt records on the campaign branch — holds the
+   tried→result→verdict log. After a context reset,
    resume per skill `handoff-continuity` §Resuming.
 2. **Cheap first.** Order the idea queue by cost (skill `bench-discipline` §Cost ladder).
    Promote to expensive runs only on cheap-tier wins.
