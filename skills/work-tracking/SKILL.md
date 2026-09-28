@@ -22,7 +22,8 @@ and the `gh` CLI; on another host or orchestrator, map the view and keep the rec
   1. When the host is reachable, `git fetch`; the issue must have no assignee.
   2. `git branch -a --list '<issue>-*' '*/<issue>-*'` (for a slug-only item, its slug)
      must print nothing. It covers this clone's branches and remote branches as last
-     fetched; a match means the item is taken.
+     fetched; a match means the item is taken, unless its latest record has
+     `Status: Todo` (released): then check that branch out and record a claim on it.
   3. Create the branch from the default branch in your lane's worktree
      (`git worktree add -b <branch> <path> "$d"`), which refuses a name already taken in
      this clone and its worktrees.
@@ -101,8 +102,8 @@ The tracker is worked every session, not only written to at the end.
    operator's request), and record a new claim for any item of yours whose issue body
    changed since its latest claim. Continue items you own before starting new ones; when a
    request matches an existing item, work under that item instead of creating a duplicate.
-2. **Update as it happens.** Record each Status change in Git and, when reachable, set it
-   on the host and mirror. File each accepted finding, deferral, scoped-out piece, or
+2. **Update as it happens.** Record each Status change in Git (a handoff record) and, when
+   reachable, set it on the host and mirror. File each accepted finding, deferral, scoped-out piece, or
    follow-up as a work item in the owning repository when it arises, not at the end, and
    link it from the item, PR, review, or document that set it aside. A line such as
    "deferred", "not done here" or "belongs to the other side" in any document, PR, or
@@ -131,9 +132,10 @@ When the host is reachable again, sync each work branch:
    match, otherwise create the issue; rename the branch (`git branch -m <slug>
    <issue>-<slug>`), its design doc, and its prototype folder, and record a claim with
    `Work-Item: <issue>` and `Replaces: <slug>`.
-2. If the issue is assigned to anyone but you, another branch for it exists
-   (`git branch -r --list 'origin/<issue>-*'`), or its latest mirrored claim names another
-   agent, stop and coordinate (AGENTS.md §Work tracking); never merge another agent's
+2. If the issue is assigned to anyone but you, a remote branch for it exists that is not
+   yours (another name, or your name with commits you lack:
+   `git merge-base --is-ancestor origin/<branch> <branch>` fails), or its latest mirrored
+   claim names another agent, stop and coordinate (AGENTS.md §Work tracking); never merge another agent's
    claim into your branch.
 3. `git push -u origin <issue>-<slug>` (delete the old remote name if it was pushed),
    assign yourself, re-read the assignees, and set Status from the latest record.
@@ -156,7 +158,7 @@ git commit --allow-empty --only -F .tmp/record.md \
   --trailer "Work-Item: 42" --trailer "Record: handoff" --trailer "Agent: claude-1" \
   --trailer "Status: In progress"
 git log -1 --format=%B -E --all-match --grep='^Record: handoff$' \
-  --grep='^Work-Item: (42|rerank-stage2)$' 42-rerank-stage2 --not "$d" "origin/$d"
+  --grep='^Work-Item: (42|rerank-stage2)$' 42-rerank-stage2 --not "$d" "origin/$d"   # latest handoff
 git log --reverse --format='%h%x09%(trailers:key=Record,valueonly,separator=)%x09%s' \
   42-rerank-stage2 --not "$d" "origin/$d" | awk -F'\t' '$2 != ""'            # all records
 for b in $(git for-each-ref --format='%(refname:short)' refs/heads); do     # local board
