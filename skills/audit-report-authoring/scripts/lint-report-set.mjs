@@ -262,7 +262,8 @@ for (const report of config.reports) {
     fail(report.file, `public source URL appears outside embedded evidence: ${match[0]}`, lineNumber(text, match.index));
   }
 
-  for (const match of text.matchAll(/(?:^|[\s(])(?:\.\.\/|\/Users\/|file:\/\/)/gm)) {
+  // Workspace locators: parent-relative, macOS/Linux home, home shorthand, Windows drive, file URL.
+  for (const match of text.matchAll(/(?:^|[ \t(`])(?:\.\.[\\/]|\/Users\/|\/home\/|~[\\/]|[A-Za-z]:[\\/]|file:\/\/)/gm)) {
     fail(report.file, "contains an inaccessible workspace locator", lineNumber(text, match.index));
   }
 
