@@ -380,9 +380,8 @@ invariants hold; the default's mechanics: skill `work-tracking`.
   a request, search the tracker before acting and state whether it was tracked. Boundary:
   this covers operator-requested outcomes and findings the operator or a review accepted,
   not every idea an agent has (those are proposals, §Outcome and resource contract).
-  Operator direction: 2026-09-28, after a request to consolidate duplicated provider-queue
-  code, repeated at least five times since June, lived only in audits, a migration
-  document and a plan on an unmerged branch, and was never done.
+  Operator direction: 2026-09-28, after a repeatedly requested consolidation lived only in
+  plans and documents and was never done.
 
 Vocabulary, used consistently: **tracker** = the org/repo-defined work-management system;
 **work item** = one tracked unit of work (by default, an issue); **bible** = the
