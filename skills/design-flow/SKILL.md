@@ -68,7 +68,7 @@ AGENTS.md §Security.
 
 ## 5. Implement
 
-One branch per issue (`STRUCTURE.md`); test-first red→green; design doc is the spec — implement it
+One branch per issue per repository (`STRUCTURE.md`); test-first red→green; design doc is the spec — implement it
 literally, and when reality forces a deviation, update the design doc in the same commit
 (the doc never silently diverges from what's being built).
 
@@ -85,7 +85,8 @@ on merge (skill `work-tracking` §Branches and PRs) and carries this checklist:
 - durable decisions promoted from the issue → the bible
 - prototypes: keep hifi if it's the living reference, else delete; spikes killed
 - regression tests required by AGENTS.md §Verification exist and are green
-- final handoff comment on the issue (skill `handoff-continuity`)
+- final handoff comment by the current owner, every section filled (`None` when empty;
+  skill `handoff-continuity`)
 
 Merge only when the checklist holds, then delete the branch.
 

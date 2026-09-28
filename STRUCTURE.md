@@ -19,7 +19,7 @@ repo/
 │   ├── specs/                     # product/subsystem specs (where repo uses spec layout)
 │   │   └── {subsystem}/{subsystem}-spec.md
 │   └── reports/
-│       └── YYYY-MM-DD-topic.md    # dated (audits, reviews, handovers; a multi-file set is a
+│       └── YYYY-MM-DD-topic.md    # dated (audits, reviews; a multi-file set is a
 │                                  #   YYYY-MM-DD-topic/ dir); immutable once released —
 │                                  #   corrections go in a new dated report or a labeled erratum
 ├── prototypes/

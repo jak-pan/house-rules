@@ -20,8 +20,9 @@ trackers.
 
 ## Session start
 
-1. The bible (repository `AGENTS.md`) and `CONTEXT.md` when present → the project board
-   → your issue's current state + latest handoff comment.
+1. The bible (repository `AGENTS.md`) and `CONTEXT.md` when present → the tracker's board
+   (by default the project board; skill `work-tracking`) → your work item's current state +
+   latest handoff.
 2. Subsystem `CONTEXT.md`/`README.md` before touching that subsystem; read context files
    fully, not summaries.
 3. After any context reset, re-read the bible and any active campaign ledger.
@@ -293,7 +294,7 @@ brevity must not remove evidence or content needed to complete the task.
 ## Layout
 
 Canonical paths, naming, and temp-storage classes: `STRUCTURE.md` in the installed House
-Rules root. Defaults: derived views (boards, indexes, generated docs) are regenerated from
+Rules root. Defaults: derived views (indexes, generated docs) are regenerated from
 source, never hand-edited; nothing generated in repo root; large artifacts stay untracked;
 work from repo root (path args over `cd`); in Markdown, diagrams are Mermaid, never ASCII
 art.
@@ -367,7 +368,8 @@ invariants hold; the default's mechanics: skill `work-tracking`.
 - State has a single writer; everyone else reads.
 - Continuation is an **immutable handoff record** (contents, triggers, and resuming:
   skill `handoff-continuity`).
-- Boards and status views are derived views (§Layout), never hand-maintained truth.
+- Boards and status views are views over the tracker's items, never a hand-maintained
+  status file.
 
 Vocabulary, used consistently: **tracker** = the org/repo-defined work-management system;
 **work item** = one tracked unit of work (by default, an issue); **bible** = the

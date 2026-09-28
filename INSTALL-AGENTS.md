@@ -72,7 +72,7 @@ Before changing anything, report:
 - every House Rules Skill found at `skills/<name>/SKILL.md`;
 - whether each destination will use a directory symlink or a checked copy;
 - instruction files that will change and their backup destinations;
-- stale entries to remove (§3 steps 5 and 8), name conflicts, malformed existing blocks,
+- stale entries to remove (§3 steps 5 and 8; §5 helper links), name conflicts, malformed existing blocks,
   or policy that disables instructions or Skills;
 - external capabilities already installed and the command or owner responsible
   for each one.
@@ -219,6 +219,7 @@ Filesystem verification:
   and `groundwork:` markers too) and retains its surrounding operator content;
 - no other scanned Skill folder or parent-folder instruction file holds a stale House
   Rules, Forge or Groundwork entry, or an entry for a removed House Rules Skill;
+- no owned link or alias to a removed helper remains;
 - no custom or externally managed capability was copied into House Rules ownership;
 - `custom/INDEX.md` points to paths that exist and identifies their real owner.
 

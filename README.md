@@ -25,9 +25,6 @@ Clone the repository to a permanent user-owned directory:
 git clone https://github.com/jak-pan/house-rules.git ~/house-rules
 ```
 
-House Rules is distributed only through this repository; the unrelated npm package named
-`house-rules` is not this project.
-
 Then give your agent the prompt in [INSTALL-AGENTS.md](INSTALL-AGENTS.md). It preserves existing native
 instructions, adds a pointer to House Rules, and installs the skills in each product's
 supported location. Models, permissions, plugins, and MCP connections stay in native
@@ -40,8 +37,8 @@ uses Python and FastAPI; retain that stack.”
 
 ## Track work
 
-Projects track work as issues on their Git host, on a project board, never in Markdown
-status files. The [work-tracking](skills/work-tracking/SKILL.md) skill covers claims,
+By default, projects track work as issues on their Git host's project board instead of
+Markdown status files. The [work-tracking](skills/work-tracking/SKILL.md) skill covers claims,
 handoffs, branches, and pull requests; on GitHub, agents use `gh` with the `project`
 token scope.
 

@@ -17,7 +17,11 @@ merge requests.
 - **Claim:** confirm the issue has no assignee, assign yourself, and set Status to
   In progress. An existing assignee means the item is taken: coordinate before touching it.
 - **Takeover** is explicit: comment why, then reassign.
-- **Release** unfinished work: post a handoff, unassign yourself, and set Status to Todo.
+- **Release** unfinished work: post a handoff, set Status to Todo, then unassign yourself.
+- Agents that share one host account tell lanes apart by name: the claim is also a comment
+  `Claimed by <agent>`, each handoff is headed `## Handoff — <agent>`, and an issue assigned
+  to your login but last claimed by another agent is taken. After assigning, re-read the
+  assignees; anyone else listed means coordinate first.
 - Priority (AGENTS.md §Autonomy) is a `P0`–`P3` label; dependencies are the host's
   blocked-by links.
 
@@ -54,7 +58,9 @@ Only the owner edits the body. It holds:
 
 Branch names follow `STRUCTURE.md` (`<issue>-<slug>`, for example `42-rerank-stage2`). The
 PR body says `Closes #<issue>` and carries the closeout checklist (skill `design-flow`
-§Closeout); merging into the default branch closes the issue.
+§Closeout); merging into the default branch closes the issue. Work spanning repositories
+uses one branch per repository; PRs in the other repositories reference the issue as
+`OWNER/REPO#<issue>` without a closing keyword.
 
 ## Board
 
@@ -65,7 +71,10 @@ it, never from memory or a status file.
 
 Project operations (`gh project …` and the `--project` flags) need the `project` token
 scope (read-only use needs `read:project`); the operator grants it with
-`gh auth refresh -s project`. Look up the project's ID and the Status field and option IDs
+`gh auth refresh -s project`. Without it, record the pending grant (INSTALL-AGENTS.md)
+and do not claim. Before first use, the operator adds In review and Blocked to the Status
+field in the project settings (`gh` cannot edit an existing field's options), and the
+`P0`–`P3` labels are created with `gh label create`. Look up the project's ID and the Status field and option IDs
 once, and record them with the project number in the bible:
 
 ```sh
@@ -94,11 +103,12 @@ gh issue edit 42 --remove-assignee alice --add-assignee @me
 gh issue comment 42 --body-file .tmp/handoff.md
 gh issue view 42 --json comments \
   --jq '[.comments[] | select(.body | startswith("## Handoff"))] | last | .body'
-# branch and PR
-gh issue develop 42 --name 42-rerank-stage2 --checkout
+# branch and PR, in the lane's worktree
+git switch -c 42-rerank-stage2
+git push -u origin 42-rerank-stage2
 gh pr create --title "Rerank stage 2" --body-file .tmp/pr.md
 # board
-gh project item-list 7 --owner OWNER --query "-status:Done"
+gh project item-list 7 --owner OWNER --query "-status:Done" --limit 500
 ```
 
 Bodies are drafted in `.tmp/` (`STRUCTURE.md`); `--body-file -` reads standard input
@@ -108,13 +118,17 @@ or attempt comment.
 
 ## Repository without a Git host
 
-Record work in branch names and commit messages. Add a host before parallel or multi-agent
-work.
+Record work in branch names and commit messages. A handoff is an empty commit on the work
+branch (`git commit --allow-empty -F .tmp/handoff.md`); design docs and prototypes use the
+branch slug in place of an issue number. Add a host before parallel or multi-agent work.
 
 ## Migration from Markdown ledgers
 
 For a repository still tracking work in `tasks/`, `NEXT.md`, or dated handover files:
-create one issue per live item, copying its scope and decisions into the body and its
-latest handoff as the first comment. Then delete the ledger and its mentions in repository
-canon in the same commit. Until that commit the existing ledger stays authoritative; the
+create one issue per live item, copying its body sections (scope, acceptance criteria,
+decisions, lane, design link, execution constraints, pre-flight) into the issue body, its
+latest handoff as the first comment, and any campaign ledger as one `## Attempt` comment
+linking the ledger at the last commit before deletion. Rename its design doc and prototype
+folder to the issue number, and promote finished items' unpromoted decisions to the bible.
+Then delete the ledger and its mentions in repository canon in the same commit. Until that commit the existing ledger stays authoritative; the
 two never run as writable trackers side by side (AGENTS.md §Applicability and loading).
