@@ -1,31 +1,46 @@
 #!/usr/bin/env node
 // Git-backed task files. Ownership is cooperative; this CLI is not a lock service.
 import * as fs from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { userInfo } from 'node:os';
 import { randomUUID } from 'node:crypto';
 
 const source = dirname(dirname(fileURLToPath(import.meta.url)));
-const tasks = process.env.TASKS_DIR || 'tasks';
+const project = projectRoot();
+const tasks = process.env.TASKS_DIR || relative(process.cwd(), join(project, 'tasks')) || '.';
 const now = () => new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 const fail = (message) => { throw new Error(message); };
 const usage = `Usage: house-rules task <command>
-  new "title" [P0|P1|P2|P3]    create the next task (pending)
-  claim ID [owner] [--force]   claim and activate; --force explicitly takes over
-  status ID <state>           pending|active|review|blocked
-  done ID [--check] [--force]  check or close; --force skips gates, never ownership
-  handoff ID                  create a new handoff scaffold; fill it before closing
-  release ID                  require a filled handoff, clear owner, return to pending
-  index                       regenerate tasks/TASKS.md
-  board                       print the current board without writing
-  house-rules root            print this installation's source directory
-  house-rules --version       print the package version
+  new "title" [P0|P1|P2|P3]      create the next task (pending)
+  claim ID [owner] [--force]     claim and activate; --force explicitly takes over
+  status ID <state>              pending|active|review|blocked
+  done ID [--check] [--force]    check or close; --force skips gates, never ownership
+  handoff ID                     create a new handoff scaffold; fill it before closing
+  release ID                     require a filled handoff, clear owner, return to pending
+  index                          regenerate tasks/TASKS.md
+  board                          print the current board without writing
+  house-rules root               print this installation's source directory
+  house-rules --version          print the package version
 
-Run from the target project. TASKS_DIR defaults to tasks. Owner defaults to
-AGENT_NAME, USER, USERNAME, then the operating-system username. Task IDs contain
-3–18 digits. Commit task state and the generated board together. Claims are
-cooperative ownership records, not exclusive locks across Git checkouts.`;
+ID is a task ID of 3–18 digits or its full NNN-slug directory name. Run anywhere
+in the target project: tasks/ is found at the Git top level (the nearest folder
+containing .git), else the current directory; TASKS_DIR overrides it. Owner
+defaults to AGENT_NAME, USER, USERNAME, then the operating-system username.
+Commit task state and the generated board together. Claims are cooperative
+ownership records, not exclusive locks across Git checkouts.`;
+
+// The nearest folder containing .git (a directory, or a file in a linked worktree);
+// without one, the current directory. tasks/ and design: paths resolve from it.
+function projectRoot() {
+  let directory = process.cwd();
+  while (!fs.existsSync(join(directory, '.git'))) {
+    const parent = dirname(directory);
+    if (parent === directory) return process.cwd();
+    directory = parent;
+  }
+  return directory;
+}
 
 function id(value) {
   if (!/^[0-9]{3,18}$/.test(value || '') || BigInt(value) === 0n)
@@ -48,12 +63,47 @@ function entries(directory) {
   catch (error) { if (error.code === 'ENOENT') return []; throw error; }
 }
 
-function taskDirectory(value) {
-  id(value);
-  const matches = entries(tasks).filter((entry) => entry.isDirectory() && entry.name.startsWith(`${value}-`));
-  if (!matches.length) fail(`no task ${value} in ${tasks}/`);
-  if (matches.length !== 1) fail(`ambiguous task ID ${value}: ${matches.length} matching directories`);
-  return join(tasks, matches[0].name);
+function taskDirectories() {
+  return entries(tasks).filter((entry) => entry.isDirectory() && /^\d+-/.test(entry.name)).map((entry) => entry.name);
+}
+
+function nextId() {
+  let last = 0n;
+  for (const name of taskDirectories()) {
+    const value = BigInt(id(name.split('-')[0]));
+    if (value > last) last = value;
+  }
+  return id(String(last + 1n).padStart(3, '0'));
+}
+
+function freeIdHint() {
+  try { return nextId(); } catch { return 'the next free ID'; }
+}
+
+// A reference is an ID or the full NNN-slug directory name; the latter stays usable
+// when branches merged two tasks with the same ID.
+function taskDirectory(reference) {
+  const match = /^([0-9]{3,18})(-.+)?$/.exec(reference || '');
+  if (!match || BigInt(match[1]) === 0n)
+    fail(`bad task reference '${reference ?? ''}': expected an ID of 3–18 digits or its full NNN-slug directory name`);
+  const names = taskDirectories();
+  const matches = match[2] ? names.filter((name) => name === reference) : names.filter((name) => name.startsWith(`${reference}-`));
+  if (!matches.length) fail(`no task ${reference} in ${tasks}/`);
+  if (matches.length !== 1)
+    fail(`ambiguous task ID ${reference}: ${matches.length} matching directories (${matches.join(', ')}).\n`
+      + `Use the full directory name in place of the ID (for example ${matches.at(-1)}), or rename one directory `
+      + `to the next free ID (${freeIdHint()}) and update its id: field, then run: house-rules task index`);
+  return join(tasks, matches[0]);
+}
+
+// Frontmatter scalars: 'single' or "double" quoted, or plain with an optional # comment.
+function scalar(raw) {
+  const value = raw.trim();
+  const single = /^'((?:[^']|'')*)'(?:\s+#.*)?$/.exec(value);
+  if (single) return single[1].replaceAll("''", "'");
+  const double = /^"((?:[^"\\]|\\.)*)"(?:\s+#.*)?$/.exec(value);
+  if (double) return double[1].replace(/\\(.)/g, '$1');
+  return value.replace(/(?:^|\s+)#.*$/, '');
 }
 
 // Deliberately a small frontmatter format, not a general YAML parser. Keep the
@@ -62,11 +112,7 @@ function frontmatter(file) {
   const text = fs.readFileSync(file, 'utf8');
   const match = /^(---\r?\n)([\s\S]*?)(^---\r?$)/m.exec(text);
   if (!match || match.index !== 0) fail(`missing frontmatter in ${file}`);
-  const get = (key) => {
-    let value = match[2].split(/\r?\n/).find((line) => line.startsWith(`${key}:`))?.slice(key.length + 1).trim() || '';
-    if (value.startsWith("'") && value.endsWith("'")) value = value.slice(1, -1).replaceAll("''", "'");
-    return value;
-  };
+  const get = (key) => scalar(match[2].split(/\r?\n/).find((line) => line.startsWith(`${key}:`))?.slice(key.length + 1) ?? '');
   return { text, match, get };
 }
 
@@ -86,11 +132,12 @@ function update(file, fields) {
   } finally { if (fs.existsSync(temporary)) fs.unlinkSync(temporary); }
 }
 
-function requireOwner(file, value) {
+function requireOwner(file, reference) {
   const owner = frontmatter(file).get('owner');
   const caller = currentAgent();
-  if (!owner) fail(`REFUSED: task is unclaimed — run: house-rules task claim ${value}`);
-  if (owner !== caller) fail(`REFUSED: ${value} owned by '${owner}', not '${caller}'. Take over explicitly: house-rules task claim ${value} --force`);
+  if (!owner) fail(`REFUSED: task is unclaimed — run: house-rules task claim ${reference}`);
+  if (owner !== caller) fail(`REFUSED: ${reference} owned by '${owner}', not '${caller}'. Take over explicitly: house-rules task claim ${reference} --force`);
+  return owner;
 }
 
 function latestHandoff(directory) {
@@ -98,10 +145,8 @@ function latestHandoff(directory) {
     .map((entry) => entry.name).sort().at(-1);
 }
 
-function filledHandoff(directory) {
-  const latest = latestHandoff(directory);
-  if (!latest) return false;
-  const text = fs.readFileSync(join(directory, 'handoffs', latest), 'utf8').replace(/<!--[\s\S]*?(?:-->|$)/g, '');
+function filledHandoff(file) {
+  const text = fs.readFileSync(file, 'utf8').replace(/<!--[\s\S]*?(?:-->|$)/g, '');
   const filled = new Set();
   let section;
   for (const line of text.split(/\r?\n/)) {
@@ -111,12 +156,39 @@ function filledHandoff(directory) {
   return ['Objective', 'Completed', 'Pending', 'Blockers', 'Decisions'].every((name) => filled.has(name));
 }
 
+// The closeout and release gates: the latest handoff is filled in.
+function handoffProblems(directory, reference) {
+  const write = `house-rules task handoff ${reference}`;
+  const latest = latestHandoff(directory);
+  if (!latest) return [`no Markdown handoff in ${join(directory, 'handoffs')}; the owner writes one: ${write}`];
+  const file = join(directory, 'handoffs', latest);
+  const problems = [];
+  if (!filledHandoff(file)) problems.push(`latest handoff ${file} needs content in Objective, Completed, Pending, Blockers and Decisions`);
+  return problems;
+}
+
+function designProblems(design) {
+  const path = resolve(project, design);
+  if (!fs.existsSync(path)) return [`design: points at missing file '${design}'`];
+  let status;
+  try { status = frontmatter(path).get('status'); }
+  catch (error) { return [`design doc '${design}' cannot be checked: ${error.message.replaceAll(path, design)}`]; }
+  return ['implemented', 'superseded'].includes(status) ? []
+    : [`design doc ${design} must be implemented or superseded after migration`];
+}
+
 function board() {
   const states = ['active', 'review', 'blocked', 'pending', 'done'];
+  const names = taskDirectories();
+  const byId = Map.groupBy(names, (name) => name.split('-')[0]);
+  const duplicates = [...byId].filter(([, group]) => group.length > 1);
+  if (duplicates.length)
+    fail(duplicates.map(([value, group]) => `duplicate task ID ${value}: ${group.map((name) => join(tasks, name)).join(' and ')}`).join('\n')
+      + `\nRename each extra directory to a free ID (next: ${freeIdHint()}) and update its id: field, then run: house-rules task index.`
+      + '\nUntil then, refer to these tasks by their full directory names.');
   const rows = [];
-  for (const entry of entries(tasks)) {
-    if (!entry.isDirectory() || !/^\d+-/.test(entry.name)) continue;
-    const directory = join(tasks, entry.name);
+  for (const name of names) {
+    const directory = join(tasks, name);
     if (!fs.existsSync(join(directory, 'task.md'))) continue;
     const { get } = frontmatter(join(directory, 'task.md'));
     const value = id(get('id'));
@@ -141,6 +213,16 @@ function index() {
   return file;
 }
 
+// Check that the board can be regenerated before changing task.md, so a closed or
+// released task never sits beside a stale board.
+function transition(reference, result, change) {
+  try { board(); }
+  catch (error) { fail(`REFUSED: ${reference} unchanged; the board cannot be regenerated:\n  ${error.message.replaceAll('\n', '\n  ')}`); }
+  change();
+  try { index(); }
+  catch (error) { fail(`${result}, but ${join(tasks, 'TASKS.md')} was not regenerated: ${error.message}\nFix the cause, then run: house-rules task index`); }
+}
+
 function run(args) {
   if (!args.length || args[0] === '--help' || args[0] === '-h') return console.log(usage);
   if (args.length === 1 && args[0] === 'root') return console.log(resolve(source));
@@ -158,13 +240,7 @@ function run(args) {
     const [title, priority = 'P2'] = args;
     if (!title.trim() || /[\p{Cc}\p{Zl}\p{Zp}]/u.test(title)) fail('title must be nonblank and contain no control characters');
     if (!/^P[0-3]$/.test(priority)) fail('priority must be P0, P1, P2 or P3');
-    let last = 0n;
-    for (const entry of entries(tasks)) {
-      if (!entry.isDirectory() || !/^\d+-/.test(entry.name)) continue;
-      const value = BigInt(id(entry.name.split('-')[0]));
-      if (value > last) last = value;
-    }
-    const value = id(String(last + 1n).padStart(3, '0'));
+    const value = nextId();
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'task';
     const directory = join(tasks, `${value}-${slug}`);
     fs.mkdirSync(tasks, { recursive: true });
@@ -176,8 +252,8 @@ function run(args) {
     return console.log(file);
   }
   if (!['claim', 'status', 'done', 'handoff', 'release'].includes(command)) fail(usage);
-  const value = id(args.shift());
-  const directory = taskDirectory(value);
+  const reference = args.shift();
+  const directory = taskDirectory(reference);
   const file = join(directory, 'task.md');
   if (command === 'claim') {
     let owner, force = false;
@@ -189,44 +265,42 @@ function run(args) {
     owner ||= currentAgent();
     const previous = frontmatter(file).get('owner');
     if (previous && previous !== owner && !force)
-      fail(`REFUSED: ${value} owned by '${previous}'. Take over explicitly: house-rules task claim ${value} ${owner} --force`);
+      fail(`REFUSED: ${reference} owned by '${previous}'. Take over explicitly: house-rules task claim ${reference} ${owner} --force`);
     update(file, { owner, status: 'active', updated: now() });
-    return console.log(`claimed ${value} -> ${owner}`);
+    return console.log(`claimed ${reference} -> ${owner}`);
   }
   if (command === 'status') {
     if (args.length !== 1) fail(usage);
     const state = args[0];
-    if (state === 'done') fail(`REFUSED: 'status done' bypasses the closeout gate — use: house-rules task done ${value}`);
+    if (state === 'done') fail(`REFUSED: 'status done' bypasses the closeout gate — use: house-rules task done ${reference}`);
     if (!['pending', 'active', 'review', 'blocked'].includes(state)) fail(`bad status: ${state}`);
-    requireOwner(file, value);
+    requireOwner(file, reference);
     update(file, { status: state, updated: now() });
-    return console.log(`${value} -> ${state}`);
+    return console.log(`${reference} -> ${state}`);
   }
   if (command === 'done') {
     if (args.some((arg) => !['--check', '--force'].includes(arg))) fail(usage);
     const check = args.includes('--check'), force = args.includes('--force');
-    if (!check) requireOwner(file, value);
-    const problems = [];
-    if (!filledHandoff(directory)) problems.push('latest Markdown handoff needs content in Objective, Completed, Pending, Blockers and Decisions');
+    if (!check) requireOwner(file, reference);
+    const problems = handoffProblems(directory, reference);
     const design = frontmatter(file).get('design');
-    if (design) {
-      if (!fs.existsSync(design)) problems.push(`design: points at missing file '${design}'`);
-      else if (!['implemented', 'superseded'].includes(frontmatter(design).get('status')))
-        problems.push(`design doc ${design} must be implemented or superseded after migration`);
+    if (design) problems.push(...designProblems(design));
+    const override = `(override: house-rules task done ${reference} --force — justify in the final handoff)`;
+    if (check) try { board(); } catch (error) {
+      fail(`NOT CLOSEABLE: task ${reference}\n  - ${[...problems, `the board cannot be regenerated (--force does not bypass this):\n    ${error.message.replaceAll('\n', '\n    ')}`].join('\n  - ')}${problems.length ? `\n${override}` : ''}`);
     }
-    if (problems.length && (check || !force)) fail(`${check ? 'NOT CLOSEABLE' : 'REFUSED'}: task ${value}\n  - ${problems.join('\n  - ')}\n(override: house-rules task done ${value} --force — justify in the final handoff)`);
-    if (check) return console.log(`closeable: task ${value}`);
-    update(file, { status: 'done', updated: now() });
-    index();
-    return console.log(`${value} -> done\nReview closeout: delivery recorded, design migrated, durable decisions promoted, and relevant verification complete.`);
+    if (problems.length && (check || !force)) fail(`${check ? 'NOT CLOSEABLE' : 'REFUSED'}: task ${reference}\n  - ${problems.join('\n  - ')}\n${override}`);
+    if (check) return console.log(`closeable: task ${reference}`);
+    transition(reference, `${reference} -> done`, () => update(file, { status: 'done', updated: now() }));
+    return console.log(`${reference} -> done\nReview closeout: delivery recorded, design migrated, durable decisions promoted, and relevant verification complete.`);
   }
   if (args.length) fail(usage);
-  requireOwner(file, value);
+  requireOwner(file, reference);
   if (command === 'release') {
-    if (!filledHandoff(directory)) fail('REFUSED: release needs a filled latest Markdown handoff (Objective, Completed, Pending, Blockers, Decisions)');
-    update(file, { owner: '', status: 'pending', updated: now() });
-    index();
-    return console.log(`released ${value} -> pending (unclaimed)`);
+    const problems = handoffProblems(directory, reference);
+    if (problems.length) fail(`REFUSED: release needs a filled latest Markdown handoff\n  - ${problems.join('\n  - ')}`);
+    transition(reference, `released ${reference} -> pending (unclaimed)`, () => update(file, { owner: '', status: 'pending', updated: now() }));
+    return console.log(`released ${reference} -> pending (unclaimed)`);
   }
   const owner = currentAgent();
   const time = now();
@@ -235,7 +309,7 @@ function run(args) {
   for (let sequence = 1; ; sequence++) {
     const handoff = join(directory, 'handoffs', `${stamp}-${owner}-${String(sequence).padStart(6, '0')}.md`);
     try {
-      fs.writeFileSync(handoff, `# Handoff — task ${value} — ${owner} — ${time}\n<!-- IMMUTABLE once committed. Next session writes a NEW file. -->\n\n## Objective\n<!-- standing goal, verbatim, incl. numeric targets -->\n\n## Completed\n<!-- with evidence pointers: run dirs, commits, file:line -->\n\n## Pending\n<!-- ordered, cheapest/highest-signal first -->\n\n## Blockers\n<!-- exact state: what runs, what waits on whom -->\n\n## Decisions\n<!-- settled this session + rejected alternatives (why) -->\n`, { flag: 'wx' });
+      fs.writeFileSync(handoff, `# Handoff — task ${reference} — ${owner} — ${time}\n<!-- IMMUTABLE once committed. Next session writes a NEW file. -->\n\n## Objective\n<!-- standing goal, verbatim, incl. numeric targets -->\n\n## Completed\n<!-- with evidence pointers: run dirs, commits, file:line -->\n\n## Pending\n<!-- ordered, cheapest/highest-signal first -->\n\n## Blockers\n<!-- exact state: what runs, what waits on whom -->\n\n## Decisions\n<!-- settled this session + rejected alternatives (why) -->\n`, { flag: 'wx' });
       return console.log(handoff);
     } catch (error) { if (error.code !== 'EEXIST') throw error; }
   }
