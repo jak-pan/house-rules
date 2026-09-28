@@ -73,8 +73,7 @@ agent/model/tool run:
    resumed before allowing major spend or runtime to accumulate.
 
 At meaningful milestones, record actual spend, tokens, runtime, and rounds against the
-remaining envelope. A retry of the same failed operation is not a new round; a new
-provider, work category, independent auditor, or broad review pass is.
+remaining envelope (what counts as a new round: AGENTS.md §Resource envelopes).
 
 During a quiet or apparently stalled run, distinguish UI/wrapper silence from process
 failure: inspect the process, terminal/session state, transcript growth, checkpoints, and
@@ -82,7 +81,7 @@ provider status. A timeout is an observation, not authorization to kill the run.
 
 Before interrupt/restart/replacement, persist the latest recoverable output and decide
 whether the evidence proves no progress. For a materially paid or unique run, obtain the
-operator's approval unless the operator already ordered the stop. An urgent safety stop
+operator's approval unless AGENTS.md §Operator correction applies. An urgent safety stop
 takes precedence; capture only what can be captured without delaying it. If durable
 capture cannot be established at launch, ask the operator to accept the loss risk or use
 a cheaper/reproducible probe instead.

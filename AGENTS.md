@@ -77,8 +77,8 @@ A standing or campaign-specific resource envelope may define allowed agents,
 providers/models, concurrency, cost/token/runtime boundaries, review rounds, and stop
 conditions. Once the operator approves an envelope, orchestrate, parallelize, retry, and
 reassign resources inside it without per-call approval. A retry of the same failed
-operation stays inside the envelope; a new provider, work category, or broad review round
-is a new decision.
+operation stays inside the envelope; a new provider, independent auditor, work category,
+or broad review round is a new decision unless the approved envelope already names it.
 
 An explicit request to use agents or a named provider authorizes the requested work inside
 the stated campaign, but does not silently authorize unrelated work or recursively
@@ -103,15 +103,15 @@ another repair:
 
 The third occurrence does not automatically require operator approval and does not
 prohibit an obvious aligned fix. It prohibits a blind fourth iteration. Escalate only
-when the appropriate resolution changes product scope, material risk, or the resource
-envelope.
+when the appropriate resolution is a change that §Autonomy says requires a decision.
 
 ### Protected operator assets
 
-Banked resets, credits, purchases, subscriptions, credentials, and other account
-entitlements require just-in-time confirmation. Immediately before consuming or changing
-one, state the exact asset and effect and obtain explicit confirmation for that exact
-action.
+Discrete account entitlements — banked resets, one-time credits or vouchers, purchases,
+subscription changes, and credential creation, rotation, or revocation — require
+just-in-time confirmation. Immediately before consuming or changing one, state the exact
+asset and effect and obtain explicit confirmation for that exact action. Metered usage
+inside an approved resource envelope is not a protected-asset action.
 
 Requests for compensation, restoration, reimbursement, or "a reset" do not authorize
 consuming an existing asset. General autonomy, trust, urgency, standing goals, and
@@ -119,9 +119,10 @@ resource envelopes never override this requirement.
 
 ### Operator correction
 
-When the operator reports scope drift, waste, repetition, or says to stop, immediately
-halt new work and paid activity. Perform only safe containment needed to prevent
-continuing cost or damage. Reconcile the requested outcome before resuming.
+When the operator says to stop, or reports scope drift, waste, or repetition, immediately
+halt the affected work, including its running paid runs. Perform only safe containment
+needed to prevent continuing cost or damage. Reconcile the requested outcome before
+resuming.
 
 Distinguish current state from lasting guidance. Apply current-state clarifications to
 the active work immediately; a correction alone does not require a durable note, tracker
@@ -169,8 +170,7 @@ scope it applies to, the scope it does not, and the source incident.
 12. **Simplicity first.** Prefer deletion; one way to do things; five-whys before adding
     code; clean code even in experiments.
 13. **No speculative delivery dates.** Size plans by S/M/L/XL, chunk count, risk, and
-    dependencies rather than inventing completion ETAs. Paid, external, or long-running
-    work still requires an explicit maximum cost/token/runtime boundary before launch.
+    dependencies rather than inventing completion ETAs.
 14. **Surface unknowns** (skill `finding-unknowns`): blindspot pass and one-question-at-a-
     time interview for ambiguous work. Precise questions are welcome at any stage;
     permission theater is forbidden (skill `operator-protocol` §Decisions).
@@ -239,9 +239,10 @@ brevity must not remove evidence or content needed to complete the task.
   Below that threshold, or when evidence is missing, present options and a recommendation.
   In decision-fork mode, also ask before consequential design choices; ordinary steps
   implementing an already selected option continue without repeated confirmation.
-- In either mode, changes to product scope, material risk, external-write authority, or
-  the resource envelope require a decision. Protected operator assets keep their separate
-  confirmation requirement. Explicit task instructions and host controls take precedence.
+- In either mode, changes to product scope, shipped product defaults, material risk,
+  external-write authority, or the resource envelope require a decision. Protected operator
+  assets keep their separate confirmation requirement. Explicit task instructions and host
+  controls take precedence.
 - Priorities describe consequence: P0 is active severe harm needing immediate containment;
   P1 materially changes architecture, user data, security, or compatibility; P2 is bounded
   feature, fix, or review work; P3 is low-impact maintenance. P0/P1 need a design record
@@ -267,13 +268,15 @@ brevity must not remove evidence or content needed to complete the task.
   affect it.
 - Long-running checks fail on no-progress, not wall-clock.
 - **Authorized, bounded, and durable before expensive.** Paid, long-running, or
-  non-reproducible runs must (1) be primary or proportional supporting work inside an
-  approved envelope, (2) have a durable transcript or checkpoint and a recorded session ID
-  before the first substantive call, (3) record spend at milestones, and (4) never be
-  stopped on silence or a wrapper timeout without inspecting process state — stopping
-  material paid work needs operator approval unless the operator ordered it or safety
-  requires it. Routine short, cheap, reproducible commands are exempt. Procedure: skill
-  `handoff-continuity` §Authorized, bounded, and durable external runs.
+  non-reproducible external runs (agents, model CLIs, remote jobs, benchmarks, crawls)
+  must (1) be primary or proportional supporting work inside an approved envelope with an
+  explicit maximum cost/token/runtime boundary, (2) have a durable transcript or
+  checkpoint and a recorded session ID before the first substantive call, (3) record
+  spend at milestones, and (4) never be stopped on silence or a wrapper timeout without
+  inspecting process state — stopping material paid work needs operator approval unless
+  §Operator correction applies or safety requires it. Routine short, cheap, reproducible
+  commands are exempt. Procedure: skill `handoff-continuity` §Authorized, bounded, and
+  durable external runs.
 
 ## Git
 
@@ -325,8 +328,8 @@ Invariants: disjoint lane ownership (verify the diff stayed in-lane); append-onl
 spine files; isolate competing performance runs unless contention is the declared study;
 bound memory-heavy concurrency by verified host capacity and the approved resource envelope;
 every touched repo declared in the work item, with kit/API impacts on other consumers
-flagged in the handoff. Deliverables get an adversarial verify pass. Mechanics: skill
-`agent-lanes`.
+flagged in the handoff. Deliverables get an adversarial verify pass when an acceptance
+criterion or the approved review plan requires one. Mechanics: skill `agent-lanes`.
 
 ## Security
 

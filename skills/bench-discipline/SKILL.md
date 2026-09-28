@@ -45,8 +45,8 @@ limits remain governed by AGENTS.md and the applicable project rules.
   artifacts. A large change with little effect warrants a wiring check, but may also be
   a valid null result.
 - Keep experiment settings explicit and reproducible. Name the baseline configuration;
-  do not silently change shipped defaults to simplify a benchmark command. Product
-  default changes follow the authority rules in AGENTS.md.
+  do not silently change shipped defaults to simplify a benchmark command (AGENTS.md
+  §Autonomy).
 - When drift or a configuration error affects a run, identify the affected measurements,
   record their validity limits, and repeat only the comparisons whose evidence is no
   longer usable. Preserve the original artifacts and the correction.

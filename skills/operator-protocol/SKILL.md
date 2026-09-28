@@ -17,7 +17,8 @@ preferences, not this communication procedure.
 - An affirmative response selects the recommendation or action actually under discussion.
 - A numbered or lettered response selects the corresponding offered option.
 - A request to continue resumes pending authorized work; it does not reactivate deferred scope.
-- A stop or wait instruction halts the affected work; preserve state and reconcile intent.
+- A stop or wait instruction halts the affected work (AGENTS.md §Operator correction);
+  preserve state.
 - A request for more depth expands effort only inside the agreed scope and resource limits.
 - A question asks for an answer or investigation, not an unrelated configuration change.
   Treat reported symptoms as observations to investigate, not proof of a particular cause.
@@ -32,17 +33,17 @@ required by the base verification rules. Surface failures promptly with their ev
 ## Decisions
 
 Use the collaboration mode recorded under AGENTS.md §Autonomy. A routine implementation
-choice inside that agreement is different from a change to product scope, material risk,
-shipped defaults, or resources. State that distinction when escalating a decision.
+choice inside that agreement is different from a change §Autonomy says requires a
+decision. State that distinction when escalating a decision.
 
 For a decision needing input, explain its consequence, offer the viable options and a
 recommendation, and ask once. Batch independent decisions when that makes answering easier;
 continue work that does not depend on the answers. Do not re-ask settled questions or turn
 ordinary progress into repeated permission requests.
 
-Changing a measured experiment setting follows the recorded experiment plan. Changing a
-shipped product default or invalidating baseline comparability needs the relevant decision
-record and authorization, not merely an improved score.
+Changing a measured experiment setting follows the recorded experiment plan. An improved
+score alone never authorizes changing a shipped product default or invalidating baseline
+comparability; both need a recorded decision (AGENTS.md §Autonomy).
 
 ## Collaboration
 

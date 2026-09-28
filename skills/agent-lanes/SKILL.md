@@ -30,9 +30,8 @@ explicit goals.
   the operator explicitly says ready — anti-spam is a hard rule.
 - **Audits have round boundaries.** An audit-only request produces findings and proposed
   fixes. Repair and confirmation belong to the round when the operator requested them;
-  do not infer mutation authority from a request to inspect or explain. A new
-  independent auditor, new broad pass, or different work category is another round unless
-  the resource envelope explicitly includes it. Audit lanes surface opportunistic
+  do not infer mutation authority from a request to inspect or explain. What counts as a
+  new round: AGENTS.md §Resource envelopes. Audit lanes surface opportunistic
   findings, but those findings enter the queue rather than automatically preempting the
   primary path.
 
@@ -56,9 +55,9 @@ explicit goals.
 
 ## Orchestration patterns
 
-- **Recon sweep → design → build → proportional critique → gate → fix.** Use an adversarial
-  verifier when required by an acceptance criterion or included in the approved review
-  plan. Verification stays inside its approved agent, round, and resource boundary.
+- **Recon sweep → design → build → proportional critique → gate → fix.** When to add an
+  adversarial verifier: AGENTS.md §Parallel work. Verification stays inside its approved
+  agent, round, and resource boundary.
 - **Decision handling.** Lanes follow the collaboration mode in AGENTS.md §Autonomy.
   Escalate choices beyond delegated authority with options and a recommendation; continue
   ordinary implementation choices inside the recorded agreement.
