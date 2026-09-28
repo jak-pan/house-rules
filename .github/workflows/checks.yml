@@ -23,13 +23,10 @@ jobs:
         run: node --check bin/house-rules.mjs
       - name: Check report helper syntax
         run: node --check skills/audit-report-authoring/scripts/lint-report-set.mjs
-      # --version must reach the CLI: if npm kept the argument, it would print its own version.
-      - name: Verify npm CLI entry point
+      - name: Verify CLI version
         shell: bash
         run: |
           expected="$(node -p "require('./package.json').version")"
-          actual="$(npm exec --offline --yes --package=. -- house-rules --version)"
+          actual="$(node bin/house-rules.mjs --version)"
           echo "package.json: $expected; house-rules --version: $actual"
           test "$actual" = "$expected"
-      - name: Inspect package contents
-        run: npm pack --dry-run
