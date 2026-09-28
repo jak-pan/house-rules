@@ -50,41 +50,53 @@ Current baseline locations are:
 |---|---|---|
 | Claude Code | `$CLAUDE_CONFIG_DIR/CLAUDE.md`, default `~/.claude/CLAUDE.md` | `$CLAUDE_CONFIG_DIR/skills/`, default `~/.claude/skills/` |
 | Codex | `$CODEX_HOME/AGENTS.md`, default `~/.codex/AGENTS.md` | `~/.agents/skills/` |
-| Kimi Code | `$KIMI_CODE_HOME/AGENTS.md`, default `~/.kimi-code/AGENTS.md` | `~/.agents/skills/`; `$KIMI_CODE_HOME/skills/` is Kimi-specific |
+| Kimi Code | `$KIMI_CODE_HOME/AGENTS.md`, default `~/.kimi-code/AGENTS.md` | `~/.agents/skills/` (Kimi also scans `$KIMI_CODE_HOME/skills/`; do not install there) |
 
-`~` means the real home directory of the operating-system user running the
-agent. Use native Windows paths for Windows-native agents. Recheck these
-baselines against current vendor documentation during installation.
+Verified 2026-09-28 with Claude Code 2.1, Codex CLI 0.153 and Kimi Code 0.41. `~` means
+the real home directory of the operating-system user running the agent. Use native
+Windows paths for Windows-native agents. Recheck these baselines against current vendor
+documentation during installation.
+
+A product may run with several configuration homes, for example Codex accounts launched
+with different `CODEX_HOME` folders. Find each one: ask the operator and check launchers,
+shell aliases and wrapper apps that set the variable. A folder is a Codex home only if it
+contains `config.toml` or `auth.json`. Every home gets its own managed block, override
+check and receipt. `~/.agents/skills/` is shared by all Codex homes and Kimi: install it
+once and remove it only when no configured product still uses House Rules.
 
 ## 2. Produce a no-write plan
 
 Before changing anything, report:
 
 - the permanent House Rules source path;
-- selected agent products and their resolved instruction and Skill locations;
+- selected agent products, every configuration home, and their resolved instruction and
+  Skill locations;
 - every House Rules Skill found at `skills/<name>/SKILL.md`;
 - whether each destination will use a directory symlink or a checked copy;
 - instruction files that will change and their backup destinations;
-- name conflicts, malformed existing House Rules blocks, or policy that disables
-  instructions or Skills;
+- stale entries to remove (§3 steps 5 and 8), name conflicts, malformed existing blocks,
+  or policy that disables instructions or Skills;
 - external capabilities already installed and the command or owner responsible
   for each one.
 
 Prefer directory symlinks on platforms and products that support them. Use a
-copy when symlinks are unavailable or inappropriate. A copied Skill must retain
-its House Rules source path and source revision in the installation report so updates
-do not silently drift.
+copy when symlinks are unavailable or inappropriate; native Windows needs Developer Mode
+or elevation for symlinks. A copied Skill must retain its House Rules source path and
+source revision in the installation report so updates do not silently drift.
 
 Never overwrite an unrelated file, directory, or symlink merely because its
-name matches a House Rules Skill. Reuse a link only when its canonical target is the
-same House Rules Skill. Update a copy only after proving it was installed from House Rules
-and has not been edited independently.
+name matches a House Rules Skill. A link is owned by House Rules when its target as
+written, even if that target no longer exists, is `<root>/skills/<same name>` for the
+current source root or a previous root recorded in a receipt. A copy is owned only when
+it matches a receipt. Reuse or replace only owned entries; report any other same-name
+entry as a conflict.
 
 ## 3. Install House Rules instructions and Skills
 
-For each selected product:
+For each selected product and configuration home:
 
-1. Back up an existing global instruction file before changing it.
+1. Back up an existing global instruction file before changing it. If the file is a
+   symlink, edit its resolved target; never replace the link itself.
 2. Add or replace exactly one block delimited by:
 
    ```text
@@ -115,11 +127,18 @@ For each selected product:
    settings.
    <!-- house-rules:end -->
    ```
-4. Older installations use the project's earlier `forge:` or `groundwork:` begin/end
-   markers. Back up and migrate that block in place to the House Rules markers; never
-   append a second block. Preserve all content outside the managed block. Duplicate,
-   incomplete, or reversed markers are a conflict requiring inspection; do not guess.
-5. Preserve human-authored existing rules in place unless the operator chooses a merge.
+4. Older installations use the project's earlier names: `<!-- forge:begin -->` /
+   `<!-- forge:end -->` or `<!-- groundwork:begin -->` / `<!-- groundwork:end -->`.
+   Back up and migrate that block in place to the House Rules markers; never append a
+   second block. Count all three marker families together: a file with more than one
+   block, or with incomplete or reversed markers, is a conflict requiring inspection;
+   do not guess. Preserve all content outside the managed block.
+5. Put the block only in each product's global instruction file. Claude Code also loads
+   `AGENTS.md` and `CLAUDE.md` from the parent folders of its working directory, so a
+   House Rules, Forge or Groundwork block in `~/AGENTS.md`, `~/CLAUDE.md` or a
+   workspace parent folder loads a second copy. Search those locations; back up and
+   remove such a block instead of migrating it.
+6. Preserve human-authored existing rules in place unless the operator chooses a merge.
    For consolidation, first copy them to a machine-local
    `custom/external-rules/<tool>.md`, excluding third-party managed blocks. Review the
    proposed text and duplicates, then replace only that agreed original content with
@@ -127,16 +146,22 @@ For each selected product:
    rules separate when their meanings differ. Record ownership and a backup in the receipt.
    This is an ordinary referenced file, not a new native instruction-discovery feature.
    Never move another product's managed block out of the file it updates.
-6. Codex loads `$CODEX_HOME/AGENTS.override.md` instead of `AGENTS.md` when it exists.
-   If an override file is present, place the block there or remove the override
-   deliberately; otherwise the House Rules block is never read.
-7. Install each House Rules Skill into `~/.agents/skills/` for Codex and Kimi.
-   Do not use the legacy `$CODEX_HOME/skills/` location as the portable target.
-8. Install the same House Rules Skills into Claude Code's native user Skill
+7. Codex loads `$CODEX_HOME/AGENTS.override.md` instead of `AGENTS.md` when it exists.
+   If an override file is present in a home, place the block there; otherwise the House
+   Rules block is never read. Delete or rename an override only with operator approval
+   and a backup.
+8. Install each House Rules Skill into `~/.agents/skills/` for Codex and Kimi. Then
+   check the other folders those products scan — `$CODEX_HOME/skills/` in every Codex
+   home and `$KIMI_CODE_HOME/skills/` — for entries with a House Rules Skill name.
+   Codex reads `$CODEX_HOME/skills/` first and keeps the first Skill of each name, so a
+   stale entry there hides the new one. Record each owned entry (ownership rule in §2)
+   in the receipt, then remove it. Report other same-name entries as conflicts. Never
+   touch `$CODEX_HOME/skills/.system/`.
+9. Install the same House Rules Skills into Claude Code's native user Skill
    directory. A symlink may point directly to the House Rules source; otherwise copy
    the complete Skill directory.
-9. Do not install anything from `custom/` as though House Rules owned it. Follow the
-   ownership recorded in `custom/INDEX.md`.
+10. Do not install anything from `custom/` as though House Rules owned it. Follow the
+    ownership recorded in `custom/INDEX.md`.
 
 Writes should be staged in the destination directory and atomically renamed
 where the host supports it. If a multi-file operation fails, preserve backups,
@@ -160,11 +185,13 @@ In a downloaded npm archive, `.gitignore` may be absent. Before creating machine
 records, add `custom/` to the permanent source's `.gitignore` if missing, preserving
 existing entries. Do not copy that source ignore file into projects using House Rules.
 
-Keep a durable installation receipt in `custom/installations/<tool>.json` or an equivalent
-small Markdown table. Record the source revision or bundle digest, native instruction
-file, managed block, optional external-rule file, every link/copy destination, installed
-content hashes, backup locations, helper invocation, and filesystem/runtime verification.
-Do not record secrets. The receipt is the ownership evidence used for update and removal.
+Keep one durable installation receipt per product home in `custom/installations/` (JSON
+or a small Markdown table) and list the receipts in `custom/INDEX.md`. Record the source
+root and any previous roots, the source revision (`git rev-parse HEAD`) or the npm tarball
+integrity value, native instruction file, managed block, optional external-rule file,
+every link/copy destination, installed content hashes, backup locations, helper
+invocation, and filesystem/runtime verification. Do not record secrets. The receipt is
+the ownership evidence used for update and removal.
 
 The index records optional Skills, plugins, MCP clients, browsers, and related
 capabilities. For each entry record:
@@ -193,8 +220,10 @@ Filesystem verification:
 
 - every House Rules Skill destination resolves to the intended source or matches the
   checked source bytes;
-- every instruction file contains exactly one current House Rules block and retains
-  its surrounding operator content;
+- every instruction file contains exactly one House Rules block (counting old `forge:`
+  and `groundwork:` markers too) and retains its surrounding operator content;
+- no other scanned Skill folder or parent-folder instruction file holds a stale House
+  Rules, Forge or Groundwork entry;
 - no custom or externally managed capability was copied into House Rules ownership;
 - `custom/INDEX.md` points to paths that exist and identifies their real owner.
 
@@ -217,32 +246,50 @@ Helper availability:
 
 Runtime verification:
 
-1. Start a fresh session for every selected product.
-2. Ask it to identify its global instruction file, House Rules source path, and the
-   actual paths of the available House Rules Skills.
-3. Use the product's discovery view and a read-only prompt, for example: “Identify the
-   loaded House Rules base path and available skills, then explain which rules apply to this
-   simple question without creating a task.” For selected helpers, run their documented
-   check in a disposable fixture; do not create verification tasks in a real project.
+1. Prefer discovery views that make no model call. For Codex, run
+   `CODEX_HOME=<home> codex debug prompt-input` for every home: the output must contain
+   exactly one `Shared operating foundation (House Rules)` heading, list each House Rules
+   Skill once, and contain no Forge or Groundwork text. For Claude Code, check `/memory`
+   in a fresh session. Claude Code drops HTML comments from loaded instructions, so check
+   the heading rather than the markers.
+2. Where no such view exists, or the operator asks for it, start a fresh session with a
+   read-only prompt, for example: “Identify the loaded House Rules base path and available
+   skills, then explain which rules apply to this simple question without creating a
+   task.” These are model runs: start them only when the operator has authorized that
+   cost, and treat the model's self-description as supporting evidence.
+3. For selected helpers, run their documented check in a disposable fixture; do not
+   create verification tasks in a real project.
 4. Verify each external capability through its owner's supported status or
    doctor command. Do not treat a file's presence as runtime verification.
-5. Do not start paid model runs merely to test installation unless the operator
-   has authorized that cost.
 
 Report filesystem and runtime verification separately.
 
 ## 6. Update and remove
 
-To update House Rules, compare the new source with the permanent source, preserve
-local work, update it, then repeat planning and verification. Symlinked Skills
+`custom/` holds this machine's index, receipts, backups and any external rules, inside the
+source folder. Never use an npm global install or npx cache folder as the source:
+updating or removing that package deletes `custom/`.
+
+To update a Git checkout, pull. To update from an archive, extract it into a new sibling
+folder, compare it with the permanent source, move `custom/` into it, then swap the
+folders. Then repeat planning and verification. Compare the Skill list with the receipt:
+link new Skills and remove owned links to Skills that no longer exist. Symlinked Skills
 pick up source changes immediately; copied Skills require an explicit refresh.
 
-To remove House Rules, delete only links that still resolve into this House Rules source and
-copies proven to match the receipt for this House Rules installation. Preserve user-owned
-external rules; restore or retain their native pointer after reviewing newer changes.
-Remove only the managed
-House Rules blocks from global instruction files. Restore a backup only after
-comparing newer operator changes.
+If the source folder moves, update every managed block and owned link, search instruction
+files and repository `AGENTS.md` files for the old root path, and record the old root in
+the receipts.
+
+To remove House Rules:
+
+1. Replace each native pointer to `custom/external-rules/<tool>.md` with that file's
+   current content, after comparing it with the backup.
+2. Delete only owned links (ownership rule in §2, including broken links) and copies
+   proven to match a receipt.
+3. Remove only the managed House Rules blocks from global instruction files. Restore a
+   backup only after comparing newer operator changes.
+4. Copy `custom/` elsewhere if the operator wants its backups and receipts, then delete
+   the source folder.
 
 For an external capability listed in `custom/INDEX.md`, use its owner's update
 or uninstall workflow. Removing its index entry does not uninstall it, and

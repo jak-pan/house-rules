@@ -19,7 +19,8 @@ repository. Explicit user choices and established project stacks override its de
 
 ## Install the rules globally
 
-Put the downloaded package or checkout in a permanent user-owned directory. Give your
+Put the downloaded package or checkout in a permanent user-owned directory, for example
+`~/house-rules` (not a downloads folder or an npm cache). Give your
 agent the prompt in [INSTALL-AGENTS.md](INSTALL-AGENTS.md). It preserves existing native
 instructions, adds a pointer to House Rules, and installs the skills in each product's
 supported location. Models, permissions, plugins, and MCP connections stay in native
@@ -36,7 +37,8 @@ The helper targets Windows, macOS, and Linux with **Node.js 22 or later**. It us
 filesystem APIs rather than zsh, awk, sed, or other system utilities. Git remains the
 tracker; the helper only maintains Markdown files in the project where you run it.
 
-From any project, run the helper from your permanent House Rules directory:
+From inside the target project, run the helper by its path in your permanent House Rules
+directory:
 
 ```sh
 node "/path/to/house-rules/bin/house-rules.mjs" task new "Build the first version"
@@ -56,23 +58,23 @@ is published, the equivalent registry command will be:
 npx @jak-pan/house-rules task board
 ```
 
-**The npm package is not published yet.** Do not run a bare `npx house-rules` expecting
-this project. `npx` is for invoking the helper; its temporary cache is not a permanent
+**The npm package is not published yet.** The unscoped npm name `house-rules` belongs to an
+unrelated package: use `@jak-pan/house-rules` or a local `--package` path. `npx` is for invoking the helper; its temporary cache is not a permanent
 source for global instruction or skill links. See [task-protocol](skills/task-protocol/SKILL.md)
 for ownership, handoffs, release, and closeout. Plain Git task files also work without
 Node or the helper.
 
 ## Package and verify
 
-`npm pack --dry-run` shows the distribution contents. `npm pack` creates an archive
-containing only the files selected in package.json. It excludes private configuration,
-development records, and Git history. Inspect that archive before publishing; this
-checkout's existing history still contains private development material.
+`npm pack --dry-run` lists the distribution contents. `npm pack` creates an archive
+containing only the files allowlisted in package.json: no machine-local configuration,
+development records, or Git history. Publish that archive; the Git history is not a
+publication artifact.
 
-CI checks JavaScript syntax, CLI startup, and package contents on Windows, macOS, and
-Linux. This is a smoke check, not proof of every operation or native agent's discovery.
-The source repository intentionally keeps no development task backlog or test suite;
-record maintenance decisions in commits rather than recreating those folders. Projects
-using House Rules still use Git task files by default and retain their own appropriate tests.
+CI checks JavaScript syntax, CLI startup and reported version, and lists package contents
+on Windows, macOS, and Linux. This is a smoke check, not proof of every operation or
+native agent's discovery. The source repository intentionally keeps no development task
+backlog or test suite; record maintenance decisions in commits. Projects using House Rules
+still use Git task files by default and keep their own tests.
 
 Attribution is in [NOTICE.md](NOTICE.md); the license is [MIT](LICENSE).

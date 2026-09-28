@@ -12,7 +12,17 @@ enrollment material, or copied account configuration in it.
 | House Rules source | `<absolute path>` |
 | Updated | `<YYYY-MM-DD>` |
 
+## House Rules installation receipts
+
+One receipt per product home, in `custom/installations/`.
+
+| Receipt | Product and home | Source revision or tarball integrity | Date |
+|---|---|---|---|
+| `<file>` | `<e.g. Codex, ~/.codex>` | `<git rev-parse HEAD or npm integrity>` | `<YYYY-MM-DD>` |
+
 ## Capabilities
+
+Delete example rows for capabilities that are not installed.
 
 | Capability | Kind | Owner | Canonical location | Lifecycle command or authority | Discovered by | Last verification |
 |---|---|---|---|---|---|---|
