@@ -7,7 +7,7 @@ skill `task-protocol`.
 ```
 repo/
 ├── AGENTS.md                      # repository-specific rules and settled decisions
-├── CONTEXT.md                     # repo rules (wins over Groundwork)
+├── CONTEXT.md                     # repo rules (wins over House Rules)
 ├── CLAUDE.md                      # Claude Code instructions; preserve existing content, import local AGENTS.md if used
 ├── .claude/rules/<name>.md        # optional, Claude-only: path-scoped rules (frontmatter paths:)
 ├── docs/

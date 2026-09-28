@@ -9,7 +9,7 @@ enrollment material, or copied account configuration in it.
 | Field | Value |
 |---|---|
 | Operating environment | `<macOS, Linux, Windows, or WSL>` |
-| Groundwork source | `<absolute path>` |
+| House Rules source | `<absolute path>` |
 | Updated | `<YYYY-MM-DD>` |
 
 ## Capabilities

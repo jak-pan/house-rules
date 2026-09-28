@@ -20,10 +20,10 @@ jobs:
           node-version: 22
           package-manager-cache: false
       - name: Check CLI syntax
-        run: node --check bin/groundwork.mjs
+        run: node --check bin/house-rules.mjs
       - name: Check report helper syntax
         run: node --check skills/audit-report-authoring/scripts/lint-report-set.mjs
       - name: Verify npm CLI entry point
-        run: npm exec --offline --yes --package=. -- groundwork --help
+        run: npm exec --offline --yes --package=. -- house-rules --help
       - name: Inspect package contents
         run: npm pack --dry-run

@@ -2,7 +2,7 @@
 name: task-protocol
 description: Git-native multi-agent/multi-person task management — single-writer task files, immutable handoff events, generated board. Replaces the shared NEXT.md pattern. Use when starting/claiming/finishing work in any repo using tasks/, when coordinating multiple agents or people, or when the operator asks about task state.
 license: MIT
-compatibility: Optional Groundwork CLI requires Node.js 22 or later; Git task files can also be maintained directly.
+compatibility: Optional House Rules CLI requires Node.js 22 or later; Git task files can also be maintained directly.
 ---
 
 # Task Protocol
@@ -46,8 +46,8 @@ autonomous orchestration inside it without per-call approval.
 
 ## The tool
 
-Invoke `node <GROUNDWORK_ROOT>/bin/groundwork.mjs task ...` from the target repository,
-or `npm exec --package=<GROUNDWORK_ROOT> -- groundwork task ...`. Quote paths containing
+Invoke `node <HOUSE_RULES_ROOT>/bin/house-rules.mjs task ...` from the target repository,
+or `npm exec --package=<HOUSE_RULES_ROOT> -- house-rules task ...`. Quote paths containing
 spaces. This works with Node on Windows, macOS, and Linux; no Unix utilities are needed.
 The examples below use `task` as shorthand for that invocation, not an assumed system
 command. Registry-based npx usage is available only after the npm package is published.
@@ -124,4 +124,4 @@ release: final handoff → release → commit (release regenerates the board)
 Incremental, per repo: `task new` for each live thread in the current NEXT.md, paste the
 relevant state into each task's first handoff, then delete NEXT.md and its mentions from
 repo canon in the same commit. Until a repo migrates, its existing NEXT.md law stays
-binding there (repo canon wins over Groundwork).
+binding there (repo canon wins over House Rules).

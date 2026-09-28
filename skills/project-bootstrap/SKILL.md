@@ -1,6 +1,6 @@
 ---
 name: project-bootstrap
-description: Establish a new project's purpose, stack, collaboration mode, and delivery policy using Groundwork's overridable defaults. Use when bootstrapping a project or deliberately revisiting its foundation; skip routine work in an established project.
+description: Establish a new project's purpose, stack, collaboration mode, and delivery policy using the overridable House Rules defaults. Use when bootstrapping a project or deliberately revisiting its foundation; skip routine work in an established project.
 license: MIT
 ---
 
@@ -9,7 +9,7 @@ license: MIT
 ## Inspect before asking
 
 Read existing AGENTS.md, CONTEXT.md, manifests, deployment configuration, and the work
-item. Read `PREFERENCES.md` in the installed Groundwork root: its defaults apply without an
+item. Read `PREFERENCES.md` in the installed House Rules root: its defaults apply without an
 opt-in. Explicit user choices, repository instructions, and an existing coherent stack
 override them. Preserve settled choices; do not bootstrap an established project again
 for a routine feature or fix.
@@ -40,7 +40,7 @@ Choose only needed components from PREFERENCES.md. Reuse pinned project tooling 
 prefer one language when sufficient. Record purpose, acceptance, deployment/data needs,
 selected stack, and consequential overrides with reasons in CONTEXT.md. Put concise
 execution choices in AGENTS.md: collaboration mode, Git task authority, delivery
-permissions, and verified build/test commands. Reference global Groundwork instead of copying
+permissions, and verified build/test commands. Reference global House Rules instead of copying
 its base. Record unresolved decisions in the existing Git task.
 
 For example, an existing Python analysis repository keeps Python; a small web project

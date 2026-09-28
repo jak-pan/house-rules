@@ -6,7 +6,7 @@ license: MIT
 
 # Design Canon
 
-Use the overridable project defaults in `PREFERENCES.md` in the installed Groundwork root.
+Use the overridable project defaults in `PREFERENCES.md` in the installed House Rules root.
 Apply these procedures to the actual product; examples do not require a memory system,
 retrieval pipeline, or model stack in an unrelated application.
 
@@ -83,7 +83,7 @@ prototypes exist so decisions happen before the engine is wired to the frontend.
 before polish — a confusing broken flow outranks theming every time. Design against
 personas: every persona's consumption path must exist and be satisfying.
 Full lifecycle with stage gates, artifact paths, and closeout: skill `design-flow` +
-`STRUCTURE.md` in the installed Groundwork root.
+`STRUCTURE.md` in the installed House Rules root.
 
 ## Docs
 

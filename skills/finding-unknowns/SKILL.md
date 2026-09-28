@@ -13,7 +13,7 @@ So the ceiling on output quality is how well the operator's unknowns get surface
 that is partly YOUR job, not just theirs.
 
 (After Thariq Shihipar's "A Field Guide to Fable: Finding Your Unknowns", x.com/trq212 —
-adapted to the Groundwork lifecycle.)
+adapted to the House Rules lifecycle.)
 
 ## The four quadrants → four moves
 
@@ -74,7 +74,7 @@ unblocked work moving.
   keep evolving guidance in the relevant work record. A single fact belongs in existing
   guidance. A settled, reusable procedure may be worth capturing on its first occurrence.
 - **Skill audit on model upgrades**: stronger models need less scaffolding — re-read the
-  Groundwork skills and repo bibles after major model changes and delete rules that now just
+  House Rules skills and repo bibles after major model changes and delete rules that now just
   add noise. Rules are load-bearing or they're clutter.
 - Recurring interview answers and blindspot findings should produce proactive proposals
   for improving the design, bible, or skills. Persistence follows AGENTS.md §Operator

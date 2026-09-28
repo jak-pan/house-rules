@@ -1,6 +1,6 @@
 # Project defaults
 
-These preferences apply by default when Groundwork is installed. Explicit user choices and
+These preferences apply by default when House Rules is installed. Explicit user choices and
 repository instructions override them; an existing coherent project stack takes
 precedence over defaults for new projects. Overrides need no separate approval ritual.
 Record consequential choices and their rationale in the project, and preserve the host's

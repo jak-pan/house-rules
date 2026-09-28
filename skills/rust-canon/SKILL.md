@@ -6,7 +6,7 @@ license: MIT
 
 # Rust Canon
 
-Project stack defaults live in `PREFERENCES.md` in the installed Groundwork root and apply
+Project stack defaults live in `PREFERENCES.md` in the installed House Rules root and apply
 unless overridden. This skill applies after Rust is selected. Its tooling choices are
 defaults too: preserve explicit user and repository decisions and the host's controls.
 
