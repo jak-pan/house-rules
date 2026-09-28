@@ -346,7 +346,9 @@ share sanitized extracts. Other sensitive-data egress (credentials excepted) is 
 operator's explicit decision — neither a silent default nor a hard ban.
 
 Shared host resources (other projects' services, model caches) are not ours to stop or
-clean. Automatically remove only reproducible scratch produced by the current work and
+clean. Stop only processes the current work started: track their PIDs, or match a path
+unique to the current work. Never kill by a broad command pattern (for example
+`pkill -f 'cargo test'`); concurrent sessions run the same commands. Automatically remove only reproducible scratch produced by the current work and
 no longer used by a running process. Preserve raw inputs, paid results, user files, tracker
 history, and decision evidence. For unknown or expensive-to-rebuild artifacts, establish
 ownership and retention first; quarantine when appropriate. Deleting or overwriting
