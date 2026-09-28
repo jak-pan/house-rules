@@ -47,6 +47,28 @@ Only the owner edits the body. It holds:
 - **Pre-flight** — multi-phase work only: verified facts, wrong assumptions to avoid, and
   phase status; maintained and pruned, not appended.
 
+## Session loop: fetch, update, work
+
+The tracker is worked every session, not only written to at the end.
+
+1. **Fetch at start.** Read the board for the repositories you will touch: items assigned
+   to you, anything In progress or Blocked, and open items that match the operator's
+   request. Read each one's latest handoff. Continue items you own before starting new
+   ones; when a request matches an existing item, work under that item instead of
+   creating a duplicate.
+2. **Update as it happens.** Set Status at every transition. File each accepted finding,
+   deferral, scoped-out piece, or follow-up as an issue in the owning repository when it
+   arises, not at the end, and link it from the item, PR, review, or document that set
+   it aside. A line such as "deferred", "not done here" or "belongs to the other side"
+   in any document, PR, or handoff carries that issue's link.
+3. **Reconcile before stopping** (session end, compaction, handoff): every item you
+   touched has the right Status, and an unfinished one has a handoff. Go through the
+   operator's requests from the session: each is done, or it has an issue, existing or
+   new. The final report lists the issues created, updated, and closed.
+4. **Surface stale work.** Whoever finds an In progress item with no handoff or activity
+   for 7 days comments on it and asks the owner, or the operator if there is no owner,
+   to resume, release, or close it.
+
 ## Handoffs and campaign ledger
 
 - A handoff is an issue comment headed `## Handoff` (contents and immutability: skill

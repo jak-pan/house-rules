@@ -43,6 +43,19 @@ model stack in an unrelated application.
 - **One parameterized pipeline** with skip/reuse flags — never forked ad-hoc flows tweaked
   independently. **One mechanism per concept**: duplicate paths doing "basically the same
   thing" get merged; dead or rule-violating paths get deleted completely.
+- **Extend the owner; never fork it.** When a consumer cannot use a shared module's
+  mechanism as it stands (a missing backend, feature, or constraint such as "no embedded
+  database"), the gap is fixed in the module that owns the mechanism, and the consumer
+  adapts to that. A local copy in the consumer is a new duplicate, however temporary it
+  is called. A change that adds behaviour to a known duplicate is blocked in review until
+  the duplicate's removal is tracked (AGENTS.md §Work tracking & continuity), and it
+  should land on the shared mechanism instead where that is practical. Boundary:
+  covers infrastructure that has, or should have, one owner (queues, transports,
+  provider wrappers, storage backends); product-specific behaviour built on top of it
+  stays in the product. Operator direction: 2026-09-28, after three separate
+  provider-queue implementations accumulated in the foundation library, a memory kit
+  and a product, one of them forked because the shared queue had only a database
+  backend.
 - **Pipeline-order invariants are written down** as an explicit ordered list (what runs
   before what, and why) and re-checked after every refactor — they are the first
   casualties of refactors and context resets.

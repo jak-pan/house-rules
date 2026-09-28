@@ -370,6 +370,19 @@ invariants hold; the default's mechanics: skill `work-tracking`.
   skill `handoff-continuity`).
 - Boards and status views are views over the tracker's items, never a hand-maintained
   status file.
+- **Operator requests stay tracked until done.** A requested outcome or accepted finding
+  that the session does not finish becomes a work item in the repository that owns the
+  change, before the session ends, linked from wherever it was set aside. That covers
+  work that is deferred, "saved as a task", scoped out of another item, left as an audit
+  gap, a plan or migration step, or said to "belong to the other repository's side".
+  Audits, plans, design and north-star documents, status lines in docs, chat, reports,
+  and unmerged branches record intent; they do not track work. When the operator repeats
+  a request, search the tracker before acting and state whether it was tracked. Boundary:
+  this covers operator-requested outcomes and findings the operator or a review accepted,
+  not every idea an agent has (those are proposals, §Outcome and resource contract).
+  Operator direction: 2026-09-28, after a request to consolidate duplicated provider-queue
+  code, repeated at least five times since June, lived only in audits, a migration
+  document and a plan on an unmerged branch, and was never done.
 
 Vocabulary, used consistently: **tracker** = the org/repo-defined work-management system;
 **work item** = one tracked unit of work (by default, an issue); **bible** = the

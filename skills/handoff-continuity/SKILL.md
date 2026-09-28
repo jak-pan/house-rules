@@ -50,6 +50,9 @@ Destinations for findings (AGENTS.md prime rule 11):
 - experiments/results → the work item's record and the campaign ledger
 - audits/reviews → dated `docs/reports/YYYY-MM-DD-topic.md`
 - operational knowledge → RUNBOOK.md; architecture → docs system map + deep dives
+- open follow-ups, deferrals, and plan steps → work items in the owning repository
+  (AGENTS.md §Work tracking & continuity); a report, doc, or plan links them but never
+  stands in for them
 
 Paths for runs, reports, ledgers, debug evidence, and scratch: `STRUCTURE.md`.
 
