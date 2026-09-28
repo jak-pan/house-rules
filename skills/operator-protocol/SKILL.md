@@ -32,8 +32,8 @@ non-reproducible work, include the durable record and resumable session ID (AGEN
 ## Decisions
 
 Use the collaboration mode recorded under AGENTS.md §Autonomy. A routine implementation
-choice inside that agreement is different from a change §Autonomy says requires a
-decision. State that distinction when escalating a decision.
+choice inside that agreement is different from a change AGENTS.md §Autonomy says
+requires a decision. State that distinction when escalating a decision.
 
 For a decision needing input, explain its consequence, offer the viable options and a
 recommendation, and ask once. Batch independent decisions when that makes answering easier;

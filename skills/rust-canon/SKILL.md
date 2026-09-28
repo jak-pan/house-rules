@@ -50,8 +50,8 @@ cargo test --release --workspace --all-features --no-fail-fast
 ```
 
 Zero warnings is the bar. The repo's architecture guard scripts, if any, run after
-structural changes. Env-mutating tests use
-`#[serial(env)]`; fixtures are synthetic and date-relative (no fixture rot).
+structural changes. Env-mutating tests use `#[serial(env)]`; fixtures are synthetic and
+date-relative (no fixture rot).
 
 ## Config layering (default for Rust products)
 
@@ -61,8 +61,7 @@ built-in sane defaults → versioned TOML (profiles/presets) → env vars → CL
 
 - Per-product config crates — the same kit gets different settings per consuming product.
 - Model/provider settings layer general → provider → provider-model (the shared
-  configuration crate owns them);
-  no blanket rpm/tpm defaults buried in code.
+  configuration crate owns them); no blanket rpm/tpm defaults buried in code.
 - Env-var tuning (ad-hoc `MYAPP_*` knobs) is for experiments, not a production artifact —
   promote proven knobs into typed config keys.
 - Record config hash in run params; versioned prompts live in config, not code.

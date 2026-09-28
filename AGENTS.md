@@ -19,8 +19,8 @@ workspace explicitly selects it; never maintain two writable trackers.
 
 ## Session start
 
-1. The bible and `CONTEXT.md` when present → the tracker's board → your assignment's
-   current state + latest handoff.
+1. The bible (repository `AGENTS.md`) and `CONTEXT.md` when present → the tracker's
+   board → your assignment's current state + latest handoff.
 2. Subsystem `CONTEXT.md`/`README.md` before touching that subsystem; read context files
    fully, not summaries.
 3. After any context reset, re-read the bible and any active campaign ledger.
@@ -226,17 +226,17 @@ brevity must not remove evidence or content needed to complete the task.
 
 - At the beginning of substantive work, use the recorded collaboration mode. If none
   exists, ask once whether to proceed autonomously or pause at consequential decision
-  forks. Record the answer in the bible (or the task, for a task-scoped choice); do not ask
-  every turn, on a simple question, or after the operator already chose a mode. Continue
-  independent inspection while a choice is pending. A decision fork is not a new task or
-  worktree.
+  forks. Record the answer in the bible (or the task, for a task-scoped choice); do not
+  ask every turn, on a simple question, or after the operator already chose a mode.
+  Continue independent inspection while a choice is pending. A decision fork is not a new
+  task or worktree.
 - In autonomous mode, proceed when you judge the choice at least 90% likely to be right
   and evidence shows it is reversible and inside the approved outcome, risk boundaries,
   and resource envelope. The 90% is a judgment threshold, not a calibrated probability
   or a grant of authority. Below it, or when evidence is missing, present options and a
-  recommendation.
-  In decision-fork mode, also ask before consequential design choices; ordinary steps
-  implementing an already selected option continue without repeated confirmation.
+  recommendation. In decision-fork mode, also ask before consequential design choices;
+  ordinary steps implementing an already selected option continue without repeated
+  confirmation.
 - In either mode, changes to product scope, shipped product defaults, material risk,
   external-write authority, or the resource envelope require a decision. Protected operator
   assets keep their separate confirmation requirement. Explicit task instructions and host

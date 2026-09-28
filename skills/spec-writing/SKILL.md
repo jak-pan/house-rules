@@ -55,8 +55,8 @@ from it without asking questions.** The document must explain the product and it
 ## Duty to critique
 
 Review a supplied spec against evidence and the requested outcome; critique per skill
-`operator-protocol` §Collaboration. When implementing, deliver
-the spec literally — if it says scores/metadata/IDs, never substitute a cruder proxy.
+`operator-protocol` §Collaboration. When implementing, deliver the spec literally — if
+it says scores/metadata/IDs, never substitute a cruder proxy.
 If the specified mechanism seems wrong mid-build, escalate per skill `operator-protocol`
 §Decisions when the change is outside the approved decision boundary; otherwise record
 the deviation per skill `design-flow` §Implement. Never silently implement a reduced

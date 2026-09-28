@@ -57,5 +57,5 @@ assumption cannot replace required authorization.
 
 Execute and interpret the planned comparison, and record each run, with skill
 `bench-discipline`. If conditions change enough to invalidate the plan, update it before
-relying on the new comparison;
-preserve earlier versions through Git and label exploratory findings honestly.
+relying on the new comparison; preserve earlier versions through Git and label
+exploratory findings honestly.

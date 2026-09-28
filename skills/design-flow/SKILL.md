@@ -88,7 +88,8 @@ reminder):
 **Checklist (agent's judgment):**
 - pre-merge quiz passed on significant work (skill `finding-unknowns`)
 - shipped sections migrated: design doc → `docs/architecture/feature.md` (or the repo's
-  `docs/specs/{subsystem}/`); design doc shrunk to a pointer or deleted
+  `docs/specs/{subsystem}/`); design doc shrunk to a pointer or deleted (`design:` field:
+  `STRUCTURE.md` §Frontmatter statuses)
 - PR open; `pr:` recorded in task.md frontmatter
 - durable decisions promoted from task.md → the bible
 - prototypes: keep hifi if it's the living reference, else delete; spikes killed
