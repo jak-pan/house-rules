@@ -309,6 +309,12 @@ project's unsettled choices: skill `project-bootstrap`. Rust-specific quality ga
 reasoning checkpoints help the work; the evidence and verification requirements apply to
 every model.
 
+**No migrations before release.** Until a product is released there is no production data:
+every store can be rebuilt from the raw data the project holds. Write only the current
+format and refuse clearly to open anything else. Do not build migrations, legacy-format
+readers or compatibility shims over changing development versions; re-ingesting from raw
+data is authorized when a format changes. Operator direction: 2026-09-29.
+
 ## Experiments
 
 Plan a new benchmark, evaluation, A/B test, or tuning campaign with skill
