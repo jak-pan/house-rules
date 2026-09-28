@@ -90,8 +90,8 @@ a cheaper/reproducible probe instead.
 
 "continue #NNN" (or "continue <branch>", or "continue" with a legacy ledger in an
 un-migrated repo) is a complete instruction. Resume means: read the work item's latest
-handoff record and claim snapshot on its work branch, its host state when reachable, the
-bible, and its campaign ledger, verify claimed state against reality (is that run still live? did the commit
+claim record, the Decisions of every handoff since it, and its latest handoff record on
+its work branch; its host state when reachable; the bible; and its campaign ledger; verify claimed state against reality (is that run still live? did the commit
 land?), then continue the Pending list — without re-testing what the ledger settles
 absent new evidence and without re-asking answered questions. After a crash: commit
 recoverable work first (when commits are authorized), then resume.

@@ -14,7 +14,8 @@ skills on demand rather than loading every skill.
 Keep model selection, permissions, MCP connections, hooks, and delegation APIs in
 native tool configuration. A skill describes a procedure; it does not grant access
 or make an unavailable tool callable. Use the workspace's configured tracker; the
-default is Git-host issues on a project board (skill `work-tracking`). Use another
+default is records on Git work branches, viewed as Git-host issues on a project board
+(skill `work-tracking`). Use another
 tracker only when the workspace explicitly selects it; never maintain two writable
 trackers.
 
@@ -361,7 +362,8 @@ weakening the product.
 
 ## Work tracking & continuity
 
-Whatever the tracker (Git-host issues by default, an orchestrator, another host), these
+Whatever the tracker (Git work branches with a Git-host view by default, an orchestrator,
+another host), these
 invariants hold; the default's mechanics: skill `work-tracking`.
 
 - One owner per work item — claim before touching; a claim conflict is a feature.
@@ -384,7 +386,7 @@ invariants hold; the default's mechanics: skill `work-tracking`.
   plans and documents and was never done.
 
 Vocabulary, used consistently: **tracker** = the org/repo-defined work-management system;
-**work item** = one tracked unit of work (by default, an issue); **bible** = the
+**work item** = one tracked unit of work (by default, a work branch and its issue); **bible** = the
 repository's AGENTS.md: settled local decisions and execution choices;
 edit or prune entries only with the change explained in the commit; **campaign ledger** =
 a long-running goal's tried → result → verdict record; **handoff** = the immutable

@@ -13,7 +13,8 @@ target.
 
 ## Loop contract
 
-1. **Ledger first.** Open or refresh the campaign issue (skill `work-tracking`). Its body
+1. **Ledger first.** Open or refresh the campaign's work item (a new claim record; skill
+   `work-tracking`). Its definition
    holds the operator outcome, measurable target or acceptance checklist, current
    completion gap, approved resource envelope, allowed primary/supporting work categories,
    baseline with measured variance where applicable, and knob map with wired/tested

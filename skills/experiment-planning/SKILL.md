@@ -57,5 +57,6 @@ replace required authorization.
 
 Execute and interpret the planned comparison, and record each run, with skill
 `bench-discipline`. If conditions change enough to invalidate the plan, update it before
-relying on the new comparison; preserve the earlier version (record the revision in the next handoff's Decisions) and label
+relying on the new comparison; preserve the earlier version (record the revised plan as a new claim; skill
+`work-tracking`) and label
 exploratory findings honestly.
