@@ -75,7 +75,10 @@ function entries(directory) {
 }
 
 function taskDirectories() {
-  return entries(tasks).filter((entry) => entry.isDirectory() && /^\d+-/.test(entry.name)).map((entry) => entry.name);
+  // A task is a directory holding task.md; folders Git leaves behind after a branch switch are not tasks.
+  return entries(tasks)
+    .filter((entry) => entry.isDirectory() && /^\d+-/.test(entry.name) && fs.existsSync(join(tasks, entry.name, 'task.md')))
+    .map((entry) => entry.name);
 }
 
 function nextId() {
@@ -266,7 +269,6 @@ function run(args) {
     const directory = join(tasks, `${value}-${slug}`);
     fs.mkdirSync(tasks, { recursive: true });
     fs.mkdirSync(directory); // Refuse an existing directory instead of replacing its task.
-    fs.mkdirSync(join(directory, 'handoffs'));
     const file = join(directory, 'task.md');
     const time = now();
     fs.writeFileSync(file, `---\nid: ${value}\ntitle: '${title.replaceAll("'", "''")}'\nstatus: pending\nowner:\npriority: ${priority}\ndepends_on:\nlane:\ndesign:\npr:\ncreated: ${time}\nupdated: ${time}\n---\n\n## Scope\n\n## Acceptance criteria\n\n## Decisions\n<!-- settled choices + rejected alternatives, with why -->\n`, { flag: 'wx' });

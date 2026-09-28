@@ -92,8 +92,8 @@ and safe to lose.
 
 - Task (`task.md`): `pending → active → review → done` (+ `blocked`)
 - Design doc: `draft → approved → implemented | superseded` (implemented = shipped
-  sections migrated to architecture/spec, doc shrinks to a pointer (keep the work item's
-  `design:` field) or is deleted (clear `design:` in the same commit); superseded =
+  sections migrated to architecture/spec, doc shrinks to a pointer that keeps its
+  `status:` frontmatter (keep the work item's `design:` field) or is deleted (clear `design:` in the same commit); superseded =
   replaced by a newer design)
 - Spike: `open → promoted | killed` (in SPIKE.md verdict; review and cleanup: skill
   `design-flow` §Spikes)

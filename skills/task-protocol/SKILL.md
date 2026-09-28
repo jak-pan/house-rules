@@ -50,8 +50,8 @@ repository. The helper finds `tasks/` at the Git top level (the nearest folder c
 `.git`, else the current folder), so it works from any subdirectory; `TASKS_DIR` overrides
 the tasks folder, and `design:` paths resolve from the same root. Quote paths containing
 spaces. This works with Node on Windows, macOS, and Linux; no Unix utilities are needed.
-The examples below use `task` as shorthand for that invocation, not an assumed system
-command.
+The examples below use `task` as shorthand for that invocation, and the helper's own
+messages write it as `house-rules task`; neither is an assumed system command.
 
 ```bash
 task new "title" [P0-P3]   # scaffold next NNN

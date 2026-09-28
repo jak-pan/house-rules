@@ -39,7 +39,10 @@ explicit goals.
 - Cleanup follows AGENTS.md §Security.
 - Finishing a lane includes removing what it created to be disposable. When its PR merges or
   the work is abandoned, the lane owner removes its worktree and its build/target directory in
-  the same step, after confirming the worktree holds no uncommitted or unpushed work. Shared
+  the same step, after confirming the worktree holds no uncommitted or unpushed work,
+  `git status --ignored` shows no evidence, run results or secret files to keep
+  (`.debug-session/`, `runs/`, `.env.local`; move those to the main checkout first), and no
+  running process uses its build directory. `git worktree remove` deletes ignored files. Shared
   caches (compiler cache, model caches) stay. Operator direction: 2026-09-28, after merged-PR
   worktrees and per-lane build directories cut free disk to 56 GB.
 - Never build `--release` in a shared tree while a paused run may depend on the existing

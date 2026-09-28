@@ -15,7 +15,7 @@ their own skills, clients, MCP servers, credentials, and other runtime state.
 
 ## Prompt for the destination agent
 
-Replace `<HOUSE_RULES_SOURCE>` with the downloaded bundle or permanent source location, then
+Replace `<HOUSE_RULES_SOURCE>` with the permanent path of your House Rules clone, then
 give the destination agent this prompt:
 
 > Install House Rules globally from `<HOUSE_RULES_SOURCE>`. Read its
@@ -32,16 +32,14 @@ give the destination agent this prompt:
 
 ## 1. Establish the source and platform
 
-1. Put the complete House Rules bundle in a permanent user-owned directory. Do not
-   overlay an existing House Rules directory until local changes have been compared.
-2. Prefer a Git checkout or another backed-up source. The installation may work
-   without Git, but an unversioned source is not safely recoverable or auditable.
-3. Identify whether each agent runs natively on macOS, Linux, Windows, or inside
+1. Clone House Rules into a permanent user-owned directory (README). Do not overlay an
+   existing House Rules directory until local changes have been compared.
+2. Identify whether each agent runs natively on macOS, Linux, Windows, or inside
    WSL. Configure the environment that actually runs the agent. A WSL path does
    not configure a Windows-native desktop application.
-4. Inspect current vendor documentation and the running product's configuration
+3. Inspect current vendor documentation and the running product's configuration
    when they disagree. Do not rely on a path remembered from another computer.
-5. Keep model selection, permissions, hooks, plugins, MCP configuration,
+4. Keep model selection, permissions, hooks, plugins, MCP configuration,
    credentials, and login state in each product's native configuration.
 
 Current baseline locations are:

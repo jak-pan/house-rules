@@ -339,8 +339,8 @@ create files or change permissions. Record locations without values. Operator di
 the repository instead of an env file. Environment variables transport
 secrets; they are not encrypted storage. Redact diagnostic output at capture. Retain any
 necessary raw sensitive records only in restricted local storage with deliberate retention;
-share sanitized extracts. Sensitive-data egress is the operator's explicit decision —
-neither a silent default nor a hard ban.
+share sanitized extracts. Other sensitive-data egress (credentials excepted) is the
+operator's explicit decision — neither a silent default nor a hard ban.
 
 Shared host resources (other projects' services, model caches) are not ours to stop or
 clean. Automatically remove only reproducible scratch produced by the current work and

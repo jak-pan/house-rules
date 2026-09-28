@@ -96,8 +96,8 @@ reminder):
 - regression tests required by AGENTS.md §Verification exist and are green
 
 Automation hook (owned repos, via your PR bot/CI): a PR from branch `task/NNN-*` runs
-`task done NNN --check` (read-only) and comments the result on the PR; merge after it
-reports closeable, then delete the branch. CI never writes `task.md` — single writer holds.
+`task done NNN --check` (read-only) and checks that the PR's `task.md` has `status: done`,
+and comments the result on the PR; merge after both pass, then delete the branch. CI never writes `task.md` — single writer holds.
 
 ## Experimentation is a first-class lane
 
