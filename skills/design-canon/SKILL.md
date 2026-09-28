@@ -32,7 +32,14 @@ model stack in an unrelated application.
 - **Black-box modules.** Hosts never see internals of a kit they consume (a host app must
   have zero knowledge of its memory kit's store internals).
   Facades + adapters + capability manifests; standalone reusable products with semver deps,
-  nothing owned by a benchmark harness or a single host.
+  nothing owned by a benchmark harness or a single host. This holds at build time too: a
+  consumer never mirrors, re-hosts, pins or special-cases a dependency's internal
+  artifacts (native libraries, model files, generated code, release assets). The
+  dependency's own build acquires and verifies them from its own source of truth; a
+  consumer may at most supply a credential. When that fails in a consumer's environment,
+  fix the dependency, not the consumer. Pinning the dependency's own version (a lockfile or
+  pin file) is not reaching into its internals. Operator direction: 2026-09-28, after a
+  product's CI had to mirror a kit's native library releases into its own repository.
 - **One parameterized pipeline** with skip/reuse flags — never forked ad-hoc flows tweaked
   independently. **One mechanism per concept**: duplicate paths doing "basically the same
   thing" get merged; dead or rule-violating paths get deleted completely.
