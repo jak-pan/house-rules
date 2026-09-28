@@ -17,11 +17,11 @@ explicit goals.
 - **Isolation.** Lanes work in worktrees/branches; the main repo checkout stays untouched.
   Rust lanes pass `--target-dir .tmp/cargo-target/<lane>` so parallel cargo doesn't block
   on the shared `target/` lock or leak artifacts.
-- **Git limits.** Lanes push only their own task branches, within the delivery authority
+- **Git limits.** Lanes push only their own work branches, within the delivery authority
   recorded in the bible (policy: AGENTS.md §Git). Commits follow the repo's canon; lanes
   report exactly which files they touched.
 - **Multi-repo work (owned repos) is normal.** One work item, a branch per repo touched
-  (named per the workspace convention; the file tracker uses `task/NNN-slug/<agent>`),
+  (named per `STRUCTURE.md` after the owning issue),
   and every repo+path in the item's lane declaration. Flag shared-kit impacts for owner
   review — flag, don't block.
 - **Audits have round boundaries.** An audit-only request produces findings and proposed

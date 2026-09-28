@@ -64,7 +64,7 @@ selected collaboration mode come from AGENTS.md; these checkpoints do not redefi
 - After a failed or interrupted run, resume at the cheapest informative point (skill
   `bench-discipline` §Cost ladder).
 - Record negative and inconclusive results, tested conditions, and the evidence in the
-  Git-tracked work item or campaign ledger. Do not infer a mechanism from a score alone.
+  work item or campaign ledger. Do not infer a mechanism from a score alone.
 - Correct erroneous durable claims explicitly and propagate the correction to affected
   reports (a released report gets an erratum or a new dated report: `STRUCTURE.md`).
   Preserve the original evidence and explain changed interpretations.

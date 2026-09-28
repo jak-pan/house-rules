@@ -27,8 +27,8 @@ adapted to the House Rules lifecycle.)
 ## Before implementation
 
 1. **Blindspot pass** (P0/P1 kickoff, right after claiming the work item): scan the territory —
-   codebase, adjacent docs, prior tasks — and report the unknown unknowns: traps, implicit
-   constraints, questions the spec should have asked. This is a *report*, not twenty
+   codebase, adjacent docs, prior work items — and report the unknown unknowns: traps,
+   implicit constraints, questions the spec should have asked. This is a *report*, not twenty
    questions.
 2. **Reverse interview** for the known unknowns that survive the blindspot pass, ordered
    by architectural blast radius: one question at a time when its answer changes the next
@@ -48,11 +48,9 @@ communication). How to ask, and to keep unblocked work moving meanwhile: skill
 
 ## During implementation
 
-- **Implementation notes**: keep `implementation-notes.md` in the work item's record
-  (file tracker: `tasks/NNN-slug/`); every
-  deviation from the plan (edge case forced a different approach) gets the what + why as
-  it happens. Design-doc-affecting deviations update the design doc in the same commit
-  (skill `design-flow` §Implement).
+- **Implementation notes**: every deviation from the plan (edge case forced a different
+  approach) gets the what + why as an issue comment as it happens. Design-doc-affecting
+  deviations update the design doc in the same commit (skill `design-flow` §Implement).
 - **Output as signal**: when a result surprises you or the operator, treat it as a map gap
   first, a bug second — something wasn't in the prompt/spec that should have been. Fix the
   task-local spec or bible as appropriate; draft universal skill or rule changes for
@@ -62,9 +60,9 @@ communication). How to ask, and to keep unblocked work moving meanwhile: skill
 
 Significant work means P0/P1, or any diff spanning multiple modules.
 
-- **Pitch doc** on significant work (`PITCH.md` in the work item's record): prototype +
-  spec + implementation notes in one shareable artifact, demo first (screenshot/GIF) —
-  the closing handoff links it.
+- **Pitch** on significant work, in the PR description: prototype + spec +
+  implementation notes in one shareable summary, demo first (screenshot/GIF) — the
+  closing handoff links it.
 - **Pre-merge quiz**: before closeout on significant work, generate a short self-quiz
   from the diff — the questions a reviewer would ask (why this boundary? what breaks if X?
   which invariant guards Y?) — and answer from evidence. Anything you can't answer from

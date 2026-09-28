@@ -154,7 +154,9 @@ For each selected product and configuration home:
    Codex reads `$CODEX_HOME/skills/` first and keeps the first Skill of each name, so a
    stale entry there hides the new one. Record each owned entry (ownership rule in §2)
    in the receipt, then remove it. Report other same-name entries as conflicts. Never
-   touch `$CODEX_HOME/skills/.system/`.
+   touch `$CODEX_HOME/skills/.system/`. Owned entries for Skills House Rules has removed,
+   such as `task-protocol`, are stale in every Skill folder: record and remove them the
+   same way.
 9. Install the same House Rules Skills into Claude Code's native user Skill
    directory. A symlink may point directly to the House Rules source; otherwise copy
    the complete Skill directory.
@@ -182,8 +184,8 @@ machine's tools, paths, accounts, and verification state. Start from
 Keep one durable installation receipt per product home in `custom/installations/` (JSON
 or a small Markdown table) and list the receipts in `custom/INDEX.md`. Record the source
 root and any previous roots, the source revision (`git rev-parse HEAD`), native instruction file, managed block, optional external-rule file,
-every link/copy destination, installed content hashes, backup locations, helper
-invocation, and filesystem/runtime verification. Do not record secrets. The receipt is
+every link/copy destination, installed content hashes, backup locations, and
+filesystem/runtime verification. Do not record secrets. The receipt is
 the ownership evidence used for update and removal.
 
 The index records optional Skills, plugins, MCP clients, browsers, and related
@@ -216,21 +218,22 @@ Filesystem verification:
 - every instruction file contains exactly one House Rules block (counting old `forge:`
   and `groundwork:` markers too) and retains its surrounding operator content;
 - no other scanned Skill folder or parent-folder instruction file holds a stale House
-  Rules, Forge or Groundwork entry;
+  Rules, Forge or Groundwork entry, or an entry for a removed House Rules Skill;
 - no custom or externally managed capability was copied into House Rules ownership;
 - `custom/INDEX.md` points to paths that exist and identifies their real owner.
 
-Helper availability:
+Tools:
 
-- The text rules and skills can be available without their executable helpers.
-- Git-backed tasks remain the default. The optional helper and report linter need Node.js
-  22 or later. Invoke `node "<HOUSE_RULES_ROOT>/bin/house-rules.mjs" task ...` from the target
-  repository. Use native Windows paths when appropriate; no shell utilities are required.
-  Check the runtime only when selecting helpers; do not install it silently. Git task
-  files can be edited directly.
-- Existing helper links to the old zsh `bin/task` need updating. Identify them from the
-  installation receipt and replace only House Rules links or aliases. Do not claim a
-  bare `task` or `house-rules` command is ours without verifying its resolution.
+- The rules and Skills need no runtime. Only the optional report linter
+  (`skills/audit-report-authoring/scripts/lint-report-set.mjs`) needs Node.js 22 or later;
+  check for it only when that Skill is used, and do not install it silently.
+- Work tracking uses the Git host's CLI (skill `work-tracking`); on GitHub, `gh` with the
+  `project` token scope. Record a missing scope as a pending operator action in
+  `custom/INDEX.md`.
+- Links or aliases to the removed helpers `bin/task` and `bin/house-rules.mjs` are
+  obsolete. Identify them from the installation receipt and remove only House Rules-owned
+  ones. Do not claim a bare `task` or `house-rules` command is ours without verifying its
+  resolution.
 - Resolve shared references such as STRUCTURE.md from the permanent House Rules source.
 
 Runtime verification:
@@ -244,10 +247,10 @@ Runtime verification:
 2. Where no such view exists, or the operator asks for it, start a fresh session with a
    read-only prompt, for example: “Identify the loaded House Rules base path and available
    skills, then explain which rules apply to this simple question without creating a
-   task.” These are model runs: start them only when the operator has authorized that
+   work item.” These are model runs: start them only when the operator has authorized that
    cost, and treat the model's self-description as supporting evidence.
-3. For selected helpers, run their documented check in a disposable fixture; do not
-   create verification tasks in a real project.
+3. If the report linter is in use, run it on a disposable fixture; never create
+   verification issues in a real project.
 4. Verify each external capability through its owner's supported status or
    doctor command. Do not treat a file's presence as runtime verification.
 

@@ -14,7 +14,7 @@ the measured bottleneck. A faster compiler phase does not establish faster CI.
 
 Read the effective workflow and every invoked helper, including container entrypoints,
 cache actions, post steps, artifact admission, and release packaging. Record the
-source revision and required gate set. Follow existing task and delivery authority.
+source revision and required gate set. Follow existing work-item and delivery authority.
 
 Distinguish four clocks: queue delay, each job's allocation, the full required
 workflow's elapsed time, and nested command time. Construct the dependency path from

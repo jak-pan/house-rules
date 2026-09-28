@@ -23,8 +23,9 @@ Ask only questions that remain unanswered and affect outcome, operations, or aut
 - Do requirements justify overriding a default or adding another language/component
   (`PREFERENCES.md`)?
 - Which collaboration mode applies (AGENTS.md §Autonomy)?
-- Is the default Git task/branch/review workflow suitable, and what delivery authority
-  is actually recorded (AGENTS.md §Git)?
+- Is the default issue/branch/PR workflow suitable (skill `work-tracking`), does the
+  repository have a Git host, and what delivery authority is actually recorded
+  (AGENTS.md §Git)?
 
 Ask per skill `operator-protocol` §Decisions. Do not add hypothetical infrastructure
 questions to a small script or analysis.
@@ -33,13 +34,14 @@ questions to a small script or analysis.
 
 Choose components per `PREFERENCES.md`. Record purpose, acceptance, deployment/data needs,
 selected stack, and consequential overrides with reasons in CONTEXT.md. Put concise
-execution choices in the bible (repository AGENTS.md): collaboration mode, Git task
-authority, delivery permissions, and verified build/test commands. Reference global House
-Rules instead of copying its base. Record unresolved decisions in the existing Git task.
+execution choices in the bible (repository AGENTS.md): collaboration mode, tracker and
+project board, delivery permissions, and verified build/test commands. Reference global
+House Rules instead of copying its base. Record unresolved decisions in the existing work
+item.
 
 For example, an existing Python analysis repository keeps Python; a small web project
 can use TypeScript on Node plus static Svelte without adding Rust; a Rust CLI need not
-add Node merely to run scripts. Each uses the same Git task default unless overridden.
+add Node merely to run scripts. Each uses the same issue-tracking default unless overridden.
 
 Implement the authorized bootstrap scope. Stack defaults do not authorize migrations,
 paid services, publication, or unrelated components. Load experiment-planning only for

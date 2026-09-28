@@ -50,10 +50,10 @@ dependent work while an answer is pending.
 ## Persist and use
 
 Write the answers, evidence links, unresolved limits, and the next-run decision criterion
-in the existing Git-tracked task record. For sustained iteration, use its campaign
-ledger (`task-protocol`, `STRUCTURE.md`); do not create a separate tracker. Distinguish
-operator decisions, evidence-backed settings, and provisional assumptions. A provisional
-assumption cannot replace required authorization.
+in the existing work item. For sustained iteration, use its campaign ledger (skill
+`work-tracking`); do not create a separate tracker. Distinguish operator decisions,
+evidence-backed settings, and provisional assumptions. A provisional assumption cannot
+replace required authorization.
 
 Execute and interpret the planned comparison, and record each run, with skill
 `bench-discipline`. If conditions change enough to invalidate the plan, update it before

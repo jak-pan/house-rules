@@ -13,12 +13,12 @@ target.
 
 ## Loop contract
 
-1. **Ledger first.** Open/refresh the campaign ledger (`PUSH-TO-<goal>.md`, paths: `STRUCTURE.md`): operator
-   outcome, measurable target or acceptance checklist, current completion gap, approved
-   resource envelope, allowed primary/supporting work categories, baseline with measured
-   variance where applicable, knob map with wired/tested status, and
-   tried→result→verdict log. After a context reset, resume per skill
-   `handoff-continuity` §Resuming.
+1. **Ledger first.** Open or refresh the campaign issue (skill `work-tracking`). Its body
+   holds the operator outcome, measurable target or acceptance checklist, current
+   completion gap, approved resource envelope, allowed primary/supporting work categories,
+   baseline with measured variance where applicable, and knob map with wired/tested
+   status; its campaign ledger holds the tried→result→verdict log. After a context reset,
+   resume per skill `handoff-continuity` §Resuming.
 2. **Cheap first.** Order the idea queue by cost (skill `bench-discipline` §Cost ladder).
    Promote to expensive runs only on cheap-tier wins.
 3. **Iterate.** Test → forensics on misses → mechanism hypothesis → targeted fix → verify
@@ -47,7 +47,7 @@ When the goal is "match this reference" or "iterate until perfect":
   change moved away from the reference, revert before the next idea.
 - Set an iteration budget inside the resource envelope (for example, after the approved
   number of attempts without convergence, stop patching and restart from a simpler base).
-  Record the budget as a standing rule for the task.
+  Record the budget in the campaign issue body.
 - When synthesis from a reference keeps failing: **replicate it 1:1 first** (same libs,
   same parameters, same scene), verify parity, then swap components one at a time.
 - For parameter-tuning against human taste, build a calibration surface (sliders, knobs)

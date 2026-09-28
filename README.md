@@ -2,9 +2,9 @@
 
 Opinionated foundations for coding agents. Sensible defaults, fully overridable.
 
-House Rules combines global working rules, project preferences, focused skills, and a
-small Git-based task helper. Install it once; keep project-specific choices in each
-repository. Explicit user choices and established project stacks override its defaults.
+House Rules combines global working rules, project preferences, and focused skills.
+Install it once; keep project-specific choices in each repository. Explicit user choices
+and established project stacks override its defaults.
 
 ## What's included
 
@@ -14,8 +14,8 @@ repository. Explicit user choices and established project stacks override its de
   alternatives where appropriate. Choose only the components needed.
 - [STRUCTURE.md](STRUCTURE.md): default paths and naming for projects using House Rules.
 - `skills/`: project bootstrap, design, implementation, experiments, diagnosis, reporting,
-  and task coordination. Load only the relevant procedures.
-- `bin/house-rules.mjs`: a Node CLI for the Git task protocol, with no runtime dependencies.
+  and work tracking. Load only the relevant procedures. The audit-report skill includes an
+  optional structural linter that needs Node.js 22 or later; nothing else needs Node.
 
 ## Install the rules globally
 
@@ -24,6 +24,9 @@ Clone the repository to a permanent user-owned directory:
 ```sh
 git clone https://github.com/jak-pan/house-rules.git ~/house-rules
 ```
+
+House Rules is distributed only through this repository; the unrelated npm package named
+`house-rules` is not this project.
 
 Then give your agent the prompt in [INSTALL-AGENTS.md](INSTALL-AGENTS.md). It preserves existing native
 instructions, adds a pointer to House Rules, and installs the skills in each product's
@@ -35,31 +38,18 @@ hold local decisions. The `project-bootstrap` skill applies defaults automatical
 asks only about consequential unknowns. An override can be as simple as “This project
 uses Python and FastAPI; retain that stack.”
 
-## Use the task helper
+## Track work
 
-The helper targets Windows, macOS, and Linux with **Node.js 22 or later**. It uses Node
-filesystem APIs rather than zsh, awk, sed, or other system utilities. Git remains the
-tracker; the helper only maintains Markdown files in the project where you run it.
-
-From inside the target project, run the helper by its path in your permanent House Rules
-directory:
-
-```sh
-node "/path/to/house-rules/bin/house-rules.mjs" task new "Build the first version"
-node "/path/to/house-rules/bin/house-rules.mjs" task board
-```
-
-Use a native Windows path on Windows. House Rules is distributed only through this
-repository; the unrelated npm package named `house-rules` is not this project. See
-[task-protocol](skills/task-protocol/SKILL.md) for ownership, handoffs, release, and
-closeout. Plain Git task files also work without Node or the helper.
+Projects track work as issues on their Git host, on a project board, never in Markdown
+status files. The [work-tracking](skills/work-tracking/SKILL.md) skill covers claims,
+handoffs, branches, and pull requests; on GitHub, agents use `gh` with the `project`
+token scope.
 
 ## Verify
 
-CI checks JavaScript syntax, CLI startup and reported version on Windows, macOS, and
-Linux. This is a smoke check, not proof of every operation or
-native agent's discovery. The source repository intentionally keeps no development task
-backlog or test suite; record maintenance decisions in commits. Projects using House Rules
-still use Git task files by default and keep their own tests.
+CI checks the report linter's JavaScript syntax on Windows, macOS, and Linux. This is a
+smoke check, not proof of the linter's behavior or of any agent's discovery. The source
+repository keeps no test suite; maintenance decisions are recorded in commits. Projects
+using House Rules keep their own tests.
 
 Attribution is in [NOTICE.md](NOTICE.md); the license is [MIT](LICENSE).

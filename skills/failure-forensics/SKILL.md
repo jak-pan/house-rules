@@ -84,4 +84,4 @@ Routine navigation searches do not need this check.
 
 Report the symptom, supported cause or causes, evidence, fix or next probe, and remaining
 uncertainty in a cohesive account. Distinguish an unresolved investigation from a
-confirmed repair, and record reusable findings in the Git-tracked work item.
+confirmed repair, and record reusable findings in the work item.

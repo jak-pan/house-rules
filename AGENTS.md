@@ -8,19 +8,20 @@ states invariants; the named skill holds the procedure; nothing is restated.
 ## Applicability and loading
 
 Apply the sections relevant to the actual task. A simple question does not create an
-implementation task, benchmark, task claim, commit, or handoff obligation. Load
-procedural skills on demand rather than loading every skill.
+implementation task, benchmark, claim, commit, or handoff obligation. Load procedural
+skills on demand rather than loading every skill.
 
 Keep model selection, permissions, MCP connections, hooks, and delegation APIs in
 native tool configuration. A skill describes a procedure; it does not grant access
-or make an unavailable tool callable. Use the workspace's configured tracker; skill
-`task-protocol` is the Git-backed file default. Use another tracker only when the
-workspace explicitly selects it; never maintain two writable trackers.
+or make an unavailable tool callable. Use the workspace's configured tracker; the
+default is Git-host issues on a project board (skill `work-tracking`). Use another
+tracker only when the workspace explicitly selects it; never maintain two writable
+trackers.
 
 ## Session start
 
-1. The bible (repository `AGENTS.md`) and `CONTEXT.md` when present → the tracker's
-   board → your assignment's current state + latest handoff.
+1. The bible (repository `AGENTS.md`) and `CONTEXT.md` when present → the project board
+   → your issue's current state + latest handoff comment.
 2. Subsystem `CONTEXT.md`/`README.md` before touching that subsystem; read context files
    fully, not summaries.
 3. After any context reset, re-read the bible and any active campaign ledger.
@@ -226,10 +227,10 @@ brevity must not remove evidence or content needed to complete the task.
 
 - At the beginning of substantive work, use the recorded collaboration mode. If none
   exists, ask once whether to proceed autonomously or pause at consequential decision
-  forks. Record the answer in the bible (or the task, for a task-scoped choice); do not
-  ask every turn, on a simple question, or after the operator already chose a mode.
+  forks. Record the answer in the bible (or the work item, for a choice scoped to it); do
+  not ask every turn, on a simple question, or after the operator already chose a mode.
   Continue independent inspection while a choice is pending. A decision fork is not a new
-  task or worktree.
+  work item or worktree.
 - In autonomous mode, proceed when you judge the choice at least 90% likely to be right
   and evidence shows it is reversible and inside the approved outcome, risk boundaries,
   and resource envelope. The 90% is a judgment threshold, not a calibrated probability
@@ -276,12 +277,12 @@ brevity must not remove evidence or content needed to complete the task.
 ## Git
 
 - Stage explicit files — never `git add -A`. Never amend or force-push unless told.
-- Default cadence: commit locally at logical-piece completion (gates green, work state
-  recorded — same commit), using the repo's commit tooling and message canon. A repo may
-  override the cadence in its bible.
+- Default cadence: commit locally at logical-piece completion (gates green, tracker state
+  updated at the same point), using the repo's commit tooling and message canon. A repo
+  may override the cadence in its bible.
 - **Owned repos/orgs:** default to a work branch, validation, and local commits. Push work
-  branches within the recorded repository/task delivery authority. Main-branch pushes
-  and merges need explicit task or project authorization; a standing project choice
+  branches within the recorded repository/work-item delivery authority. Main-branch pushes
+  and merges need explicit work-item or project authorization; a standing project choice
   counts, so do not ask again when it already authorizes the action. Confidence alone
   never grants delivery authority. Subagents must not push or merge into main. This
   rule does not change when agents may be spawned (§Resource envelopes, §Parallel work).
@@ -344,7 +345,7 @@ operator's explicit decision — neither a silent default nor a hard ban.
 
 Shared host resources (other projects' services, model caches) are not ours to stop or
 clean. Automatically remove only reproducible scratch produced by the current work and
-no longer used by a running process. Preserve raw inputs, paid results, user files, task
+no longer used by a running process. Preserve raw inputs, paid results, user files, tracker
 history, and decision evidence. For unknown or expensive-to-rebuild artifacts, establish
 ownership and retention first; quarantine when appropriate. Deleting or overwriting
 durable stores, including incomplete datasets or run results, requires explicit
@@ -359,7 +360,8 @@ weakening the product.
 
 ## Work tracking & continuity
 
-Whatever the tracker (file protocol, orchestrator, hosted issues), these invariants hold:
+Whatever the tracker (Git-host issues by default, an orchestrator, another host), these
+invariants hold; the default's mechanics: skill `work-tracking`.
 
 - One owner per work item — claim before touching; a claim conflict is a feature.
 - State has a single writer; everyone else reads.
@@ -368,7 +370,8 @@ Whatever the tracker (file protocol, orchestrator, hosted issues), these invaria
 - Boards and status views are derived views (§Layout), never hand-maintained truth.
 
 Vocabulary, used consistently: **tracker** = the org/repo-defined work-management system;
-**bible** = the repository's AGENTS.md: settled local decisions and execution choices;
+**work item** = one tracked unit of work (by default, an issue); **bible** = the
+repository's AGENTS.md: settled local decisions and execution choices;
 edit or prune entries only with the change explained in the commit; **campaign ledger** =
 a long-running goal's tried → result → verdict record; **handoff** = the immutable
 continuation record defined above. In House Rules files, `AGENTS.md §X` means this file.

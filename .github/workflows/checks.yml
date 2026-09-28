@@ -19,14 +19,5 @@ jobs:
         with:
           node-version: 22
           package-manager-cache: false
-      - name: Check CLI syntax
-        run: node --check bin/house-rules.mjs
       - name: Check report helper syntax
         run: node --check skills/audit-report-authoring/scripts/lint-report-set.mjs
-      - name: Verify CLI version
-        shell: bash
-        run: |
-          expected="$(node -p "require('./package.json').version")"
-          actual="$(node bin/house-rules.mjs --version)"
-          echo "package.json: $expected; house-rules --version: $actual"
-          test "$actual" = "$expected"
