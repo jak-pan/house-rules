@@ -33,7 +33,7 @@ repo/
 │   └── {system}/{benchmark}/{limit}/{run_name}/  # neutral condition names, run-params.json
 ├── records/                       # curated promoted runs (same shape as runs/)
 ├── skills/<name>/SKILL.md         # repo-local skills; check before writing shell pipelines
-├── scripts/                       # git-commit.sh, git-push.sh, ci guards, smoke gates
+├── scripts/                       # ci guards, smoke gates, build/test helpers
 ├── RUNBOOK.md                     # operational knowledge: run, recover, rotate — not architecture
 ├── .debug-session/                # gitignored: logs, screenshots, debug reports
 └── .tmp/                          # gitignored: scratch, per-lane cargo targets

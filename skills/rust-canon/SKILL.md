@@ -35,9 +35,9 @@ Rules.
 
 ## Repo tooling
 
-Where a repo ships git/build/test scripts (`scripts/git-commit.sh`, smoke gates, guard
-scripts), use them instead of raw commands — they encode repo law (submodule pointer
-bumps, scope checks) that raw git/cargo silently violates.
+Where a repo ships build/test scripts (smoke gates, guard scripts), use them instead of
+raw commands — they encode repo law (scope checks, pinned flags) that raw cargo silently
+violates. Git itself is used directly; repo commit/push wrappers are retired.
 
 ## Gates
 
