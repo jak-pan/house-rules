@@ -103,10 +103,13 @@ run_one() {
       codex) codex exec --json --skip-git-repo-check -m "$model" -c model_reasoning_effort="${effort:-high}" \
                ${tier:+-c service_tier="\"$tier\""} -s read-only -C "$dir" -o "$out/$r.md" - < "$prompt" \
                > "$out/$r.jsonl" 2> "$out/$r.err" || cli_status=$? ;;
-      grok)  (cd "$dir" && env GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_SKILLS_ENABLED=0 GROK_CLAUDE_RULES_ENABLED=0 \
+      # Grok has no read-only sandbox that starts on every host, so the reviewer gets only read tools:
+    # no shell (which could reach authenticated gh/git), no file writes, no MCP. Names are Grok's runtime
+    # tool names (checked in the session's tool_definitions.json), not the older documented ones.
+    grok)  (cd "$dir" && env GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_SKILLS_ENABLED=0 GROK_CLAUDE_RULES_ENABLED=0 \
                GROK_CLAUDE_MCPS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 GROK_CURSOR_AGENTS_ENABLED=0 \
                GROK_CURSOR_SKILLS_ENABLED=0 GROK_CURSOR_RULES_ENABLED=0 \
-               grok -m "$model" --reasoning-effort "${effort:-high}" --output-format json --always-approve --disable-web-search --prompt-file "$prompt" > "$out/$r.json" 2> "$out/$r.err") || cli_status=$?
+               grok -m "$model" --reasoning-effort "${effort:-high}" --tools read_file,list_dir,grep --output-format json --always-approve --disable-web-search --prompt-file "$prompt" > "$out/$r.json" 2> "$out/$r.err") || cli_status=$?
              if [ "$cli_status" -eq 0 ]; then
                python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('text',''))" "$out/$r.json" > "$out/$r.md" 2>> "$out/$r.err" || cli_status=$?
              fi ;;
