@@ -12,8 +12,12 @@ performance, code quality, waste), focused on: <the invariants that matter for t
 change, e.g. authorization on every path, crash/replay, bounded cost>.
 Review statically; CI runs the full suite. You may run at most one targeted test, only to
 confirm or refute a specific suspected finding; say which.
+Challenge the spec as well: report contradictions, infeasible or unmeasurable
+requirements, undefined cases and evidently worse designs under Spec issues.
 Output: VERDICT: APPROVE or REQUEST_CHANGES; Blocking (numbered: file:line, concrete
-scenario, smallest fix); Follow-ups; Non-blocking. Do not edit files. Under <N> lines.
+scenario, smallest fix); Spec issues (section, problem, proposed resolution, and whether
+it needs an operator decision); Follow-ups; Non-blocking. Do not edit files. Under <N>
+lines.
 ```
 
 ## Fix prompt template
