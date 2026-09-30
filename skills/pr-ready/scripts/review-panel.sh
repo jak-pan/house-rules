@@ -51,7 +51,7 @@ try:
         sys.exit(f"refusing panel directory outside output root: {panel}")
     paths = [panel / "summary.txt"]
     paths.extend(panel / f"{reviewer}.{suffix}" for reviewer in reviewers
-                 for suffix in ("md", "jsonl", "json", "err", "prepare.err", "prompt"))
+                 for suffix in ("md", "jsonl", "json", "err", "prepare.err", "prompt", "prompt.grok"))
     for path in paths:
         resolved = path.resolve()
         if resolved == panel or not resolved.is_relative_to(panel):
@@ -65,7 +65,7 @@ mkdir -p "$out" || exit 1
 for r in "$@"; do
   # A reused panel directory must never supply evidence from a previous run.
   if ! rm -f -- "$out/$r.md" "$out/$r.jsonl" "$out/$r.json" \
-      "$out/$r.err" "$out/$r.prepare.err" "$out/$r.prompt"; then
+      "$out/$r.err" "$out/$r.prepare.err" "$out/$r.prompt" "$out/$r.prompt.grok"; then
     echo "$r failed: clearing previous reviewer outputs" >> "$out/summary.txt"
     exit 1
   fi
@@ -106,7 +106,12 @@ run_one() {
       # Grok has no read-only sandbox that starts on every host, so the reviewer gets only read tools:
     # no shell (which could reach authenticated gh/git), no file writes, no MCP. Names are Grok's runtime
     # tool names (checked in the session's tool_definitions.json), not the older documented ones.
-    grok)  if ! (cd "$dir" && env GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_SKILLS_ENABLED=0 GROK_CLAUDE_RULES_ENABLED=0 \
+    grok)  # Grok discovers project configuration (.mcp.json, hooks) from its working directory, and a
+           # change under review can edit that configuration. Run it from an empty directory instead and
+           # let it read the checkout by absolute path.
+           local neutral; neutral=$(mktemp -d "${TMPDIR:-/tmp}/review-grok.XXXXXX") || return 1
+           { printf 'The checkout under review is %s; read its files by absolute path.\n\n' "$dir"; cat "$prompt"; } > "$prompt.grok"
+           if ! (cd "$neutral" && env GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_SKILLS_ENABLED=0 GROK_CLAUDE_RULES_ENABLED=0 \
                GROK_CLAUDE_MCPS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 GROK_CURSOR_AGENTS_ENABLED=0 \
                GROK_CURSOR_SKILLS_ENABLED=0 GROK_CURSOR_RULES_ENABLED=0 grok inspect 2>&1) | python3 -c '
 import re, sys
@@ -122,10 +127,11 @@ for section in ("MCP Servers", "Hooks"):
 sys.exit(0 if ok else 1)' 2>> "$out/$r.err"; then
              echo "$r failed: Grok would load an enabled hook or MCP server (see $r.err)" >> "$out/summary.txt"; return 1
            fi
-           (cd "$dir" && env GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_SKILLS_ENABLED=0 GROK_CLAUDE_RULES_ENABLED=0 \
+           (cd "$neutral" && env GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_SKILLS_ENABLED=0 GROK_CLAUDE_RULES_ENABLED=0 \
                GROK_CLAUDE_MCPS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 GROK_CURSOR_AGENTS_ENABLED=0 \
                GROK_CURSOR_SKILLS_ENABLED=0 GROK_CURSOR_RULES_ENABLED=0 \
-               grok -m "$model" --reasoning-effort "${effort:-high}" --tools read_file,list_dir,grep --output-format json --always-approve --disable-web-search --prompt-file "$prompt" > "$out/$r.json" 2> "$out/$r.err") || cli_status=$?
+               grok -m "$model" --reasoning-effort "${effort:-high}" --tools read_file,list_dir,grep --output-format json --always-approve --disable-web-search --prompt-file "$prompt.grok" > "$out/$r.json" 2> "$out/$r.err") || cli_status=$?
+           rmdir "$neutral" 2>/dev/null
              if [ "$cli_status" -eq 0 ]; then
                python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('text',''))" "$out/$r.json" > "$out/$r.md" 2>> "$out/$r.err" || cli_status=$?
              fi ;;
