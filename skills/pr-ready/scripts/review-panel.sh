@@ -22,14 +22,17 @@ if [ $# -eq 0 ]; then
 fi
 [ $# -gt 0 ] || { echo "no reviewers: configure families in $conf" >&2; exit 2; }
 
+base_args=(base "$dir")
+[ -n "${REVIEW_BASE:-}" ] && base_args+=(--base "$REVIEW_BASE")
+resolved_base=$("$here/prepare.py" "${base_args[@]}") || exit 1
+
 run_one() {
   local r=$1 file=$reviewers_dir/$1.md
   local fam cfg cli model tier effort prompt=$out/$r.prompt t0
   fam=$(frontmatter "$file" family); cfg=$(family_cfg "$fam")
   [ -n "$cfg" ] || { echo "$r skipped: family $fam not configured" >> "$out/summary.txt"; return; }
   read -r cli model tier effort <<<"$cfg"; [ "$tier" = - ] && tier=
-  local prepare_args=(review "$dir" --lens "$r" --cli "$cli" --summary "$base")
-  [ -n "${REVIEW_BASE:-}" ] && prepare_args+=(--base "$REVIEW_BASE")
+  local prepare_args=(review "$dir" --lens "$r" --cli "$cli" --summary "$base" --base "$resolved_base" --no-fetch)
   if ! "$here/prepare.py" "${prepare_args[@]}" > "$prompt" 2> "$out/$r.prepare.err"; then
     cat "$out/$r.prepare.err" >&2
     echo "$r failed: context preparation (see $r.prepare.err)" >> "$out/summary.txt"
@@ -57,7 +60,13 @@ run_one() {
 
 : > "$out/summary.txt"
 "$here/review-panel-models.py" --check >&2 || true   # notice only: newer models available
-for r in "$@"; do run_one "$r" & done
-wait
+pids=()
+for r in "$@"; do
+  run_one "$r" &
+  pids+=("$!")
+done
+status=0
+for pid in "${pids[@]}"; do wait "$pid" || status=1; done
 [ -n "$(git -C "$dir" status --porcelain)" ] && echo "WARNING: a reviewer modified the checkout" >> "$out/summary.txt"
 cat "$out/summary.txt"
+exit "$status"

@@ -11,6 +11,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import tracemalloc
 import unittest
 from unittest import mock
 
@@ -127,13 +128,170 @@ print(json.dumps(value))
                 "author_association": association, "user": {"login": login, "type": user_type},
                 "created_at": f"2026-01-{number:02d}T00:00:00Z", "body": body or f"Comment body {number}"}
 
+    def test_changed_paths_are_literal_in_every_format(self):
+        paths = ["prepar[e].py", "prepare.py", ":(glob)*.py", "star*.py", "starx.py",
+                 "question?.py", "questionx.py", "-option.py", "tab\tname.py", "line\nname.py"]
+        for n, path in enumerate(paths):
+            self.write(self.repo, path, f"unique_marker_{n} = {n}\n")
+        self.commit(self.repo, "Literal paths")
+        files = prepare.changed_files(self.repo, "origin/trunk...HEAD")
+        for mode in ("structured", "diff", "pack"):
+            for n, path in enumerate(paths):
+                with self.subTest(mode=mode, path=path):
+                    selected = [row for row in files if row[2] == path]
+                    output = prepare.change_part(self.repo, "origin/trunk...HEAD", selected, None, "HEAD", mode)
+                    self.assertEqual(output.count("@@ -"), 1)
+                    if mode != "pack":
+                        self.assertIn(f"+unique_marker_{n} = {n}", output)
+                        self.assertEqual(output.count("+unique_marker_"), 1)
+
+    def test_offline_uses_cached_default_and_skips_merge_for_all_commands(self):
+        self.git(self.repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+        self.git(self.repo, "remote", "set-url", "origin", str(self.root / "offline"))
+        for command in ("review", "fix", "pr"):
+            with self.subTest(command=command), mock.patch.object(prepare, "update") as update:
+                code, out, err = self.invoke(command, str(self.repo))
+                self.assertEqual(code, 0, err)
+                self.assertIn("origin/trunk...HEAD", out)
+                self.assertIn("cached", err)
+                update.assert_not_called()
+
+    def test_failed_fetch_preserves_selected_base_and_skips_merge(self):
+        original = prepare.run
+        def fail_fetch(repo, *args):
+            if args[:2] == ("git", "fetch"):
+                return subprocess.CompletedProcess(args, 1, "", "network unavailable")
+            return original(repo, *args)
+        for command in ("review", "fix", "pr"):
+            with self.subTest(command=command), mock.patch.object(prepare, "run", side_effect=fail_fetch), mock.patch.object(prepare, "update") as update:
+                code, out, err = self.invoke(command, str(self.repo), "--base", "origin/trunk")
+                self.assertEqual(code, 0, err)
+                self.assertIn("origin/trunk...HEAD", out)
+                self.assertIn("cached", err)
+                update.assert_not_called()
+
+    def test_explicit_local_base_never_fetches(self):
+        with mock.patch.object(prepare, "run", wraps=prepare.run) as calls:
+            code, out, err = self.invoke("fix", str(self.repo), "--base", "HEAD")
+        self.assertEqual(code, 0, err)
+        self.assertFalse(any(c.args[1:3] == ("git", "fetch") for c in calls.call_args_list))
+
+    def test_no_fetch_uses_the_supplied_base_without_network(self):
+        with mock.patch.object(prepare, "run", wraps=prepare.run) as calls:
+            code, out, err = self.invoke("review", str(self.repo), "--base", "origin/trunk", "--no-fetch")
+        self.assertEqual(code, 0, err)
+        self.assertFalse(any(c.args[1:3] in (("git", "fetch"), ("git", "ls-remote")) for c in calls.call_args_list))
+        code, out, err = self.invoke("review", str(self.repo), "--no-fetch")
+        self.assertEqual(code, 1)
+        self.assertIn("--no-fetch requires --base", err)
+
+    def test_rewritten_remote_default_is_fetched(self):
+        self.git(self.origin, "checkout", "--orphan", "replacement")
+        self.write(self.origin, "new.py", "pass\n")
+        self.commit(self.origin, "Rewritten default")
+        self.git(self.origin, "branch", "-M", "trunk")
+        base = prepare.resolve_base(self.repo)[0]
+        self.assertEqual(self.git(self.repo, "rev-parse", base), self.git(self.origin, "rev-parse", "HEAD"))
+
+    def test_bare_reference_prose_and_leading_titles_preserve_requirements(self):
+        doc = "## 10.2 Actions — details\nRequired action\n"
+        for reference in ("Implements §10.2 for signed requests.",
+                          "Implements §10.2 Actions for signed requests.", "§10.2 (Actions)"):
+            with self.subTest(reference=reference):
+                notices = []
+                entries = prepare.spec_sections(doc, [("10.2", None)], [], prepare.section_titles(reference), notices, "spec.md")
+                self.assertEqual(len(entries), 1)
+                self.assertIn("Required action", entries[0][2])
+                self.assertFalse(any("mismatch" in n for n in notices), notices)
+
+    def test_nested_ranges_do_not_repeat_parent_content(self):
+        doc = "## 2 Parent\nParent body\n### 2.1 Child\nChild body\n## 3 Next\nNext body\n"
+        for requests in ([("2", "2.1")], [("2.1", None), ("2", None)]):
+            entries = prepare.spec_sections(doc, requests, [], {}, [], "spec.md")
+            self.assertEqual(sum(body.count("Child body") for _, _, body, _ in entries), 1)
+
+    def test_nonexistent_named_specs_do_not_hide_real_tree_paths(self):
+        self.add_review_change()
+        files = prepare.changed_files(self.repo, "origin/trunk...HEAD")
+        for text in ("See changelog.md", "Design: absent.md [§2]"):
+            with self.subTest(text=text):
+                self.assertEqual(prepare.discover_spec(self.repo, "HEAD", None, [text], files, [("2", None)]), "docs/design.md")
+        self.assertIsNone(prepare.discover_spec(self.repo, "HEAD", "absent.md", [], files, []))
+
+    def test_oxford_comma_issue_lists(self):
+        self.assertEqual(prepare.issue_refs("Resolves #2, #3, and #4"), ["#2", "#3", "#4"])
+
+    def test_large_diff_memory_is_bounded_before_pack_fallback(self):
+        self.write(self.repo, "large.py", "# " + "x" * 12_000_000 + "\n")
+        self.commit(self.repo, "Large line")
+        for mode in ("pack", "structured"):
+            with self.subTest(mode=mode):
+                tracemalloc.start()
+                try:
+                    prompt = self.review(format=mode)
+                    peak = tracemalloc.get_traced_memory()[1]
+                finally:
+                    tracemalloc.stop()
+                self.assertLess(peak, 6_000_000, f"peak memory: {peak}")
+                self.assertIn("Touched functions", prompt)
+                self.assertNotIn("x" * 1000, prompt)
+
+    def test_rust_binary_targets_are_not_module_filters(self):
+        for path, body in {
+            "Cargo.toml": '[package]\nname="sample"\nversion="0.1.0"\n',
+            "src/main.rs": "#[test] fn main_test() {}\n",
+            "src/bin/tool.rs": "#[test] fn tool_test() {}\n",
+        }.items():
+            self.write(self.repo, path, body)
+        self.commit(self.repo, "Binary tests")
+        commands, unresolved = prepare.test_commands(self.repo, prepare.changed_files(self.repo, "origin/trunk...HEAD"))
+        self.assertIn("cargo test --release --bin tool", commands)
+        self.assertIn("cargo test --release --bin sample", commands)
+        self.assertNotIn("src/main.rs", unresolved)
+
+    def panel_fixture(self, summary_exists=True):
+        for cli in ("codex", "grok", "kimi"):
+            stub = self.binaries / cli
+            stub.write_text("#!/bin/sh\necho 'unexpected reviewer execution' >&2\nexit 99\n")
+            stub.chmod(0o755)
+        conf = self.root / "panel.conf"
+        conf.write_text("a = codex test-model - high\nb = grok test-model - high\n")
+        summary = self.root / "task.txt"
+        if summary_exists:
+            summary.write_text("Review locally")
+        output = self.root / "output"
+        env = dict(os.environ, REVIEW_PANEL_CONF=str(conf), REVIEW_PANEL_OUT=str(output))
+        return summary, output, env
+
+    def test_panel_preparation_failure_returns_nonzero(self):
+        summary, output, env = self.panel_fixture(summary_exists=False)
+        env["REVIEW_BASE"] = "origin/trunk"
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "round", str(self.repo), str(summary)], capture_output=True, text=True, env=env)
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("context preparation", (output / "round" / "summary.txt").read_text())
+
+    def test_panel_resolves_and_fetches_once(self):
+        summary, output, env = self.panel_fixture(summary_exists=False)
+        real_git = prepare.shutil.which("git")
+        log = self.root / "git.log"
+        wrapper = self.binaries / "git"
+        wrapper.write_text("#!" + sys.executable + "\nimport os, sys, json\n"
+                           + f"with open({str(log)!r}, 'a') as log: log.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+                           + f"os.execv({real_git!r}, [{real_git!r}, *sys.argv[1:]])\n")
+        wrapper.chmod(0o755)
+        env.pop("REVIEW_BASE", None)
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "round", str(self.repo), str(summary)], capture_output=True, text=True, env=env)
+        calls = [json.loads(line) for line in log.read_text().splitlines()]
+        self.assertEqual(sum(c[0] == "fetch" for c in calls), 1, result.stderr)
+        self.assertEqual(sum(c[0] == "ls-remote" for c in calls), 1, result.stderr)
+
     def test_remote_default_overrides_stale_local_head_and_is_fetched(self):
         self.git(self.repo, "update-ref", "refs/remotes/origin/main", "HEAD")
         self.git(self.repo, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
         self.write(self.origin, "upstream.txt", "new upstream\n")
         self.commit(self.origin, "Upstream advances")
-        base, remote = prepare.resolve_base(self.repo)
-        self.assertEqual((base, remote), ("origin/trunk", "origin"))
+        base, remote, fresh = prepare.resolve_base(self.repo)
+        self.assertEqual((base, remote, fresh), ("origin/trunk", "origin", True))
         self.assertEqual(self.git(self.repo, "rev-parse", base), self.git(self.origin, "rev-parse", "HEAD"))
 
     def test_fork_prefers_upstream_and_explicit_base_wins(self):
@@ -141,8 +299,8 @@ print(json.dumps(value))
         self.git(self.root, "clone", str(self.origin), str(upstream))
         self.git(upstream, "branch", "-m", "stable")
         self.git(self.repo, "remote", "add", "upstream", str(upstream))
-        self.assertEqual(prepare.resolve_base(self.repo), ("upstream/stable", "upstream"))
-        self.assertEqual(prepare.resolve_base(self.repo, "origin/trunk"), ("origin/trunk", "origin"))
+        self.assertEqual(prepare.resolve_base(self.repo), ("upstream/stable", "upstream", True))
+        self.assertEqual(prepare.resolve_base(self.repo, "origin/trunk"), ("origin/trunk", "origin", True))
 
     def test_fallback_main_when_remote_head_is_unadvertised(self):
         self.git(self.origin, "branch", "-m", "main")
@@ -150,11 +308,11 @@ print(json.dumps(value))
         self.git(self.root, "clone", "--bare", str(self.origin), str(bare))
         self.git(bare, "symbolic-ref", "HEAD", "refs/heads/missing")
         self.git(self.repo, "remote", "set-url", "origin", str(bare))
-        self.assertEqual(prepare.resolve_base(self.repo), ("origin/main", "origin"))
+        self.assertEqual(prepare.resolve_base(self.repo), ("origin/main", "origin", True))
 
     def test_local_checkout_without_remote_accepts_explicit_base(self):
         self.git(self.repo, "remote", "remove", "origin")
-        self.assertEqual(prepare.resolve_base(self.repo, "HEAD"), ("HEAD", None))
+        self.assertEqual(prepare.resolve_base(self.repo, "HEAD"), ("HEAD", None, True))
         with self.assertRaisesRegex(prepare.PrepareError, "specify --base"):
             prepare.resolve_base(self.repo)
 
@@ -222,10 +380,10 @@ print(json.dumps(value))
         self.assertTrue(prompt.startswith("not found: §99, MISSING"))
         self.assertIn("# 5. Change", prompt)
 
-    def test_titled_section_references_reject_stale_numbers(self):
+    def test_titled_section_references_flag_and_include_stale_numbers(self):
         self.write(self.repo, "docs/spec.md", "## 10.2 Notifications\nUnrelated requirement\n## 10.3 Actions\nMoved requirement\n")
         self.commit(self.repo, "Renumber spec")
-        for reference in ("§10.2 Actions", "§10.2 (Actions)"):
+        for reference in ("§10.2 (Actions)",):
             with self.subTest(reference=reference):
                 self.github(self.pr("Design: docs/spec.md\n" + reference))
                 prompt = self.review()
@@ -234,7 +392,7 @@ print(json.dumps(value))
                 for text in ("docs/spec.md", "§10.2", "Actions", "Notifications"):
                     self.assertIn(text, top)
                 requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
-                self.assertNotIn("Unrelated requirement", requirements)
+                self.assertIn("Unrelated requirement", requirements)
                 self.assertNotIn("Moved requirement", requirements)
 
     def test_matching_titles_and_number_only_ranges_are_distinguished(self):
@@ -278,11 +436,11 @@ print(json.dumps(value))
         prompt = self.review(spec="docs/spec.md#10.2")
         self.assertIn("title mismatch", prompt.split("# 1. Review pack")[0])
         requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
-        self.assertNotIn("Unrelated requirement", requirements)
+        self.assertIn("Unrelated requirement", requirements)
         self.assertIn("Start requirement", requirements)
         self.assertIn("End requirement", requirements)
 
-    def test_stale_nested_section_is_not_included_through_its_parent(self):
+    def test_stale_nested_section_is_flagged_and_included_once_through_parent(self):
         self.write(self.repo, "docs/spec.md", "## 10 Behavior\nParent requirement\n### 10.2 Notifications\nUnrelated requirement\n### 10.3 Events\nEvent requirement\n")
         self.commit(self.repo, "Implement §10\n\n§10.2 (Actions)")
         prompt = self.review()
@@ -291,7 +449,7 @@ print(json.dumps(value))
         requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
         self.assertIn("Parent requirement", requirements)
         self.assertIn("Event requirement", requirements)
-        self.assertNotIn("Unrelated requirement", requirements)
+        self.assertIn("Unrelated requirement", requirements)
 
     def test_diff_format_keeps_number_only_warning_in_index_and_notice(self):
         self.write(self.repo, "docs/spec.md", "## 10.2 Actions\nAction requirement\n")
@@ -363,7 +521,7 @@ print(json.dumps(value))
                                          self.comment(3, login="automation[bot]"), self.comment(4, user_type="Bot")],
                     review_comments=[self.comment(7, "COLLABORATOR")], reviews=[self.comment(8, "MEMBER")],
                     issue_comments={2: [[self.comment(5, "MEMBER")], [self.comment(1, "OWNER")]]})
-        code, prompt, err = self.invoke("review", str(self.repo), "--base", "origin/trunk", "--pr", "1",
+        code, prompt, err = self.invoke("review", str(self.repo), "--base", "origin/trunk", "--no-fetch", "--pr", "1",
                                         "--issue", "6", "--issue", "example/project#2")
         self.assertEqual(code, 0, err)
         requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
@@ -426,18 +584,19 @@ print(json.dumps(value))
         self.fixtures.write_text(json.dumps(fixtures))
         prompt = self.review()
         top = prompt.split("# 1. Review pack")[0]
-        for token in ("§9", "PT40", "#2", "network unavailable"):
+        for token in ("§9", "PT40", "network unavailable", "issues/2/comments"):
             self.assertIn(token, top)
         self.assertIn("Local requirement", prompt)
         requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
-        self.assertNotIn("PR description", requirements)
-        self.assertNotIn("Issue #2", requirements)
+        self.assertIn("PR description", requirements)
+        self.assertIn("Issue #2", requirements)
+        self.assertNotIn("#2", top)
 
     def test_custom_test_prefix_and_local_issue_without_pr(self):
         self.write(self.repo, "docs/design.md", "## 1 Behavior\nRequired\n## Tests\n| AT2 | Custom test |\n| PT3 | Default test |\n")
         self.commit(self.repo, "Implement AT2 PT3")
         self.github(issues=[self.issue(2, "Design: docs/design.md [§1]\nAT2")])
-        code, prompt, err = self.invoke("review", str(self.repo), "--base", "origin/trunk",
+        code, prompt, err = self.invoke("review", str(self.repo), "--base", "origin/trunk", "--no-fetch",
                                         "--issue", "2", "--test-prefix", "AT")
         self.assertEqual(code, 0, err)
         requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]

@@ -13,13 +13,16 @@ suite (AGENTS.md §Verification); everything below keeps local work small.
 ## 1. Local gate (implementer or fixer)
 
 - Run `scripts/prepare.py fix <checkout> --reviews <files...>` before fixing, or
-  `scripts/prepare.py pr <checkout>` before preparing a PR. It fetches the base and
+  `scripts/prepare.py pr <checkout>` before preparing a PR (Python 3.11+). It fetches the base and
   checks ownership with `upstream-contribution/scripts/repo-ownership.sh`. For external
   repositories it reports how many commits the branch is behind and leaves the update
   method to the operator; `--update` forces a base merge. Owned repositories (and unknown
   ownership) keep the default base merge, never rebase, and stop on conflicts. It prints
   context and targeted test commands without running them. `--base REF` overrides remote
-  default detection.
+  default detection. An explicit local base requires no fetch. Failed remote discovery
+  uses the cached remote-tracking default branch; a failed fetch keeps the selected
+  cached base. Both report stale context and skip merging. `--no-fetch --base REF`
+  uses an already resolved base.
 - Use the repository's declared gates (its `AGENTS.md`, or the CI workflow when none are
   declared) in CI's build profile. Rust: skill `rust-canon` §Gates.
 - Run formatting, lint/compile checks, fast guard tests, and **targeted** tests: the
@@ -52,7 +55,9 @@ load no other rules.
 
 - Give the reviewer the spec sections, previous review and round task as needed
   ([review template](references/review-prompt.md)). `scripts/review-panel.sh` runs
-  `scripts/prepare.py review` per lens and CLI: stable rules and lens first, then the
+  the base resolver once, then `scripts/prepare.py review --base REF --no-fetch` per
+  lens and CLI (a preparation failure makes the panel exit nonzero): stable rules and
+  lens first, then the
   base-prompt file as summary/task, PR/issue context, requirements and change. Requirements
   are indexed as R1, R2, … with source links, most authoritative first: design/spec
   sections and acceptance-test rows, linked issues (title, labels, body), non-bot
@@ -62,19 +67,25 @@ load no other rules.
   `--test-prefix PREFIX` (default `PT`) and `--summary FILE`. Section references, ranges
   such as `§3A.2.5–§3A.2.6` (also `-`), and test IDs are collected from PR/issue bodies
   and range commit messages; ranges expand in document order. Inline reference titles
-  (`§10.2 Actions` or `§10.2 (Actions)`) must match the heading title; mismatches omit
-  that section and are reported at the top. Sections selected without a title, including
+  (`§10.2 Actions` when the words match the heading's leading words, or an explicit
+  parenthesized title `§10.2 (Actions)`) are compared with the heading. Trailing prose
+  on a bare reference need not match. Title mismatches are reported at the top; the
+  section is still included and flagged for verification. Nested ranges include each
+  section body only once. Sections selected without a title, including
   range members, are marked in the index and individually at the top as
   "matched by number only; verify" to expose potentially stale numbering. `--spec` wins, then a
-  path named in PR/issue text (including the exact `Design: <path> [§...]` form), then
+  existing tree path named in PR/issue text (including the exact `Design: <path> [§...]` form), then
   an edited Markdown design/spec, then the best heading match under `docs/`, preferring
   `design/`, `spec/` and `specs/` on ties. Linked issues come from PR-body
   `Refs/Closes/Fixes/Resolves #N`, `owner/repo#N`, issue URLs and `--issue`.
   GitHub reads use optional `gh`; unavailable GitHub sources and unresolved references
-  are reported at the top. Comments are capped at 4,000 characters with a cut notice.
+  are reported at the top. A later GitHub read failure names the failed source and
+  preserves already fetched context. Comments are capped at 4,000 characters with a cut notice.
   Codex defaults to `structured` (full diffs), others to `pack` (file index and hunk
-  headers); `--format diff` omits spec content. `--format` overrides defaults; Codex
-  prompts over 800,000 characters fall back to pack for the change, then trim comments,
+  headers); `--format diff` omits spec content. `--format` overrides defaults;
+  diff reads are bounded before prompt construction, using numstat first and streaming
+  hunk headers for pack mode. Changed paths are literal Git pathspecs. Codex prompts
+  over 800,000 characters fall back to pack for the change, then trim comments,
   issue bodies and spec sections in that order (largest first within each source type).
   Notices identify every trim and any remaining excess from retained context.
 - Run a panel of one generalist per model family, adding focused lenses where warranted
