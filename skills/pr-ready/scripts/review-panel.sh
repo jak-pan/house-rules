@@ -13,7 +13,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 reviewers_dir=$here/../reviewers
 conf=${REVIEW_PANEL_CONF:-$here/../../../custom/review-panel.conf}
 name=$1; dir=$(cd "$2" && pwd); base=$(cd "$(dirname "$3")" && pwd)/$(basename "$3"); shift 3
-out=${REVIEW_PANEL_OUT:-$dir/.tmp/review-panel}/$name; mkdir -p "$out"
+out=${REVIEW_PANEL_OUT:-$dir/.tmp/review-panel}/$name
 family_cfg() { sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "$conf" 2>/dev/null | head -1; }
 frontmatter() { sed -n "s/^$2:[[:space:]]*//p" "$1" | head -1; }
 
@@ -21,6 +21,34 @@ if [ $# -eq 0 ]; then
   for f in a b c; do [ -n "$(family_cfg $f)" ] && set -- "$@" "generalist-$f"; done
 fi
 [ $# -gt 0 ] || { echo "no reviewers: configure families in $conf" >&2; exit 2; }
+
+# Validate the whole panel before creating, clearing or writing any output.
+# Resolve symlinks as well as '..'; a lexical prefix check is not containment.
+python3 - "$reviewers_dir" "$out" "$@" <<'PY' || exit 2
+from pathlib import Path
+import re
+import sys
+
+reviewers_dir, output, *reviewers = sys.argv[1:]
+for reviewer in reviewers:
+    if not re.fullmatch(r"[a-z0-9-]+", reviewer):
+        sys.exit(f"invalid reviewer: {reviewer!r}; expected [a-z0-9-]+")
+    if not (Path(reviewers_dir) / f"{reviewer}.md").is_file():
+        sys.exit(f"invalid reviewer: {reviewer!r}; no matching reviewer file")
+
+try:
+    panel = Path(output).resolve()
+    paths = [panel / "summary.txt"]
+    paths.extend(panel / f"{reviewer}.{suffix}" for reviewer in reviewers
+                 for suffix in ("md", "jsonl", "json", "err", "prepare.err", "prompt"))
+    for path in paths:
+        resolved = path.resolve()
+        if resolved == panel or not resolved.is_relative_to(panel):
+            sys.exit(f"refusing cleanup path outside panel directory: {path}")
+except (OSError, RuntimeError) as exc:
+    sys.exit(f"cannot validate panel cleanup paths: {exc}")
+PY
+mkdir -p "$out" || exit 1
 
 base_args=(base "$dir")
 [ -n "${REVIEW_BASE:-}" ] && base_args+=(--base "$REVIEW_BASE")

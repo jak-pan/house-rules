@@ -61,7 +61,10 @@ load no other rules.
   `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES` line are recorded in `summary.txt`
   and make the panel exit nonzero. Each run resets `summary.txt` and removes each selected
   reviewer's previous report, raw logs and prompt before preparation; cleanup failures
-  also make the panel exit nonzero. Prompt order: stable rules and lens first, then the
+  also make the panel exit nonzero. Before any output changes, reviewer names must match
+  `[a-z0-9-]+` and an existing file stem in `reviewers/`; all cleanup paths and the summary
+  must resolve beneath the panel directory, including through symlinks, or the panel refuses
+  to run. Prompt order: stable rules and lens first, then the
   base-prompt file as summary/task, PR/issue context, requirements and change. Requirements
   are indexed as R1, R2, … with source links, most authoritative first: design/spec
   sections and acceptance-test rows, linked issues (title, labels, body), non-bot

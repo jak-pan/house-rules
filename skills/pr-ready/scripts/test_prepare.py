@@ -406,6 +406,75 @@ else:
                 for path in untouched:
                     self.assertEqual(path.read_text(), "keep\n")
 
+    def test_panel_rejects_traversal_before_deleting_outside_files(self):
+        summary, _, env = self.panel_fixture()
+        env.pop("REVIEW_PANEL_OUT")
+        env["REVIEW_BASE"] = "origin/trunk"
+        victim = self.repo / "README.md"
+        victim.write_text("keep outside panel\n")
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "round",
+                                 str(self.repo), str(summary), "../../../README"],
+                                capture_output=True, text=True, env=env)
+        self.assertTrue(victim.exists(), "cleanup deleted checkout README.md")
+        self.assertEqual(victim.read_text(), "keep outside panel\n")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("invalid reviewer", result.stderr)
+        self.assertFalse((self.repo / ".tmp" / "review-panel").exists())
+
+    def test_panel_rejects_invalid_or_unknown_reviewers_before_any_output_changes(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        panel = output / "existing"
+        panel.mkdir(parents=True)
+        saved = {"summary.txt": "keep summary\n", "generalist-a.md": "keep report\n"}
+        for filename, content in saved.items():
+            (panel / filename).write_text(content)
+        for reviewer in ("", "../generalist-a", "/generalist-a", "generalist_a",
+                         "Generalist-a", "generalist-a\n", "unknown-reviewer"):
+            for name in ("new", "existing"):
+                with self.subTest(reviewer=reviewer, panel=name):
+                    result = subprocess.run(
+                        ["bash", str(SCRIPT.with_name("review-panel.sh")), name,
+                         str(self.repo), str(summary), "generalist-a", reviewer],
+                        capture_output=True, text=True, env=env)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("invalid reviewer", result.stderr)
+                    self.assertFalse((output / "new").exists())
+                    self.assertEqual({p.name: p.read_text() for p in panel.iterdir()}, saved)
+
+    def test_panel_refuses_cleanup_paths_resolving_outside_panel(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        filenames = [f"generalist-a.{suffix}" for suffix in
+                     ("md", "jsonl", "json", "err", "prepare.err", "prompt")]
+        filenames.append("summary.txt")
+        for filename in filenames:
+            with self.subTest(filename=filename):
+                panel = output / ("round-" + filename)
+                panel.mkdir(parents=True)
+                # A sibling sharing the panel's prefix is still outside it.
+                outside = output / (panel.name + "-other")
+                outside.mkdir()
+                victim = outside / "keep.txt"
+                victim.write_text("keep outside panel\n")
+                for name in filenames:
+                    (panel / name).write_text("previous run\n")
+                link = panel / filename
+                link.unlink()
+                link.symlink_to(victim)
+                result = subprocess.run(
+                    ["bash", str(SCRIPT.with_name("review-panel.sh")), panel.name,
+                     str(self.repo), str(summary), "generalist-a"],
+                    capture_output=True, text=True, env=env)
+                self.assertTrue(link.is_symlink(), "escaping cleanup path was removed")
+                self.assertEqual(victim.read_text(), "keep outside panel\n")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("outside panel directory", result.stderr)
+                for name in filenames:
+                    if name != filename:
+                        self.assertEqual((panel / name).read_text(), "previous run\n")
+                link.unlink()
+
     def test_panel_preparation_failure_returns_nonzero(self):
         summary, output, env = self.panel_fixture(summary_exists=False)
         env["REVIEW_BASE"] = "origin/trunk"
