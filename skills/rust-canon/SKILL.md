@@ -43,7 +43,8 @@ violates. Git itself is used directly; repo commit/push wrappers are retired.
 
 When to run the full gate versus a smaller one: AGENTS.md §Verification. Where CI runs this
 gate on every push, the full `cargo test` line is CI's; locally run the first two plus
-targeted `cargo test <filter>` for the code you changed.
+targeted `cargo test --release <filter>` for the code you changed. Use the same build
+profile as CI, so heavy fixtures run fast and timing bounds behave the same.
 
 ```
 cargo fmt --all --check
