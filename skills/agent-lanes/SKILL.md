@@ -55,7 +55,8 @@ Housekeeping is part of the workflow, not a later chore. Cleanup follows AGENTS.
   no longer exists. Then run `git worktree prune`. Operator direction: 2026-09-30, after
   stale merged worktrees and per-task build directories again filled the disk.
 - **Removable only when all hold:** no uncommitted changes (`git status --porcelain` is
-  empty); no commits missing from the remote (`git log HEAD --not --remotes` is empty);
+  empty); no commits missing from the remote (`git log HEAD --not --remotes` is empty, or
+  its PR merged at this HEAD or a descendant of it — a squash merge deletes the branch);
   no evidence, run results or secret files to keep (`.debug-session/`, `runs/`,
   `.env.local`; move them to the main checkout first, without overwriting existing
   files); and no running process has its working directory or open files inside it.
