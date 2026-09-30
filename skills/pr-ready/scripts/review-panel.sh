@@ -4,7 +4,7 @@
 #   name: [A-Za-z0-9][A-Za-z0-9._-]*, a single directory name
 #   reviewer: a file stem in ../reviewers/ (default: generalist-<family> for each configured family)
 # Config: ${REVIEW_PANEL_CONF:-<house-rules>/custom/review-panel.conf}, lines "<family> = <cli> <model> [tier] [effort]",
-#   cli one of codex | grok | kimi. Families without a config line are skipped.
+#   cli one of codex | grok | kimi. Unconfigured families are omitted from the default selection.
 # Prompt order: common rules, lens, summary/task, spec, change (prepare.py review).
 # Range: ${REVIEW_BASE:-remote default branch}...HEAD; upstream preferred to origin.
 # Output directory: ${REVIEW_PANEL_OUT:-<checkout>/.tmp/review-panel}/<name>/ with <reviewer>.md,
@@ -13,7 +13,9 @@ set -u
 here=$(cd "$(dirname "$0")" && pwd)
 reviewers_dir=$here/../reviewers
 conf=${REVIEW_PANEL_CONF:-$here/../../../custom/review-panel.conf}
-name=$1; dir=$(cd "$2" && pwd); base=$(cd "$(dirname "$3")" && pwd)/$(basename "$3"); shift 3
+name=$1
+dir=$(cd "$2" && pwd) || exit 2
+base=$(cd "$(dirname "$3")" && pwd)/$(basename "$3"); shift 3
 output_root=${REVIEW_PANEL_OUT:-$dir/.tmp/review-panel}
 out=$output_root/$name
 family_cfg() { sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "$conf" 2>/dev/null | head -1; }

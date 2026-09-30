@@ -163,7 +163,7 @@ print(json.dumps(value))
                 self.assertNotIn("None", prompt)
 
     def test_credentials_are_redacted_from_git_warnings_errors_and_prompts(self):
-        url = "https://test-user:fake-password@github.com/example/project.git?access_token=fake-token&x=1&api_key=fake-key"
+        url = "https://test-user:fake-password@github.com/example/project.git?access_token=fake-token&x=1&api_key=fake-prefix)fake-secret-tail"
         diagnostic = "fatal: unable to access '" + url + "'"
         self.git(self.repo, "remote", "set-url", "origin", url)
         real_run = prepare.run
@@ -189,10 +189,38 @@ print(json.dumps(value))
         outputs.append(self.review())
         for output in outputs:
             with self.subTest(output_kind=output[:30]):
-                for secret in ("test-user", "fake-password", "fake-token", "fake-key"):
+                for secret in ("test-user", "fake-password", "fake-token", "fake-prefix", "fake-secret-tail"):
                     self.assertNotIn(secret, output)
                 self.assertIn("github.com", output)
                 self.assertIn("x=1", output)
+
+    def test_query_credentials_end_at_query_separators(self):
+        for separator in ("&x=1", "#section", ""):
+            with self.subTest(separator=separator):
+                url = "https://example.invalid/?api_key=fake-prefix)fake-tail" + separator
+                self.assertEqual(prepare.redact(url),
+                                 "https://example.invalid/?api_key=[REDACTED]" + separator)
+
+    def test_query_redaction_handles_long_question_mark_runs(self):
+        # Bound the old quadratic failure without leaving a stuck test process.
+        code = """import sys
+sys.path.insert(0, sys.argv[1])
+from prepare import redact
+noise = '?' * 300_000
+assert redact(noise) == noise
+assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=1'
+"""
+        try:
+            result = subprocess.run([sys.executable, "-c", code, str(SCRIPT.parent)],
+                                    capture_output=True, text=True, timeout=5)
+        except subprocess.TimeoutExpired:
+            self.fail("redaction rescans a 300,000-character query-start run")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_query_author_is_not_an_auth_credential(self):
+        text = "?author=ada&auth=fake&authorization=fake&oauth=fake&client_auth=fake"
+        self.assertEqual(prepare.redact(text),
+                         "?author=ada&auth=[REDACTED]&authorization=[REDACTED]&oauth=[REDACTED]&client_auth=[REDACTED]")
 
     def test_size_guard_counts_emitted_escaped_spec_and_newline(self):
         path = self.repo / "spec.md"
@@ -209,7 +237,7 @@ print(json.dumps(value))
         self.assertEqual(code, 0, err)
         self.assertLessEqual(len(smaller), len(out) - 1)
 
-    def test_oversized_spec_is_reported_without_reading_blob(self):
+    def test_oversized_spec_fails_without_reading_blob_or_claiming_missing_sections(self):
         self.write(self.repo, "docs/spec.md", "## 2 Small\nNeeded\n## 3 Appendix\n" + "x" * 2_000_001)
         self.commit(self.repo, "Add large spec")
         real_run = prepare.run
@@ -218,10 +246,15 @@ print(json.dumps(value))
                 self.fail("oversized spec blob was read")
             return real_run(repo, *args)
         with mock.patch.object(prepare, "run", side_effect=no_blob_read) as calls:
-            prompt = self.review(spec="docs/spec.md#2")
-        self.assertIn("Skipped spec docs/spec.md", prompt)
-        self.assertIn("2,000,000 bytes", prompt)
-        self.assertIn("not found: §2", prompt)
+            for selector in ([], ["--spec", "docs/spec.md#2"]):
+                code, prompt, err = self.invoke("review", str(self.repo), "--base", "origin/trunk",
+                                                "--no-fetch", "--tests", "PT1", *selector)
+                self.assertEqual(code, 1, err)
+                self.assertEqual(prompt, "")
+                self.assertIn("docs/spec.md", err)
+                self.assertIn(f"{(self.repo / 'docs/spec.md').stat().st_size:,} bytes", err)
+                self.assertIn("2,000,000 bytes", err)
+                self.assertNotIn("not found", err)
         self.assertTrue(any(call.args[1:3] == ("git", "cat-file") and "-s" in call.args for call in calls.call_args_list))
 
     def test_markdown_mentions_match_whole_paths_only(self):
@@ -246,6 +279,70 @@ print(json.dumps(value))
         recorded = (output / "unknown-cli" / "summary.txt").read_text()
         self.assertIn("generalist-a failed:", recorded)
         self.assertNotIn("skipped", recorded)
+
+    def test_repository_url_specs_resolve_host_routes_and_complete_refs(self):
+        for path in ("docs/named.md", "docs/design.md"):
+            self.write(self.repo, path, "## 1 Behavior\n" + path)
+        self.commit(self.repo, "Add docs")
+        self.git(self.repo, "branch", "-m", "work")
+        self.git(self.repo, "branch", "feature/topic")
+        self.git(self.repo, "update-ref", "refs/remotes/origin/release/topic", "HEAD")
+        self.git(self.repo, "tag", "version/topic")
+        routes = ("https://github.com/example/project/blob/",
+                  "https://www.github.com/example/project/raw/",
+                  "https://gitlab.com/group/subgroup/project/-/blob/",
+                  "https://www.gitlab.com/group/subgroup/project/-/raw/",
+                  "https://raw.githubusercontent.com/example/project/",
+                  "https://bitbucket.org/example/project/src/")
+        for route in routes:
+            for ref in ("main", "feature/topic", "feature%2Ftopic", "release/topic", "version/topic"):
+                with self.subTest(route=route, ref=ref):
+                    path = prepare.discover_spec(self.repo, "HEAD", None,
+                                                 [route + ref + "/docs/named.md#L1"], [])
+                    self.assertEqual(path, "docs/named.md")
+
+    def test_unresolved_repository_url_specs_are_visible_without_suffix_matches(self):
+        for path in ("docs/named.md", "docs/design.md"):
+            self.write(self.repo, path, "## 1 Behavior\n" + path)
+        self.commit(self.repo, "Add docs")
+        self.git(self.repo, "branch", "-m", "work")
+        self.git(self.repo, "branch", "feature/topic")
+        for tail in ("main/prefix/docs/named.md", "unknown/topic/docs/named.md",
+                     "feature/topic/prefix/docs/named.md", "main/docs/absent.md"):
+            with self.subTest(tail=tail):
+                url = "https://gitlab.com/group/subgroup/project/-/blob/" + tail
+                self.github(self.pr("See " + url))
+                prompt = self.review()
+                self.assertIn("not found: " + url, prompt.split("# 1. Review pack")[0])
+                self.assertIn("Design/spec docs/design.md", prompt)
+                self.assertNotIn("Design/spec docs/named.md", prompt)
+
+    def test_prefixed_and_sentence_final_markdown_paths_are_whole_tokens(self):
+        for path in ("docs/named.md", "docs/design.md"):
+            self.write(self.repo, path, "## 1 Behavior\n" + path)
+        self.commit(self.repo, "Add docs")
+        files = [("1", "0", "docs/design.md")]
+        for mention in ("./docs/named.md", "/docs/named.md", "docs/named.md."):
+            with self.subTest(mention=mention):
+                self.assertEqual(prepare.discover_spec(self.repo, "HEAD", None,
+                                                       ["See " + mention], files), "docs/named.md")
+        for mention in ("prefix/docs/named.md", "//docs/named.md", "../docs/named.md",
+                        "docs/named.md.extra"):
+            with self.subTest(mention=mention):
+                self.assertEqual(prepare.discover_spec(self.repo, "HEAD", None,
+                                                       ["See " + mention], files), "docs/design.md")
+
+    def test_panel_invalid_checkout_leaves_outputs_untouched(self):
+        summary, output, env = self.panel_fixture()
+        panel = output / "invalid-checkout"
+        panel.mkdir(parents=True)
+        saved = panel / "summary.txt"
+        saved.write_text("previous run\n")
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), panel.name,
+                                 str(self.root / "absent"), str(summary), "generalist-a"],
+                                capture_output=True, text=True, env=env)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(saved.read_text(), "previous run\n")
 
     def test_no_fetch_still_merges_resolved_base(self):
         self.write(self.repo, "feature.py", "pass\n")
@@ -591,7 +688,7 @@ else:
                         self.assertNotIn("verdict=", recorded)
                     else:
                         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                        self.assertIn("verdict=" + ("APPROVE" if report.rstrip().rstrip("*_").endswith("APPROVE") else "REQUEST_CHANGES"), recorded)
+                        self.assertIn("verdict=" + ("REQUEST_CHANGES" if "REQUEST_CHANGES" in report else "APPROVE"), recorded)
 
     def test_panel_clears_previous_outputs_before_preparation_or_skip(self):
         summary, output, env = self.panel_fixture(summary_exists=False)

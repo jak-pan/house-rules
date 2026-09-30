@@ -26,10 +26,12 @@ def redact(text):
     text = re.sub(r"(?<![a-z0-9+.-])([a-z][a-z0-9+.-]*://)[^/\s?#]*@", r"\1[REDACTED]@", text, flags=re.I)
     def query(match):
         key = unquote(match[2]).lower()
-        if re.search(r"token|password|passwd|secret|credential|signature|api[_-]?key|auth|^key$|^sig$", key):
+        if re.search(r"token|password|passwd|secret|credential|signature|api[_-]?key|^key$|^sig$|(?:^|[_-])(?:auth|authorization|oauth)(?:$|[_-])", key):
             return match[1] + match[2] + "=[REDACTED]"
         return match[0]
-    return re.sub(r"([?&])([^=&#\s]+)=([^&#\s\"'<>`)]*)", query, text)
+    # A key cannot consume another query start, so repeated '?' failures stay
+    # linear. Parentheses belong to values, not their separators.
+    return re.sub(r"([?&])([^?=&#\s]+)=([^&#\s\"'<>`]*)", query, text)
 
 
 class PrepareError(Exception):
@@ -391,33 +393,61 @@ def spec_sections(doc, wanted, missing, titles, notices, path):
     return result
 
 
-def discover_spec(repo, head, explicit, texts, files):
+def discover_spec(repo, head, explicit, texts, files, missing=None):
     if explicit:
         path = explicit.partition("#")[0]
         return path if run(repo, "git", "cat-file", "-e", f"{head}:{path}").returncode == 0 else None
     paths = git(repo, "ls-tree", "-r", "--name-only", "-z", head).split("\0")
+    refs = None
+    def url_path(match):
+        nonlocal refs
+        source = match[0].rstrip(".,;")
+        try:
+            parsed = urlsplit(source)
+        except ValueError:
+            if missing is not None:
+                missing.append(source)
+            return " "  # Malformed URLs are not repository path mentions.
+        route = None
+        host = (parsed.hostname or "").removeprefix("www.")
+        if host == "gitlab.com":
+            route = re.match(r"/(?:[^/]+/){2,}-/(?:blob|raw)/(.+)", parsed.path)
+        elif host == "github.com":
+            route = re.match(r"/[^/]+/[^/]+/(?:blob|raw)/(.+)", parsed.path)
+        elif host == "bitbucket.org":
+            route = re.match(r"/[^/]+/[^/]+/src/(.+)", parsed.path)
+        elif host == "raw.githubusercontent.com":
+            route = re.match(r"/[^/]+/[^/]+/(.+)", parsed.path)
+        if route:
+            if refs is None:
+                refs = set()
+                for ref in git(repo, "for-each-ref", "--format=%(refname)").splitlines():
+                    for prefix in ("refs/heads/", "refs/tags/", "refs/remotes/"):
+                        if ref.startswith(prefix):
+                            name = ref[len(prefix):]
+                            refs.add(name.partition("/")[2] if prefix == "refs/remotes/" else name)
+            tail = unquote(route[1])
+            # The longest known ref wins before inspecting the remaining whole
+            # path. Never strip arbitrary directories to find a tracked suffix.
+            ref = max((ref for ref in refs if tail.startswith(ref + "/")), key=len,
+                      default=tail.partition("/")[0])
+            path = tail[len(ref) + 1:]
+            if path in paths and path.lower().endswith(".md"):
+                return " " + path + " "
+        if missing is not None and unquote(parsed.path).lower().endswith(".md"):
+            missing.append(source)
+        # Do not let an unrecognized URL match a repository-path suffix.
+        return " "
+
+    texts = [re.sub(r"https?://[^\s<>\"'`)]+", url_path, text) for text in texts]
     # Explicit Design lines outrank ordinary path mentions across all sources.
     for text in texts:
         for design in re.finditer(r"^Design:\s+(\S+?)(?:\s+\[[^\]]*\])?\s*$", text, re.M):
             if design[1] in paths:
                 return design[1]
-    def url_path(match):
-        try:
-            parsed = urlsplit(match[0])
-        except ValueError:
-            return " "  # Malformed URLs are not repository path mentions.
-        route = None
-        if parsed.hostname in ("github.com", "gitlab.com", "bitbucket.org"):
-            route = re.match(r"/[^/]+/[^/]+/(?:-/)?(?:blob|raw|src)/[^/]+/(.+)", parsed.path)
-        elif parsed.hostname == "raw.githubusercontent.com":
-            route = re.match(r"/[^/]+/[^/]+/[^/]+/(.+)", parsed.path)
-        # Do not let an unrecognized URL match a repository-path suffix.
-        return " " + unquote(route[1]) + " " if route else " "
-
     for text in texts:
-        text = re.sub(r"https?://[^\s<>\"'`)]+", url_path, text)
         named = [(match.start(), path) for path in paths if path.lower().endswith(".md")
-                 for match in [re.search(r"(?<![^\s`\"'(<\[*])" + re.escape(path) + r"(?=$|[\s`\"')>\]#,:;*])", text)] if match]
+                 for match in [re.search(r"(?<![^\s`\"'(<\[*])(?:\./|/)?" + re.escape(path) + r"(?=\.(?:$|\s)|$|[\s`\"')>\]#,:;*])", text)] if match]
         if named:
             return min(named)[1]
     edited = [path for _, _, path in files if path in paths and path.lower().endswith(".md")
@@ -447,7 +477,7 @@ def requirement_entries(repo, args, pr, issues, comments, texts, commits, files,
     wanted = list(dict.fromkeys([*wanted, *section_requests(reference_text)]))
     tests = list(dict.fromkeys([*[t.strip() for t in (args.tests or "").split(",") if t.strip()],
                               *re.findall(r"(?<![A-Za-z0-9_-])" + re.escape(args.test_prefix) + r"\d+(?![A-Za-z0-9_-])", reference_text)]))
-    path = discover_spec(repo, head, args.spec, [*texts, *(body for _, body in commits)], files)
+    path = discover_spec(repo, head, args.spec, [*texts, *(body for _, body in commits)], files, missing)
     doc = None
     if args.spec and not path:
         missing.append(args.spec.partition("#")[0])
@@ -455,13 +485,12 @@ def requirement_entries(repo, args, pr, issues, comments, texts, commits, files,
         object_name = f"{head}:{path}"
         size = int(git(repo, "cat-file", "-s", object_name).strip())
         if size > SPEC_LIMIT:
-            notices.append(f"Skipped spec {path}: {size:,} bytes exceeds document limit {SPEC_LIMIT:,} bytes; select a smaller document.")
+            raise PrepareError(f"Spec {path}: {size:,} bytes exceeds document limit {SPEC_LIMIT:,} bytes; select a smaller document.")
+        result = run(repo, "git", "show", object_name)
+        if result.returncode:
+            missing.append(path)
         else:
-            result = run(repo, "git", "show", object_name)
-            if result.returncode:
-                missing.append(path)
-            else:
-                doc = result.stdout
+            doc = result.stdout
     if doc is None:
         missing.extend("§" + token for pair in wanted for token in pair if token)
         missing.extend(tests)

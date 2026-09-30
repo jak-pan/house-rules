@@ -11,7 +11,8 @@ Give the reviewer the spec sections, previous review and round task as needed
   (Markdown emphasis is accepted; `scripts/verdict.py` fails closed: any `REQUEST_CHANGES`
   token means `REQUEST_CHANGES`, and `APPROVE` requires every token to agree)
   are recorded in `summary.txt` and make the panel exit nonzero. Unknown configured CLIs
-  fail the reviewer; they are not successful skips. Each run resets `summary.txt` and removes each selected
+  fail the reviewer; explicitly selected reviewers whose families are unconfigured also fail.
+  A checkout that cannot be opened fails before changing outputs. Each run resets `summary.txt` and removes each selected
   reviewer's previous report, raw logs and prompt before base resolution; a base-resolution
   failure is recorded in the new summary. Cleanup failures also make the panel exit nonzero. Before any output changes, panel names must match
   `[A-Za-z0-9][A-Za-z0-9._-]*` and the panel directory must resolve strictly beneath the
@@ -42,9 +43,14 @@ Give the reviewer the spec sections, previous review and round task as needed
   by the change. Design lines outrank ordinary mentions across those sources; otherwise
   the first mention wins (PR, issues, then range commits), and edited candidates use
   lexical path order. Named paths match whole path tokens, including paths extracted
-  from blob/raw/src URLs, never a suffix of a longer path. Before reading the selected
+  from host-specific blob/raw/src URLs, never a suffix of a longer path. GitLab subgroup
+  routes and optional `www.` hosts are supported. URL refs use the longest matching
+  local branch, remote-tracking branch or tag; without a matching ref, only a single
+  ref segment is assumed. Unresolved Markdown URLs are reported at the top. Local path
+  mentions may start with `./` or `/`. Before reading the selected
   document, `git cat-file -s` checks its size against a 2,000,000-byte limit. Oversized
-  documents are reported and skipped; unresolved section/test references remain visible.
+  documents fail preparation without emitting a prompt; the error names the path,
+  byte size and limit. Unsearched sections and tests are not reported as missing.
   Section tokens and test IDs resolve within the selected document. There is no document scoring or content scan. Hyphens are part of
   acceptance IDs: `AT1` does not match `AT1-case`. Linked issues come from PR-body
   `Refs/Closes/Fixes/Resolves #N`, `owner/repo#N`, issue URLs and `--issue`.
