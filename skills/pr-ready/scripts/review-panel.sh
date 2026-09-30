@@ -94,20 +94,30 @@ run_one() {
   sed -n '/^# 1\. Review pack/q; /^Size guard:/p' "$prompt" |
     while IFS= read -r notice; do printf '%s: %s\n' "$r" "$notice"; done >> "$out/summary.txt"
   t0=$(date +%s)
-  case $cli in
-    codex) codex exec --json --skip-git-repo-check -m "$model" -c model_reasoning_effort="${effort:-high}" \
-             ${tier:+-c service_tier="\"$tier\""} -s read-only -C "$dir" -o "$out/$r.md" - < "$prompt" \
-             > "$out/$r.jsonl" 2> "$out/$r.err" || cli_status=$? ;;
-    grok)  (cd "$dir" && env GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_SKILLS_ENABLED=0 GROK_CLAUDE_RULES_ENABLED=0 \
-             GROK_CLAUDE_MCPS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 GROK_CURSOR_AGENTS_ENABLED=0 \
-             GROK_CURSOR_SKILLS_ENABLED=0 GROK_CURSOR_RULES_ENABLED=0 \
-             grok -m "$model" --reasoning-effort "${effort:-high}" --output-format json --always-approve --disable-web-search --prompt-file "$prompt" > "$out/$r.json" 2> "$out/$r.err") || cli_status=$?
-           if [ "$cli_status" -eq 0 ]; then
-             python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('text',''))" "$out/$r.json" > "$out/$r.md" 2>> "$out/$r.err" || cli_status=$?
-           fi ;;
-    kimi)  (cd "$dir" && kimi -m "$model" -p "$(cat "$prompt")" > "$out/$r.md" 2> "$out/$r.err") || cli_status=$? ;;
-    *)     echo "$r failed: unknown cli $cli" >> "$out/summary.txt"; return 1 ;;
-  esac
+  # Transient provider errors (capacity, overload, rate limits) are retried twice, 60 s apart;
+  # any other failure fails the reviewer at once.
+  local attempt
+  for attempt in 1 2 3; do
+    cli_status=0
+    case $cli in
+      codex) codex exec --json --skip-git-repo-check -m "$model" -c model_reasoning_effort="${effort:-high}" \
+               ${tier:+-c service_tier="\"$tier\""} -s read-only -C "$dir" -o "$out/$r.md" - < "$prompt" \
+               > "$out/$r.jsonl" 2> "$out/$r.err" || cli_status=$? ;;
+      grok)  (cd "$dir" && env GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_SKILLS_ENABLED=0 GROK_CLAUDE_RULES_ENABLED=0 \
+               GROK_CLAUDE_MCPS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 GROK_CURSOR_AGENTS_ENABLED=0 \
+               GROK_CURSOR_SKILLS_ENABLED=0 GROK_CURSOR_RULES_ENABLED=0 \
+               grok -m "$model" --reasoning-effort "${effort:-high}" --output-format json --always-approve --disable-web-search --prompt-file "$prompt" > "$out/$r.json" 2> "$out/$r.err") || cli_status=$?
+             if [ "$cli_status" -eq 0 ]; then
+               python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('text',''))" "$out/$r.json" > "$out/$r.md" 2>> "$out/$r.err" || cli_status=$?
+             fi ;;
+      kimi)  (cd "$dir" && kimi -m "$model" -p "$(cat "$prompt")" > "$out/$r.md" 2> "$out/$r.err") || cli_status=$? ;;
+      *)     echo "$r failed: unknown cli $cli" >> "$out/summary.txt"; return 1 ;;
+    esac
+    [ "$cli_status" -ne 0 ] && [ $attempt -lt 3 ] && cat "$out/$r.err" "$out/$r.jsonl" "$out/$r.json" 2>/dev/null |
+      grep -q -i -E 'at capacity|overloaded|rate.?limit|too many requests|\b429\b|\b503\b' || break
+    echo "$r: transient provider error on attempt $attempt; retrying in 60 s" >> "$out/summary.txt"
+    sleep 60
+  done
   if [ "$cli_status" -ne 0 ]; then
     echo "$r failed: reviewer CLI (exit $cli_status; see $r.err)" >> "$out/summary.txt"
     return 1
