@@ -8,7 +8,8 @@
 # confidentiality, durability or storage, security-sensitive paths, or new mechanisms; those get
 # the full panel. Changes above QUICK_REVIEW_MAX_LINES (default 300) changed lines are refused
 # unless QUICK_REVIEW_FORCE=1. A quick review that raises a blocker or a spec issue goes to the
-# full panel after the fix.
+# full panel after the fix. For a check-back, set REVIEW_BASE to the last reviewed commit so only
+# the fix diff is measured and reviewed.
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 [ $# -eq 3 ] || { sed -n '2,4p' "$0" >&2; exit 2; }
