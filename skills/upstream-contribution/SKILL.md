@@ -6,6 +6,10 @@ license: MIT
 
 # Upstream Contribution
 
+External means any repository not owned by the operator's own accounts and
+organizations (list them in the machine-local capability index); our fork of an external
+repository is ours to push to, but its PRs, issues and comments land upstream.
+
 Internal changes follow skill `pr-ready`. External repositories are different: their
 maintainers own the flow, their CI runs only after we post, and every post is public and
 permanent. Nothing is pushed, opened or commented upstream until the operator says ready
