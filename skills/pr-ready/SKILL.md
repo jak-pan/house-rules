@@ -12,14 +12,16 @@ suite (AGENTS.md §Verification); everything below keeps local work small.
 
 ## 1. Local gate (implementer or fixer)
 
+- Run `scripts/prepare.py fix <checkout> --reviews <files...>` before fixing, or
+  `scripts/prepare.py pr <checkout>` before preparing a PR. It fetches and merges the
+  base (never rebases), stops on conflicts, and prints context and targeted test commands
+  without running them. `--base REF` overrides remote default detection.
 - Use the repository's declared gates (its `AGENTS.md`, or the CI workflow when none are
   declared) in CI's build profile. Rust: skill `rust-canon` §Gates.
 - Run formatting, lint/compile checks, fast guard tests, and **targeted** tests: the
   modules or packages the diff touches, their direct tests, and every new regression.
   Widen the target to dependents when a shared type, trait, schema or public contract
   changes. When toolchains, lockfiles or build scripts change, leave the matrix to CI.
-- Update the branch by merging the default branch into it (no rebase, no force-push),
-  resolve conflicts, then rerun the local gate.
 - Report the exact commands, filters and pass/fail counts.
 
 ## 2. Push and CI
@@ -44,12 +46,15 @@ canon: correctness and security, performance, code quality, waste as a blocking 
 the House Rules a reviewer enforces. It is inlined into every reviewer prompt, so reviewers
 load no other rules.
 
-- Give the reviewer the diff range, the spec sections, the previous round's review, and
-  [the review template](references/review-prompt.md). `scripts/review-panel.sh` puts the
-  change in context after the stable rules (so prompt caches reuse them), built by
-  `scripts/review-handoff.py`: the full diff for the Codex family, the changed files and
-  touched functions for the others (a full diff cut Codex tool calls without costing
-  findings; other CLIs re-read the code regardless).
+- Give the reviewer the spec sections, previous review and round task as needed
+  ([review template](references/review-prompt.md)). `scripts/review-panel.sh` runs
+  `scripts/prepare.py review` per lens and CLI: stable rules and lens first, then the
+  base-prompt file as summary/task, PR/issue context, spec and change. Standalone use
+  accepts `--pr`, `--issue`, `--spec PATH[#SEC,SEC]`, `--tests ID,ID` and `--summary FILE`;
+  a PR's `Design: <path> [§a, §b]` supplies the spec when omitted. Codex defaults to
+  `structured` (full diffs), others to `pack` (file index and hunk headers); `--format diff`
+  omits spec content. `--format` overrides defaults; Codex prompts over 800,000
+  characters fall back to pack for the change, with a notice.
 - Run a panel of one generalist per model family, adding focused lenses where warranted
   ([review panels](references/review-lenses.md)), and loop until a full panel round finds
   no blockers. The reviewer reviews statically and runs at most one targeted test, only

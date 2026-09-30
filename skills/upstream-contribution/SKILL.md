@@ -52,6 +52,11 @@ later, not forgotten.
 
 ## 5. Draft, approve, post
 
+`../pr-ready/scripts/prepare.py pr <checkout>` works on external forks and plain clones,
+without a PR or GitHub access. It fetches and merges the base (upstream preferred to
+origin), prints the local gate and checks ownership when available. Unknown ownership
+keeps the operator-approval reminder; preparing a brief posts nothing.
+
 - Draft the text in `.tmp/`. One problem per issue or PR. Lead with the observable
   failure and the smallest reproduction, then root cause, fix, tests, and performance and
   compatibility impact, with measured numbers where relevant. Write in upstream's own terms

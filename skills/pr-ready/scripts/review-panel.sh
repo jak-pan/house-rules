@@ -4,9 +4,8 @@
 #   reviewer: a file stem in ../reviewers/ (default: generalist-<family> for each configured family)
 # Config: ${REVIEW_PANEL_CONF:-<house-rules>/custom/review-panel.conf}, lines "<family> = <cli> <model> [tier] [effort]",
 #   cli one of codex | grok | kimi. Families without a config line are skipped.
-# Prompt order: reviewers/common.md, the change (review-handoff.py), the task, the lens.
-#   Handoff: the full diff for codex, changed files and touched functions for other CLIs.
-#   Range: ${REVIEW_BASE:-origin's default branch}...HEAD.
+# Prompt order: common rules, lens, summary/task, spec, change (prepare.py review).
+# Range: ${REVIEW_BASE:-remote default branch}...HEAD; upstream preferred to origin.
 # Output directory: ${REVIEW_PANEL_OUT:-<checkout>/.tmp/review-panel}/<name>/ with <reviewer>.md,
 #   raw logs, and summary.txt (verdict and wall time per reviewer).
 set -u
@@ -15,18 +14,8 @@ reviewers_dir=$here/../reviewers
 conf=${REVIEW_PANEL_CONF:-$here/../../../custom/review-panel.conf}
 name=$1; dir=$(cd "$2" && pwd); base=$(cd "$(dirname "$3")" && pwd)/$(basename "$3"); shift 3
 out=${REVIEW_PANEL_OUT:-$dir/.tmp/review-panel}/$name; mkdir -p "$out"
-default_base() {  # the remote's current default branch; a local origin/HEAD can be stale
-  local b; b=$(git -C "$dir" ls-remote --symref origin HEAD 2>/dev/null | awk '/^ref:/{sub("refs/heads/", "", $2); print $2}')
-  [ -n "$b" ] && git -C "$dir" fetch -q origin "$b" && { echo "origin/$b"; return; }
-  for b in origin/main origin/master; do git -C "$dir" rev-parse -q --verify "$b" >/dev/null && { echo "$b"; return; }; done
-}
-review_base=${REVIEW_BASE:-$(default_base)}
-echo "review range: $review_base...HEAD" >&2
-[ -n "$review_base" ] || { echo "no base branch: set REVIEW_BASE" >&2; exit 2; }
-
 family_cfg() { sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "$conf" 2>/dev/null | head -1; }
 frontmatter() { sed -n "s/^$2:[[:space:]]*//p" "$1" | head -1; }
-body() { awk 'f>=2{print} /^---$/{f++}' "$1"; }
 
 if [ $# -eq 0 ]; then
   for f in a b c; do [ -n "$(family_cfg $f)" ] && set -- "$@" "generalist-$f"; done
@@ -39,14 +28,17 @@ run_one() {
   fam=$(frontmatter "$file" family); cfg=$(family_cfg "$fam")
   [ -n "$cfg" ] || { echo "$r skipped: family $fam not configured" >> "$out/summary.txt"; return; }
   read -r cli model tier effort <<<"$cfg"; [ "$tier" = - ] && tier=
-  local handoff=pack; [ "$cli" = codex ] && handoff=diff
-  # Codex refuses input over 1 MiB characters; a diff that large goes as the pack instead.
-  [ "$handoff" = diff ] && [ "$("$here/review-handoff.py" "$dir" "$review_base" HEAD diff | wc -c)" -gt 800000 ] \
-    && { handoff=pack; echo "$r: diff over 800k characters, using pack" >> "$out/summary.txt"; }
-  # Stable text first so prompt caches share it across reviewers, rounds and PRs; then the
-  # change (shared by a round's reviewers of one CLI), the round's task, and the lens last.
-  { sed 1,2d "$reviewers_dir/common.md"; echo; "$here/review-handoff.py" "$dir" "$review_base" HEAD "$handoff"
-    echo; echo "# Task"; cat "$base"; printf '\nLens: %s\n' "$r"; body "$file"; } > "$prompt"
+  local prepare_args=(review "$dir" --lens "$r" --cli "$cli" --summary "$base")
+  [ -n "${REVIEW_BASE:-}" ] && prepare_args+=(--base "$REVIEW_BASE")
+  if ! "$here/prepare.py" "${prepare_args[@]}" > "$prompt" 2> "$out/$r.prepare.err"; then
+    cat "$out/$r.prepare.err" >&2
+    echo "$r failed: context preparation (see $r.prepare.err)" >> "$out/summary.txt"
+    return 1
+  fi
+  cat "$out/$r.prepare.err" >&2
+  if head -1 "$prompt" | grep -q '^Size guard:'; then
+    echo "$r: prompt over 800k characters, using pack" >> "$out/summary.txt"
+  fi
   t0=$(date +%s)
   case $cli in
     codex) codex exec --json --skip-git-repo-check -m "$model" -c model_reasoning_effort="${effort:-high}" \
