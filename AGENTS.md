@@ -299,7 +299,7 @@ brevity must not remove evidence or content needed to complete the task.
   never grants delivery authority. Subagents must not push or merge into main. This
   rule does not change when agents may be spawned (§Resource envelopes, §Parallel work).
 - **Externally-owned repos: read, clone, fork freely — never push, open PRs/issues, or
-  comment until the operator says ready.**
+  comment until the operator says ready.** Procedure: skill `upstream-contribution`.
 - Docs ride the same commit as the code they describe.
 
 ## Layout
