@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Run a read-only review panel in parallel.
 # Usage: review-panel.sh <name> <checkout> <base-prompt> [reviewer ...]
+#   name: [A-Za-z0-9][A-Za-z0-9._-]*, a single directory name
 #   reviewer: a file stem in ../reviewers/ (default: generalist-<family> for each configured family)
 # Config: ${REVIEW_PANEL_CONF:-<house-rules>/custom/review-panel.conf}, lines "<family> = <cli> <model> [tier] [effort]",
 #   cli one of codex | grok | kimi. Families without a config line are skipped.
@@ -13,7 +14,8 @@ here=$(cd "$(dirname "$0")" && pwd)
 reviewers_dir=$here/../reviewers
 conf=${REVIEW_PANEL_CONF:-$here/../../../custom/review-panel.conf}
 name=$1; dir=$(cd "$2" && pwd); base=$(cd "$(dirname "$3")" && pwd)/$(basename "$3"); shift 3
-out=${REVIEW_PANEL_OUT:-$dir/.tmp/review-panel}/$name
+output_root=${REVIEW_PANEL_OUT:-$dir/.tmp/review-panel}
+out=$output_root/$name
 family_cfg() { sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "$conf" 2>/dev/null | head -1; }
 frontmatter() { sed -n "s/^$2:[[:space:]]*//p" "$1" | head -1; }
 
@@ -24,12 +26,14 @@ fi
 
 # Validate the whole panel before creating, clearing or writing any output.
 # Resolve symlinks as well as '..'; a lexical prefix check is not containment.
-python3 - "$reviewers_dir" "$out" "$@" <<'PY' || exit 2
+python3 - "$reviewers_dir" "$output_root" "$name" "$@" <<'PY' || exit 2
 from pathlib import Path
 import re
 import sys
 
-reviewers_dir, output, *reviewers = sys.argv[1:]
+reviewers_dir, output_root, name, *reviewers = sys.argv[1:]
+if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", name):
+    sys.exit(f"invalid panel name: {name!r}; expected [A-Za-z0-9][A-Za-z0-9._-]*")
 for reviewer in reviewers:
     if not re.fullmatch(r"[a-z0-9-]+", reviewer):
         sys.exit(f"invalid reviewer: {reviewer!r}; expected [a-z0-9-]+")
@@ -37,7 +41,10 @@ for reviewer in reviewers:
         sys.exit(f"invalid reviewer: {reviewer!r}; no matching reviewer file")
 
 try:
-    panel = Path(output).resolve()
+    root = Path(output_root).resolve()
+    panel = (root / name).resolve()
+    if panel == root or not panel.is_relative_to(root):
+        sys.exit(f"refusing panel directory outside output root: {panel}")
     paths = [panel / "summary.txt"]
     paths.extend(panel / f"{reviewer}.{suffix}" for reviewer in reviewers
                  for suffix in ("md", "jsonl", "json", "err", "prepare.err", "prompt"))

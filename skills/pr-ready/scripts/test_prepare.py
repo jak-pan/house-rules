@@ -406,6 +406,64 @@ else:
                 for path in untouched:
                     self.assertEqual(path.read_text(), "keep\n")
 
+    def test_panel_name_traversal_preserves_checkout_files(self):
+        summary, _, env = self.panel_fixture()
+        env.pop("REVIEW_PANEL_OUT")
+        env["REVIEW_BASE"] = "origin/trunk"
+        saved = {"summary.txt": "keep summary\n", "generalist-a.md": "keep report\n"}
+        for filename, content in saved.items():
+            (self.repo / filename).write_text(content)
+        result = subprocess.run(
+            ["bash", str(SCRIPT.with_name("review-panel.sh")), "../..",
+             str(self.repo), str(summary), "generalist-a"],
+            capture_output=True, text=True, env=env)
+        for filename, content in saved.items():
+            self.assertTrue((self.repo / filename).exists(), f"cleanup deleted {filename}")
+            self.assertEqual((self.repo / filename).read_text(), content)
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("invalid panel name", result.stderr)
+        self.assertFalse((self.repo / ".tmp").exists())
+
+    def test_panel_rejects_invalid_panel_names_before_output_changes(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        for name in ("", ".", "..", "../escape", "nested/round", "/absolute",
+                     r"nested\round", ".hidden", "-round", "_round", "round name",
+                     "round\n", "röund"):
+            with self.subTest(name=name):
+                result = subprocess.run(
+                    ["bash", str(SCRIPT.with_name("review-panel.sh")), name,
+                     str(self.repo), str(summary), "generalist-a"],
+                    capture_output=True, text=True, env=env)
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertIn("invalid panel name", result.stderr)
+                self.assertFalse(output.exists())
+
+    def test_panel_directory_must_resolve_strictly_inside_output_root(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        output.mkdir()
+        # Reject the root itself, a sibling sharing its prefix, and the checkout.
+        sibling = output.with_name(output.name + "-other")
+        sibling.mkdir()
+        for target in (output, sibling, self.repo):
+            with self.subTest(target=target):
+                saved = {"summary.txt": "keep summary\n", "generalist-a.md": "keep report\n"}
+                for filename, content in saved.items():
+                    (target / filename).write_text(content)
+                panel = output / ("round-" + target.name)
+                panel.symlink_to(target, target_is_directory=True)
+                result = subprocess.run(
+                    ["bash", str(SCRIPT.with_name("review-panel.sh")), panel.name,
+                     str(self.repo), str(summary), "generalist-a"],
+                    capture_output=True, text=True, env=env)
+                for filename, content in saved.items():
+                    self.assertTrue((target / filename).exists(), f"cleanup deleted {filename}")
+                    self.assertEqual((target / filename).read_text(), content)
+                self.assertTrue(panel.is_symlink())
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertIn("outside output root", result.stderr)
+
     def test_panel_rejects_traversal_before_deleting_outside_files(self):
         summary, _, env = self.panel_fixture()
         env.pop("REVIEW_PANEL_OUT")
@@ -1061,12 +1119,13 @@ else:
         output = self.root / "output"
         env = dict(os.environ, PATH=str(binaries) + os.pathsep + os.environ["PATH"],
                    REVIEW_PANEL_CONF=str(conf), REVIEW_PANEL_OUT=str(output), REVIEW_BASE="origin/trunk")
-        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "round",
+        name = "Round9._-"
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), name,
                                  str(self.repo), str(summary)], capture_output=True, text=True, env=env)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.count("verdict=APPROVE"), 3, result.stdout + result.stderr)
         for family in ("a", "b", "c"):
-            prompt = (output / "round" / f"generalist-{family}.prompt").read_text()
+            prompt = (output / name / f"generalist-{family}.prompt").read_text()
             self.assertIn("Round task from file", prompt.split("# 3. Pull request and issue")[1])
             self.assertEqual("```diff" in prompt, family == "a")
 

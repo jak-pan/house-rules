@@ -61,7 +61,9 @@ load no other rules.
   `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES` line are recorded in `summary.txt`
   and make the panel exit nonzero. Each run resets `summary.txt` and removes each selected
   reviewer's previous report, raw logs and prompt before preparation; cleanup failures
-  also make the panel exit nonzero. Before any output changes, reviewer names must match
+  also make the panel exit nonzero. Before any output changes, panel names must match
+  `[A-Za-z0-9][A-Za-z0-9._-]*` and the panel directory must resolve strictly beneath the
+  configured output root, including through symlinks. Reviewer names must match
   `[a-z0-9-]+` and an existing file stem in `reviewers/`; all cleanup paths and the summary
   must resolve beneath the panel directory, including through symlinks, or the panel refuses
   to run. Prompt order: stable rules and lens first, then the
