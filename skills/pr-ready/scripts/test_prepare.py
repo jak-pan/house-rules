@@ -654,7 +654,7 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
         Path(env["REVIEW_PANEL_CONF"]).write_text(
             "a = codex test-model - high\nb = grok test-model - high\nc = kimi test-model\n")
         # Valid JSON must not hide Grok's failing exit status during text extraction.
-        (self.binaries / "grok").write_text('#!/bin/sh\nprintf \'{"text":"partial"}\\n\'\nexit 99\n')
+        (self.binaries / "grok").write_text('#!/bin/sh\nif [ "$1" = inspect ]; then printf "  MCP Servers (1)\n  \342\224\224 chrome-devtools (stdio)  ~/.claude.json [claude] [disabled]\n\n  Hooks (0)\n  \342\224\224 (none)\n"; exit 0; fi\nprintf \'{"text":"partial"}\\n\'\nexit 99\n')
         for family in ("a", "b", "c"):
             with self.subTest(family=family):
                 result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), family,
@@ -662,6 +662,23 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
                                         capture_output=True, text=True, env=env)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("failed: reviewer CLI (exit 99", (output / family / "summary.txt").read_text())
+
+    def test_panel_refuses_grok_with_enabled_hook_or_mcp(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        for listing in ("  MCP Servers (1)\\n  \\342\\224\\224 tracker (stdio)  .mcp.json\\n\\n  Hooks (0)\\n  \\342\\224\\224 (none)\\n",
+                        "  MCP Servers (0)\\n  \\342\\224\\224 (none)\\n\\n  Hooks (1)\\n  \\342\\224\\224 command matcher=*  user\\n",
+                        "unparseable\\n"):
+            with self.subTest(listing=listing):
+                (self.binaries / "grok").write_text(
+                    '#!/bin/sh\nif [ "$1" = inspect ]; then printf "' + listing + '"; exit 0; fi\n'
+                    'echo "reviewer must not run" >&2\nexit 99\n')
+                result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "b",
+                                         str(self.repo), str(summary), "generalist-b"],
+                                        capture_output=True, text=True, env=env)
+                self.assertNotEqual(result.returncode, 0)
+                recorded = (output / "b" / "summary.txt").read_text()
+                self.assertIn("Grok would load an enabled hook or MCP server", recorded)
 
     def test_panel_report_requires_valid_verdict(self):
         summary, output, env = self.panel_fixture()
@@ -675,6 +692,9 @@ if cli == 'codex':
     if report is not None:
         pathlib.Path(sys.argv[sys.argv.index('-o') + 1]).write_text(report)
 elif cli == 'grok':
+    if sys.argv[1:2] == ['inspect']:
+        print('  MCP Servers (1)\n  └ chrome-devtools (stdio)  ~/.claude.json [claude] [disabled]\n\n  Hooks (0)\n  └ (none)\n')
+        sys.exit(0)
     print(json.dumps({} if report is None else {'text': report}))
 else:
     print(report or '', end='')
@@ -1390,7 +1410,15 @@ if cli == 'codex':
 elif cli == 'grok':
     assert os.environ['GROK_CLAUDE_AGENTS_ENABLED'] == '0'
     assert os.environ['GROK_CURSOR_SKILLS_ENABLED'] == '0'
+    # Grok runs outside the checkout so no project configuration is discovered.
+    assert not (pathlib.Path.cwd() / '.git').exists()
+    if args[:1] == ['inspect']:
+        print('  MCP Servers (1)\\n  └ chrome-devtools (stdio)  ~/.claude.json [claude] [disabled]\\n\\n  Hooks (0)\\n  └ (none)\\n')
+        sys.exit(0)
     assert '--disable-web-search' in args
+    assert args[args.index('--tools') + 1] == 'read_file,list_dir,grep'
+    prompt = pathlib.Path(args[args.index('--prompt-file') + 1]).read_text()
+    assert prompt.startswith('The checkout under review is ')
     print(json.dumps({'text': 'VERDICT: APPROVE'}))
 else:
     assert 'Round task from file' in args[args.index('-p') + 1]
