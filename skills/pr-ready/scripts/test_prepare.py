@@ -73,6 +73,31 @@ print(json.dumps(value))
         self.git(self.root, "clone", str(self.origin), str(self.repo))
         self.git(self.repo, "checkout", "-b", "feature")
 
+    def run_quick(self, env_extra=None):
+        env = dict(os.environ, REVIEW_PANEL_CONF=str(self.root / "none.conf"), **(env_extra or {}))
+        prompt = self.root / "prompt.txt"
+        prompt.write_text("review\n")
+        return subprocess.run(["bash", str(SCRIPT.with_name("quick-review.sh")), "quick",
+                               str(self.repo), str(prompt)], capture_output=True, text=True, env=env)
+
+    def test_quick_review_refuses_binary_changes_even_before_text(self):
+        (self.repo / "blob.bin").write_bytes(bytes(range(256)) * 4)
+        self.write(self.repo, "notes.md", "".join(f"line {i}\n" for i in range(400)))
+        self.commit(self.repo, "Binary first, then text")
+        result = self.run_quick()
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("binary files", result.stderr)
+
+    def test_quick_review_refuses_oversized_and_invalid_limits(self):
+        self.write(self.repo, "notes.md", "".join(f"line {i}\n" for i in range(400)))
+        self.commit(self.repo, "Large text change")
+        oversized = self.run_quick()
+        self.assertEqual(oversized.returncode, 2, oversized.stderr)
+        self.assertIn("exceed 300", oversized.stderr)
+        invalid = self.run_quick({"QUICK_REVIEW_MAX_LINES": "9223372036854775808"})
+        self.assertEqual(invalid.returncode, 2, invalid.stderr)
+        self.assertIn("whole number", invalid.stderr)
+
     def git(self, repo, *args):
         return subprocess.run(["git", "-C", str(repo), *args], check=True,
                               capture_output=True, text=True).stdout.strip()

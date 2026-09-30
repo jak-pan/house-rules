@@ -20,7 +20,7 @@ base=$("$here/prepare.py" "${base_args[@]}") || exit 1
 base=$(git -C "$dir" rev-parse --verify "$base^{commit}") || exit 1
 # Match what the reviewer sees: no rename detection; a binary file ("-") cannot be measured.
 changed=$(git -C "$dir" diff --no-renames --numstat "$base...HEAD" |
-  awk '$1 == "-" || $2 == "-" {print "binary"; exit} {a+=$1; d+=$2} END {if (NR == 0 || a+d >= 0) print a+d+0}' | tail -1) || {
+  awk '$1 == "-" || $2 == "-" {bin = 1; next} {n += $1 + $2} END {print bin ? "binary" : n + 0}') || {
   echo "quick review failed: cannot measure the change" >&2; exit 1; }
 if [ "$changed" = binary ] && [ "${QUICK_REVIEW_FORCE:-0}" != 1 ]; then
   echo "quick review refused: the change includes binary files; run review-panel.sh (or set QUICK_REVIEW_FORCE=1)" >&2
@@ -28,7 +28,7 @@ if [ "$changed" = binary ] && [ "${QUICK_REVIEW_FORCE:-0}" != 1 ]; then
 fi
 [ "$changed" = binary ] && changed=0
 max=${QUICK_REVIEW_MAX_LINES:-300}
-[[ "$max" =~ ^[0-9]+$ ]] || { echo "quick review failed: QUICK_REVIEW_MAX_LINES must be a whole number" >&2; exit 2; }
+[[ "$max" =~ ^[0-9]{1,9}$ ]] || { echo "quick review failed: QUICK_REVIEW_MAX_LINES must be a whole number below 1000000000" >&2; exit 2; }
 if [ "$changed" -gt "$max" ] && [ "${QUICK_REVIEW_FORCE:-0}" != 1 ]; then
   echo "quick review refused: $changed changed lines exceed $max; run review-panel.sh (or set QUICK_REVIEW_FORCE=1)" >&2
   exit 2
