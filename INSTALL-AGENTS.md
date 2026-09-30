@@ -209,6 +209,13 @@ Skill it installs (for example under `~/.agents/skills/`), native client adapter
 registration, credentials, updates, repair, and removal. House Rules must not vendor a
 snapshot of it or pin its release state.
 
+Configure review panels (skill `pr-ready`): run
+`skills/pr-ready/scripts/review-panel-models.py --init`. It writes
+`custom/review-panel.conf` with one model family per installed agent CLI (Codex, Grok,
+Kimi), choosing each CLI's recommended model from its local model list; edit tiers or
+models there. The panel launcher rechecks on every run and reports newer models in a
+configured family; `--list` shows what each CLI offers.
+
 ## 5. Verify actual discovery
 
 Filesystem verification:

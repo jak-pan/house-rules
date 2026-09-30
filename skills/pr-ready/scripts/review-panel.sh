@@ -44,6 +44,7 @@ run_one() {
 }
 
 : > "$out/summary.txt"
+"$here/review-panel-models.py" --check >&2 || true   # notice only: newer models available
 for r in "$@"; do run_one "$r" & done
 wait
 [ -n "$(git -C "$dir" status --porcelain)" ] && echo "WARNING: a reviewer modified the checkout" >> "$out/summary.txt"
