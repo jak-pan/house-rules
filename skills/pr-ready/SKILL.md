@@ -89,8 +89,10 @@ load no other rules.
   needs a fix starts the fix in the same job. The lead intervenes only for decisions.
 - **Slow reviewers never block.** When one family is much slower, the fixer starts as soon
   as the faster reviewers report. The slow reviewer keeps reviewing a snapshot of its head
-  in the background; its findings go to the next fix round, which checks each against the
-  current head before fixing. At the final head the slow reviewer still reviews, but only
+  in the background. When it reports, a second fixer starts at once in that snapshot for
+  the findings that do not overlap the running fixer's reports, checks each against the
+  code, and merges the branch before pushing; anything left goes to the next fix round.
+  At the final head the slow reviewer still reviews, but only
   the diff since its last reviewed head; a merge needs every reviewer's approval.
 - **Current base before the final round.** Merge the default branch into the PR branch
   before its final review, so the reviewed head is what CI and the merge see.
