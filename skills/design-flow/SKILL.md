@@ -102,7 +102,8 @@ on merge (skill `work-tracking` §The host view) and carries this checklist:
   skill `handoff-continuity`)
 
 Merge only when the checklist holds, then delete the branch, remote and local
-(`git branch -D` after a squash merge, once its records are mirrored).
+(`git branch -D` after a squash merge, once its records are mirrored), and remove its
+worktree and build directories (skill `agent-lanes` §Lane cleanup).
 
 ## Experimentation is a first-class lane
 

@@ -28,6 +28,7 @@ trackers.
    fully, not summaries.
 3. After any context reset, re-read the bible and any active campaign ledger.
 4. Feature reading order: design doc → architecture doc → code.
+5. Remove stale lanes in each repo you work in (skill `agent-lanes` §Lane cleanup).
 
 ## Outcome and resource contract
 
@@ -355,7 +356,8 @@ Shared host resources (other projects' services, model caches) are not ours to s
 clean. Stop only processes the current work started: track their PIDs, or match a path
 unique to the current work. Never kill by a broad command pattern (for example
 `pkill -f 'cargo test'`); concurrent sessions run the same commands. Automatically remove only reproducible scratch produced by the current work and
-no longer used by a running process. Preserve raw inputs, paid results, user files, tracker
+no longer used by a running process, plus stale lanes that pass the checks in skill
+`agent-lanes` §Lane cleanup. Preserve raw inputs, paid results, user files, tracker
 history, and decision evidence. For unknown or expensive-to-rebuild artifacts, establish
 ownership and retention first; quarantine when appropriate. Deleting or overwriting
 durable stores, including incomplete datasets or run results, requires explicit

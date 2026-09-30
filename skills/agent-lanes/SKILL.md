@@ -1,6 +1,6 @@
 ---
 name: agent-lanes
-description: Parallel multi-agent orchestration — lane ownership, non-colliding file sets, worktrees, per-lane cargo target dirs, GPU serialization, subagent git limits, cross-repo etiquette. Use when fanning out subagents, workflows, teammates, or background jobs.
+description: Parallel multi-agent orchestration — lane ownership, non-colliding file sets, worktrees, build output inside worktrees, lane cleanup, GPU serialization, subagent git limits, cross-repo etiquette. Use when fanning out subagents, workflows, teammates, or background jobs.
 license: MIT
 ---
 
@@ -15,8 +15,10 @@ explicit goals.
 - **Ownership.** Each lane's work item lists its explicit file set; before merging a
   lane's work, check its diff against that list.
 - **Isolation.** Lanes work in worktrees/branches; the main repo checkout stays untouched.
-  Rust lanes pass `--target-dir .tmp/cargo-target/<lane>` so parallel cargo doesn't block
-  on the shared `target/` lock or leak artifacts.
+  Build output lives inside the lane's own worktree (its `target/`, native build dirs under
+  its `.tmp/`), so parallel builds never share a lock and removing the worktree removes its
+  build output. Only a lane without a worktree uses `.tmp/cargo-target/<lane>` in a shared
+  checkout, and it deletes that directory when the lane ends.
 - **Git limits.** Lanes push only their own work branches, within the delivery authority
   recorded in the bible (policy: AGENTS.md §Git). Commits follow the repo's canon; lanes
   report exactly which files they touched.
@@ -36,18 +38,39 @@ explicit goals.
   ⚒ Make one lane the budget owner when several hit the same provider.
 - Record the intended concurrency and measurement conditions before launch (bounds and
   isolation: AGENTS.md §Parallel work).
-- Cleanup follows AGENTS.md §Security.
-- Finishing a lane includes removing what it created to be disposable. When its PR merges or
-  the work is abandoned, the lane owner removes its worktree and its build/target directory in
-  the same step, after confirming the worktree holds no uncommitted or unpushed work,
-  `git status --ignored` shows no evidence, run results or secret files to keep
-  (`.debug-session/`, `runs/`, `.env.local`; move those to the main checkout first, without
-  overwriting existing files), and no
-  running process uses its build directory. `git worktree remove` deletes ignored files. Shared
-  caches (compiler cache, model caches) stay. Operator direction: 2026-09-28, after merged-PR
-  worktrees and per-lane build directories cut free disk to 56 GB.
 - Never build `--release` in a shared tree while a paused run may depend on the existing
   binary — release builds clobber it; use your lane's target dir.
+
+## Lane cleanup
+
+Housekeeping is part of the workflow, not a later chore. Cleanup follows AGENTS.md
+§Security; these checks are what make a lane's leftovers removable.
+
+- **At lane end.** When its PR merges or the work is abandoned, the lane owner removes its
+  worktree and any build directory outside it in the same step as deleting the branch
+  (skill `design-flow` §6).
+- **At session start, for every repo the session works in**, remove stale lanes left by
+  any session: linked worktrees whose branch is merged (its PR merged at the same head, or
+  its HEAD is on the default branch), and `.tmp/cargo-target/<lane>` directories whose lane
+  no longer exists. Then run `git worktree prune`. Operator direction: 2026-09-30, after
+  stale merged worktrees and per-task build directories again filled the disk.
+- **Removable only when all hold:** no uncommitted changes (`git status --porcelain` is
+  empty); no commits missing from the remote (`git log HEAD --not --remotes` is empty);
+  no evidence, run results or secret files to keep (`.debug-session/`, `runs/`,
+  `.env.local`; move them to the main checkout first, without overwriting existing
+  files); and no running process has its working directory or open files inside it.
+  `git worktree remove` deletes ignored files, including build output.
+- Anything failing a check stays. List it with the failing check in the session report;
+  the owning lane or the operator decides.
+- Shared caches (compiler cache, model caches) stay.
+
+```bash
+git worktree list --porcelain            # candidates: branch + HEAD per worktree
+gh pr list --state merged --head <branch> --json headRefOid   # merged at this head?
+git -C <wt> status --porcelain; git -C <wt> log --oneline HEAD --not --remotes
+lsof +D <wt>                             # nothing may be using it
+git worktree remove <wt> && git branch -D <branch>; git worktree prune
+```
 
 ## Orchestration patterns
 
