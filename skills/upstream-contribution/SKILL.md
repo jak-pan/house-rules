@@ -52,6 +52,17 @@ later, not forgotten.
 
 ## 5. Draft, approve, post
 
+`../pr-ready/scripts/prepare.py pr <checkout>` works on external forks and plain clones,
+without a PR or GitHub access. It fetches the base (upstream preferred to origin), prints
+changed files grouped as source/test/docs, points to the repository's declared gates,
+and checks ownership when available. It derives no stack-specific test commands. For
+external repositories or unknown ownership, `fix` and `pr` report how many commits the branch is behind without merging;
+the operator chooses the update method, and `--update` forces a base merge. Only confirmed
+owned repositories merge by default. A failed remote discovery or fetch skips merging
+even with `--update`; `--no-fetch --base REF` uses an already resolved base and still
+merges on owned repositories or with `--update`. Unknown ownership keeps the
+operator-approval reminder; preparing a brief posts nothing.
+
 - Draft the text in `.tmp/`. One problem per issue or PR. Lead with the observable
   failure and the smallest reproduction, then root cause, fix, tests, and performance and
   compatibility impact, with measured numbers where relevant. Write in upstream's own terms
