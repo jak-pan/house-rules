@@ -117,6 +117,12 @@ load no other rules.
   Notices identify every trim. If the prompt still exceeds the limit after all trim
   steps, preparation exits nonzero without emitting a prompt; the error names the limit,
   final size and completed trims. The panel reports this as a preparation failure.
+- **Quick review** (`scripts/quick-review.sh`): one reviewer from family a, for small,
+  well-understood changes: fix-diff check-backs after a full round, docs and configuration
+  edits, CI and build fixes, small refactors. Never for a first review of a feature, access
+  control, confidentiality, durability, storage, security-sensitive paths or new mechanisms.
+  It refuses changes above 300 changed lines by default; a blocker or spec issue it raises
+  sends the change back to the full panel after the fix.
 - Run a panel of one generalist per model family, adding focused lenses where warranted
   ([review panels](references/review-lenses.md)), and loop until a full panel round finds
   no blockers. The reviewer reviews statically and runs at most one targeted test, only

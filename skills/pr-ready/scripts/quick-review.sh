@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Quick review: one reviewer from family a (configure a fast, high-effort model there) for small,
+# well-understood changes. Same prompt, rules and outputs as review-panel.sh, one model instead of
+# the panel. Usage: quick-review.sh <name> <checkout> <base-prompt>
+#
+# Use for: fix-diff check-backs after a full panel round, docs and configuration edits, CI and
+# build fixes, small refactors. Not for: a first review of a feature, access control or
+# confidentiality, durability or storage, security-sensitive paths, or new mechanisms; those get
+# the full panel. Changes above QUICK_REVIEW_MAX_LINES (default 300) changed lines are refused
+# unless QUICK_REVIEW_FORCE=1. A quick review that raises a blocker or a spec issue goes to the
+# full panel after the fix.
+set -u
+here=$(cd "$(dirname "$0")" && pwd)
+[ $# -eq 3 ] || { sed -n '2,4p' "$0" >&2; exit 2; }
+dir=$(cd "$2" && pwd) || exit 2
+base_args=(base "$dir")
+[ -n "${REVIEW_BASE:-}" ] && base_args+=(--base "$REVIEW_BASE")
+base=$("$here/prepare.py" "${base_args[@]}") || exit 1
+changed=$(git -C "$dir" diff --numstat "$base...HEAD" | awk '{a+=$1; d+=$2} END {print a+d+0}')
+max=${QUICK_REVIEW_MAX_LINES:-300}
+if [ "$changed" -gt "$max" ] && [ "${QUICK_REVIEW_FORCE:-0}" != 1 ]; then
+  echo "quick review refused: $changed changed lines exceed $max; run review-panel.sh (or set QUICK_REVIEW_FORCE=1)" >&2
+  exit 2
+fi
+REVIEW_BASE=$base exec "$here/review-panel.sh" "$1" "$dir" "$3" generalist-a
