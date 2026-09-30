@@ -106,7 +106,23 @@ run_one() {
       # Grok has no read-only sandbox that starts on every host, so the reviewer gets only read tools:
     # no shell (which could reach authenticated gh/git), no file writes, no MCP. Names are Grok's runtime
     # tool names (checked in the session's tool_definitions.json), not the older documented ones.
-    grok)  (cd "$dir" && env GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_SKILLS_ENABLED=0 GROK_CLAUDE_RULES_ENABLED=0 \
+    grok)  if ! (cd "$dir" && env GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_SKILLS_ENABLED=0 GROK_CLAUDE_RULES_ENABLED=0 \
+               GROK_CLAUDE_MCPS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 GROK_CURSOR_AGENTS_ENABLED=0 \
+               GROK_CURSOR_SKILLS_ENABLED=0 GROK_CURSOR_RULES_ENABLED=0 grok inspect 2>&1) | python3 -c '
+import re, sys
+# Fail closed: every MCP server and hook Grok would load for this run must be disabled.
+text = sys.stdin.read(); ok = True; seen = set()
+for section in ("MCP Servers", "Hooks"):
+    m = re.search(r"^  " + section + r" \((\d+)\)\n((?:  \u2514 .*\n)*)", text, re.M)
+    if not m: sys.exit(f"grok inspect: no {section} section")
+    seen.add(section)
+    for line in m.group(2).splitlines():
+        if "(none)" not in line and "[disabled]" not in line:
+            print(f"enabled {section}: {line.strip()}", file=sys.stderr); ok = False
+sys.exit(0 if ok else 1)' 2>> "$out/$r.err"; then
+             echo "$r failed: Grok would load an enabled hook or MCP server (see $r.err)" >> "$out/summary.txt"; return 1
+           fi
+           (cd "$dir" && env GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_SKILLS_ENABLED=0 GROK_CLAUDE_RULES_ENABLED=0 \
                GROK_CLAUDE_MCPS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 GROK_CURSOR_AGENTS_ENABLED=0 \
                GROK_CURSOR_SKILLS_ENABLED=0 GROK_CURSOR_RULES_ENABLED=0 \
                grok -m "$model" --reasoning-effort "${effort:-high}" --tools read_file,list_dir,grep --output-format json --always-approve --disable-web-search --prompt-file "$prompt" > "$out/$r.json" 2> "$out/$r.err") || cli_status=$?
