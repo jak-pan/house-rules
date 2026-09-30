@@ -163,7 +163,7 @@ print(json.dumps(value))
                 self.assertNotIn("None", prompt)
 
     def test_credentials_are_redacted_from_git_warnings_errors_and_prompts(self):
-        url = "https://test-user:fake-password@github.com/example/project.git?access_token=fake-token&x=1&api_key=fake-prefix)fake-secret-tail"
+        url = "https://test-user:fake-password@github.com/example/project.git?access_token=fake-token&x=1&author=ada&authkey=fake-authkey&api_key=fake-prefix)fake-secret-tail"
         diagnostic = "fatal: unable to access '" + url + "'"
         self.git(self.repo, "remote", "set-url", "origin", url)
         real_run = prepare.run
@@ -189,10 +189,11 @@ print(json.dumps(value))
         outputs.append(self.review())
         for output in outputs:
             with self.subTest(output_kind=output[:30]):
-                for secret in ("test-user", "fake-password", "fake-token", "fake-prefix", "fake-secret-tail"):
+                for secret in ("test-user", "fake-password", "fake-token", "fake-authkey", "fake-prefix", "fake-secret-tail"):
                     self.assertNotIn(secret, output)
                 self.assertIn("github.com", output)
                 self.assertIn("x=1", output)
+                self.assertIn("author=ada", output)
 
     def test_query_credentials_end_at_query_separators(self):
         for separator in ("&x=1", "#section", ""):
@@ -218,9 +219,13 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_query_author_is_not_an_auth_credential(self):
-        text = "?author=ada&auth=fake&authorization=fake&oauth=fake&client_auth=fake"
-        self.assertEqual(prepare.redact(text),
-                         "?author=ada&auth=[REDACTED]&authorization=[REDACTED]&oauth=[REDACTED]&client_auth=[REDACTED]")
+        for key in ("auth", "authorization", "oauth", "client_auth", "authkey",
+                    "accesskey", "privateKey", "api_key", "api-key", "auth%6bey",
+                    "accessToken", "clientSecret", "dbPassword", "clientpasswd"):
+            with self.subTest(key=key):
+                text = f"?author=ada&{key}=fake-credential&x=1"
+                self.assertEqual(prepare.redact(text),
+                                 f"?author=ada&{key}=[REDACTED]&x=1")
 
     def test_size_guard_counts_emitted_escaped_spec_and_newline(self):
         path = self.repo / "spec.md"
@@ -331,6 +336,17 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
             with self.subTest(mention=mention):
                 self.assertEqual(prepare.discover_spec(self.repo, "HEAD", None,
                                                        ["See " + mention], files), "docs/design.md")
+
+    def test_prefixed_design_paths_outrank_ordinary_mentions(self):
+        for path in ("docs/other.md", "docs/spec.md"):
+            self.write(self.repo, path, "## 1 Behavior\n" + path)
+        self.commit(self.repo, "Add docs")
+        for prefix in ("", "./", "/"):
+            design = f"Design: {prefix}docs/spec.md [§1]"
+            for texts in (["See docs/other.md\n" + design], ["See docs/other.md", design]):
+                with self.subTest(prefix=prefix, texts=texts):
+                    self.assertEqual(prepare.discover_spec(self.repo, "HEAD", None,
+                                                           texts, []), "docs/spec.md")
 
     def test_panel_invalid_checkout_leaves_outputs_untouched(self):
         summary, output, env = self.panel_fixture()

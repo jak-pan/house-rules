@@ -26,7 +26,7 @@ def redact(text):
     text = re.sub(r"(?<![a-z0-9+.-])([a-z][a-z0-9+.-]*://)[^/\s?#]*@", r"\1[REDACTED]@", text, flags=re.I)
     def query(match):
         key = unquote(match[2]).lower()
-        if re.search(r"token|password|passwd|secret|credential|signature|api[_-]?key|^key$|^sig$|(?:^|[_-])(?:auth|authorization|oauth)(?:$|[_-])", key):
+        if re.search(r"token|password|passwd|secret|credential|signature|key|^sig$|(?:^|[_-])(?:auth|authorization|oauth)(?:$|[_-])", key):
             return match[1] + match[2] + "=[REDACTED]"
         return match[0]
     # A key cannot consume another query start, so repeated '?' failures stay
@@ -443,8 +443,9 @@ def discover_spec(repo, head, explicit, texts, files, missing=None):
     # Explicit Design lines outrank ordinary path mentions across all sources.
     for text in texts:
         for design in re.finditer(r"^Design:\s+(\S+?)(?:\s+\[[^\]]*\])?\s*$", text, re.M):
-            if design[1] in paths:
-                return design[1]
+            path = re.sub(r"^(?:\./|/)", "", design[1])
+            if path in paths:
+                return path
     for text in texts:
         named = [(match.start(), path) for path in paths if path.lower().endswith(".md")
                  for match in [re.search(r"(?<![^\s`\"'(<\[*])(?:\./|/)?" + re.escape(path) + r"(?=\.(?:$|\s)|$|[\s`\"')>\]#,:;*])", text)] if match]
