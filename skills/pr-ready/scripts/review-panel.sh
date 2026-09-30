@@ -104,7 +104,7 @@ run_one() {
              python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('text',''))" "$out/$r.json" > "$out/$r.md" 2>> "$out/$r.err" || cli_status=$?
            fi ;;
     kimi)  (cd "$dir" && kimi -m "$model" -p "$(cat "$prompt")" > "$out/$r.md" 2> "$out/$r.err") || cli_status=$? ;;
-    *)     echo "$r skipped: unknown cli $cli" >> "$out/summary.txt"; return ;;
+    *)     echo "$r failed: unknown cli $cli" >> "$out/summary.txt"; return 1 ;;
   esac
   if [ "$cli_status" -ne 0 ]; then
     echo "$r failed: reviewer CLI (exit $cli_status; see $r.err)" >> "$out/summary.txt"
@@ -114,19 +114,17 @@ run_one() {
 import re
 import sys
 from pathlib import Path
-for line in Path(sys.argv[1]).read_text().splitlines():
-    line = line.strip()
-    # Markdown emphasis can wrap the whole line, label, or verdict value.
-    line = re.sub(r"\*{1,3}|_{1,3}(?![A-Z])|(?<![A-Z])_{1,3}", "", line)
-    match = re.fullmatch(r"VERDICT: (APPROVE|REQUEST_CHANGES)", line)
-    if match:
-        print(match[1])
-        break
-else:
+report = Path(sys.argv[1]).read_text()
+# JSON text may concatenate progress and the final verdict on the same line.
+# Emphasis may wrap the label, the value, or both; preserve REQUEST_CHANGES.
+report = re.sub(r"\*{1,3}|_{1,3}(?![A-Z])|(?<![A-Z])_{1,3}", "", report)
+verdicts = re.findall(r"VERDICT:\s*(APPROVE|REQUEST_CHANGES)(?![\w-])", report)
+if not verdicts:
     sys.exit(1)
+print(verdicts[-1])
 PYVERDICT
   ); then
-    echo "$r failed: reviewer report missing valid VERDICT: APPROVE or VERDICT: REQUEST_CHANGES line (see $r.md and $r.err)" >> "$out/summary.txt"
+    echo "$r failed: reviewer report missing valid VERDICT: APPROVE or VERDICT: REQUEST_CHANGES token (see $r.md and $r.err)" >> "$out/summary.txt"
     return 1
   fi
   echo "$r $cli/$model wall=$(( $(date +%s) - t0 ))s verdict=$verdict" >> "$out/summary.txt"

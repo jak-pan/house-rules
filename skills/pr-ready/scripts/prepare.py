@@ -9,10 +9,11 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from urllib.parse import quote, quote_from_bytes, urlsplit
+from urllib.parse import quote, quote_from_bytes, unquote, urlsplit
 
 HERE = Path(__file__).resolve().parent
 CODEX_LIMIT = 800_000
+SPEC_LIMIT = 2_000_000
 COMMENT_LIMIT = 4_000
 SECTION = r"\d+[A-Za-z]?(?:\.\d+[A-Za-z]?)*"
 SECTION_REF = re.compile(r"§\s*(" + SECTION + r")(?:\s*[–-]\s*§?\s*(" + SECTION + r"))?")
@@ -20,8 +21,20 @@ LOCK = re.compile(r"(^|/)([^/]*\.lock|package-lock\.json|npm-shrinkwrap\.json|pn
 TEST = re.compile(r"(^|/)(tests?(/|\.)|test_[^/]*|[^/]*[_\-.](tests?|spec)\.[^/]+$)", re.I)
 
 
+def redact(text):
+    """Remove URL credentials at output boundaries; keep raw Git paths intact."""
+    text = re.sub(r"(?<![a-z0-9+.-])([a-z][a-z0-9+.-]*://)[^/\s?#]*@", r"\1[REDACTED]@", text, flags=re.I)
+    def query(match):
+        key = unquote(match[2]).lower()
+        if re.search(r"token|password|passwd|secret|credential|signature|api[_-]?key|auth|^key$|^sig$", key):
+            return match[1] + match[2] + "=[REDACTED]"
+        return match[0]
+    return re.sub(r"([?&])([^=&#\s]+)=([^&#\s\"'<>`)]*)", query, text)
+
+
 class PrepareError(Exception):
-    pass
+    def __init__(self, message):
+        super().__init__(redact(message))
 
 
 def noninteractive_env():
@@ -30,7 +43,7 @@ def noninteractive_env():
 
 def display(text):
     """Keep undecodable bytes visible without changing paths passed back to Git."""
-    return text.encode("utf-8", errors="surrogateescape").decode("utf-8", errors="backslashreplace")
+    return redact(text.encode("utf-8", errors="surrogateescape").decode("utf-8", errors="backslashreplace")).replace("\0", r"\x00")
 
 
 def run(repo, *args):
@@ -38,7 +51,7 @@ def run(repo, *args):
                             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     # Decode bytes ourselves: text mode also rewrites CR/LF inside NUL-delimited paths.
     result.stdout = result.stdout.decode("utf-8", errors="surrogateescape")
-    result.stderr = result.stderr.decode("utf-8", errors="surrogateescape")
+    result.stderr = redact(result.stderr.decode("utf-8", errors="surrogateescape"))
     return result
 
 
@@ -76,7 +89,7 @@ def resolve_base(repo, explicit=None, no_fetch=False):
                 raise PrepareError(f"ls-remote {remote} failed and no cached default branch exists; specify --base REF")
             base = cached.stdout.strip().removeprefix("refs/remotes/")
             git(repo, "rev-parse", "--verify", base + "^{commit}")
-            print(f"warning: ls-remote {remote} failed: {advertised.stderr.strip()}; using cached base {base}; freshness could not be verified", file=sys.stderr)
+            print(f"warning: ls-remote {remote} failed: {redact(advertised.stderr.strip())}; using cached base {base}; freshness could not be verified", file=sys.stderr)
             return base, remote, False
         branch = match[1] if match else next((b for b in ("main", "master")
                                               if re.search(r"\srefs/heads/" + b + r"$", advertised.stdout, re.M)), None)
@@ -86,7 +99,7 @@ def resolve_base(repo, explicit=None, no_fetch=False):
     ref = f"refs/remotes/{remote}/{branch}"
     fetched = run(repo, "git", "fetch", remote, f"+refs/heads/{branch}:{ref}")
     if fetched.returncode:
-        print(f"warning: fetch {base} failed: {fetched.stderr.strip()}", file=sys.stderr)
+        print(f"warning: fetch {base} failed: {redact(fetched.stderr.strip())}", file=sys.stderr)
     git(repo, "rev-parse", "--verify", ref + "^{commit}")
     if fetched.returncode:
         print(f"warning: using cached base {base}; freshness could not be verified", file=sys.stderr)
@@ -103,7 +116,7 @@ def update(repo, base):
         if conflicts:
             raise PrepareError("merge conflict; merge left in progress. Conflicted files:\n" + conflicts)
         raise PrepareError(result.stderr.strip() or result.stdout.strip())
-    print(result.stdout.strip(), file=sys.stderr)
+    print(display(result.stdout.strip()), file=sys.stderr)
 
 
 def web_remote(repo, remote):
@@ -141,7 +154,8 @@ def changed_files(repo, rng):
 
 
 class GitHubUnavailable(Exception):
-    pass
+    def __init__(self, message):
+        super().__init__(redact(message))
 
 
 def gh_json(repo, *args):
@@ -225,7 +239,7 @@ def pr_context(repo, args, url):
             texts.append(pr.get("body") or "")
         # A PR URL determines where bare issue numbers belong, including forks.
         issue_url = pr.get("url", "").split("/pull/")[0] or url
-        refs.extend(issue_refs(pr.get("body", "")))
+        refs.extend(issue_refs(pr.get("body") or ""))
         seen = set()
         for ref in refs:
             location = issue_location(ref, issue_url)
@@ -387,9 +401,23 @@ def discover_spec(repo, head, explicit, texts, files):
         for design in re.finditer(r"^Design:\s+(\S+?)(?:\s+\[[^\]]*\])?\s*$", text, re.M):
             if design[1] in paths:
                 return design[1]
+    def url_path(match):
+        try:
+            parsed = urlsplit(match[0])
+        except ValueError:
+            return " "  # Malformed URLs are not repository path mentions.
+        route = None
+        if parsed.hostname in ("github.com", "gitlab.com", "bitbucket.org"):
+            route = re.match(r"/[^/]+/[^/]+/(?:-/)?(?:blob|raw|src)/[^/]+/(.+)", parsed.path)
+        elif parsed.hostname == "raw.githubusercontent.com":
+            route = re.match(r"/[^/]+/[^/]+/[^/]+/(.+)", parsed.path)
+        # Do not let an unrecognized URL match a repository-path suffix.
+        return " " + unquote(route[1]) + " " if route else " "
+
     for text in texts:
+        text = re.sub(r"https?://[^\s<>\"'`)]+", url_path, text)
         named = [(match.start(), path) for path in paths if path.lower().endswith(".md")
-                 for match in [re.search(r"(?<![\w.-])" + re.escape(path) + r"(?![\w.-])", text)] if match]
+                 for match in [re.search(r"(?<![^\s`\"'(<\[*])" + re.escape(path) + r"(?=$|[\s`\"')>\]#,:;*])", text)] if match]
         if named:
             return min(named)[1]
     edited = [path for _, _, path in files if path in paths and path.lower().endswith(".md")
@@ -424,11 +452,16 @@ def requirement_entries(repo, args, pr, issues, comments, texts, commits, files,
     if args.spec and not path:
         missing.append(args.spec.partition("#")[0])
     if path:
-        result = run(repo, "git", "show", f"{head}:{path}")
-        if result.returncode:
-            missing.append(path)
+        object_name = f"{head}:{path}"
+        size = int(git(repo, "cat-file", "-s", object_name).strip())
+        if size > SPEC_LIMIT:
+            notices.append(f"Skipped spec {path}: {size:,} bytes exceeds document limit {SPEC_LIMIT:,} bytes; select a smaller document.")
         else:
-            doc = result.stdout
+            result = run(repo, "git", "show", object_name)
+            if result.returncode:
+                missing.append(path)
+            else:
+                doc = result.stdout
     if doc is None:
         missing.extend("§" + token for pair in wanted for token in pair if token)
         missing.extend(tests)
@@ -581,7 +614,10 @@ def review(repo, args, base, remote):
         notices.insert(0, "not found: " + ", ".join(dict.fromkeys(missing)))
     # Numstat is already collected; the remaining budget bounds structured reads
     # before constructing a prompt. Pack streams bodies without retaining them.
-    overhead = len("\n\n".join([*notices, *parts, requirements_part(entries, mode)])) + 2
+    # Normalize before trimming: escaping invalid bytes can quadruple their size.
+    for entry in entries:
+        entry.update((key, display(value)) for key, value in entry.items())
+    overhead = len(display("\n\n".join([*notices, *parts, requirements_part(entries, mode)]))) + 3
     budget = max(0, CODEX_LIMIT - overhead) if args.cli == "codex" else CODEX_LIMIT
     packed = mode == "pack"
     try:
@@ -594,7 +630,8 @@ def review(repo, args, base, remote):
     def trim_notes():
         return [f"Size guard: trimmed R{n + 1} ({entries[n]['category']}): {entries[n]['source']}" for n in trimmed]
     def render():
-        return "\n\n".join([*notices, *trim_notes(), *parts, requirements_part(entries, mode), change])
+        # Include the terminating newline; main writes this exact representation.
+        return display("\n\n".join([*notices, *trim_notes(), *parts, requirements_part(entries, mode), change])) + "\n"
     result = render()
     if args.cli == "codex" and len(result) > CODEX_LIMIT:
         if not packed:
@@ -683,7 +720,7 @@ def main(argv=None):
         if args.command == "base":
             print(base)
         elif args.command == "review":
-            print(display(review(repo, args, base, remote)))
+            sys.stdout.write(review(repo, args, base, remote))
         else:
             status = ownership(repo, remote)
             if not fresh:
@@ -696,10 +733,10 @@ def main(argv=None):
             else:
                 update(repo, base)
                 update_note = f"Merged {base} (or already up to date)."
-            print(brief(repo, args, base, status, update_note))
+            print(display(brief(repo, args, base, status, update_note)))
         return 0
     except (PrepareError, OSError) as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        print(display(f"error: {exc}"), file=sys.stderr)
         return 1
 
 

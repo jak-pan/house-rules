@@ -49,7 +49,14 @@ scope.
 
 CI checks the report linter's JavaScript syntax. This is a
 smoke check, not proof of the linter's behavior or of any agent's discovery. The source
-repository keeps no test suite; maintenance decisions are recorded in commits. Projects
-using House Rules keep their own tests.
+repository also has local preparer/panel integration tests using temporary Git repositories
+and stub CLIs, with no network or model calls. Run them before committing preparer changes:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s skills/pr-ready/scripts -p test_prepare.py
+bash -n skills/pr-ready/scripts/review-panel.sh
+```
+
+These tests currently run locally, not in CI. Projects using House Rules keep their own tests.
 
 Attribution is in [NOTICE.md](NOTICE.md); the license is [MIT](LICENSE).

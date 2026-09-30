@@ -128,6 +128,100 @@ print(json.dumps(value))
                 "author_association": association, "user": {"login": login, "type": user_type},
                 "created_at": f"2026-01-{number:02d}T00:00:00Z", "body": body or f"Comment body {number}"}
 
+    def test_null_pr_and_issue_bodies_are_empty(self):
+        for pr_body in (None, "Refs #2"):
+            with self.subTest(pr_body=pr_body):
+                self.github(self.pr(pr_body), [self.issue(2, None)])
+                prompt = self.review(issue=["2"])
+                self.assertIn("Change title", prompt)
+                self.assertIn("Requirement 2", prompt)
+                self.assertNotIn("None", prompt)
+
+    def test_credentials_are_redacted_from_git_warnings_errors_and_prompts(self):
+        url = "https://test-user:fake-password@github.com/example/project.git?access_token=fake-token&x=1&api_key=fake-key"
+        diagnostic = "fatal: unable to access '" + url + "'"
+        self.git(self.repo, "remote", "set-url", "origin", url)
+        real_run = prepare.run
+        def offline(repo, *args):
+            if args[:2] in (("git", "ls-remote"), ("git", "fetch")):
+                return subprocess.CompletedProcess(args, 1, "", diagnostic)
+            return real_run(repo, *args)
+        outputs = []
+        with mock.patch.object(prepare, "run", side_effect=offline):
+            for base in (None, "origin/trunk"):
+                err = io.StringIO()
+                with contextlib.redirect_stderr(err):
+                    prepare.resolve_base(self.repo, base)
+                outputs.append(err.getvalue())
+        with mock.patch.object(prepare, "run", return_value=subprocess.CompletedProcess([], 1, "", diagnostic)):
+            with self.assertRaises(prepare.PrepareError) as caught:
+                prepare.git(self.repo, "status")
+            outputs.append(str(caught.exception))
+        self.github(self.pr("Remote: " + url))
+        data = json.loads(self.fixtures.read_text())
+        data["api --method GET --paginate --slurp repos/example/project/pulls/1/reviews?per_page=100"] = {"_error": diagnostic}
+        self.fixtures.write_text(json.dumps(data))
+        outputs.append(self.review())
+        for output in outputs:
+            with self.subTest(output_kind=output[:30]):
+                for secret in ("test-user", "fake-password", "fake-token", "fake-key"):
+                    self.assertNotIn(secret, output)
+                self.assertIn("github.com", output)
+                self.assertIn("x=1", output)
+
+    def test_size_guard_counts_emitted_escaped_spec_and_newline(self):
+        path = self.repo / "spec.md"
+        path.write_bytes(b"## 1 Behavior\n" + b"\xff" * 300_000)
+        self.commit(self.repo, "Add spec")
+        code, out, err = self.invoke("review", str(self.repo), "--base", "origin/trunk", "--no-fetch", "--spec", "spec.md#1")
+        self.assertEqual(code, 0, err)
+        self.assertLessEqual(len(out), prepare.CODEX_LIMIT)
+        self.assertIn("trimmed R1 (spec)", out)
+        self.assertIn(r"\xff", out)
+        # The final newline is part of the measured emitted representation too.
+        with mock.patch.object(prepare, "CODEX_LIMIT", len(out) - 1):
+            code, smaller, err = self.invoke("review", str(self.repo), "--base", "origin/trunk", "--no-fetch", "--spec", "spec.md#1")
+        self.assertEqual(code, 0, err)
+        self.assertLessEqual(len(smaller), len(out) - 1)
+
+    def test_oversized_spec_is_reported_without_reading_blob(self):
+        self.write(self.repo, "docs/spec.md", "## 2 Small\nNeeded\n## 3 Appendix\n" + "x" * 2_000_001)
+        self.commit(self.repo, "Add large spec")
+        real_run = prepare.run
+        def no_blob_read(repo, *args):
+            if args[:2] == ("git", "show") and args[2].endswith(":docs/spec.md"):
+                self.fail("oversized spec blob was read")
+            return real_run(repo, *args)
+        with mock.patch.object(prepare, "run", side_effect=no_blob_read) as calls:
+            prompt = self.review(spec="docs/spec.md#2")
+        self.assertIn("Skipped spec docs/spec.md", prompt)
+        self.assertIn("2,000,000 bytes", prompt)
+        self.assertIn("not found: §2", prompt)
+        self.assertTrue(any(call.args[1:3] == ("git", "cat-file") and "-s" in call.args for call in calls.call_args_list))
+
+    def test_markdown_mentions_match_whole_paths_only(self):
+        for path in ("README.md", "docs/named.md", "docs/design.md"):
+            self.write(self.repo, path, "## 1 Behavior\n" + path)
+        self.commit(self.repo, "Add docs")
+        for mention in ("docs/README.md", "prefix/docs/named.md", "prefix+docs/named.md", "docs/named.md/extra", "https://[invalid/docs/named.md", "https://github.com/example/project/blob/main/prefix/docs/named.md"):
+            with self.subTest(mention=mention):
+                self.github(self.pr("See " + mention))
+                self.assertIn("Design/spec docs/design.md", self.review())
+        for mention in ("`docs/named.md`", "[design](docs/named.md#1)", "https://github.com/example/project/blob/main/docs/named.md", "https://raw.githubusercontent.com/example/project/main/docs/named.md", "https://gitlab.com/example/project/-/blob/main/docs/named.md"):
+            with self.subTest(mention=mention):
+                self.github(self.pr("See " + mention))
+                self.assertIn("Design/spec docs/named.md", self.review())
+
+    def test_unknown_panel_cli_fails_reviewer(self):
+        summary, output, env = self.panel_fixture()
+        Path(env["REVIEW_PANEL_CONF"]).write_text("a = codexx test-model - high\n")
+        env["REVIEW_BASE"] = "origin/trunk"
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "unknown-cli", str(self.repo), str(summary), "generalist-a"], capture_output=True, text=True, env=env)
+        self.assertNotEqual(result.returncode, 0)
+        recorded = (output / "unknown-cli" / "summary.txt").read_text()
+        self.assertIn("generalist-a failed:", recorded)
+        self.assertNotIn("skipped", recorded)
+
     def test_no_fetch_still_merges_resolved_base(self):
         self.write(self.repo, "feature.py", "pass\n")
         self.commit(self.repo, "Feature")
@@ -451,6 +545,9 @@ else:
             (self.binaries / cli).write_text(stub)
         reports = [None, "", "Review incomplete\n", "VERDICT: UNKNOWN\n",
                    "VERDICT: APPROVED\n", "Example VERDICT: APPROVE\n",
+                   "I will review...VERDICT: REQUEST_CHANGES",
+                   "VERDICT: APPROVE\nProgress...**VERDICT:** **REQUEST_CHANGES**",
+                   "VERDICT: REQUEST_CHANGES\nDone: __VERDICT: APPROVE__",
                    "VERDICT: APPROVE\n", "Findings\nVERDICT: REQUEST_CHANGES\n", "**VERDICT: REQUEST_CHANGES**\n", "_VERDICT: APPROVE_\n", None]
         for family, cli in (("a", "codex"), ("b", "grok"), ("c", "kimi")):
             for index, report in enumerate(reports):
@@ -462,14 +559,14 @@ else:
                                              str(self.repo), str(summary), "generalist-" + family],
                                             capture_output=True, text=True, env=env)
                     recorded = (output / name / "summary.txt").read_text()
-                    if index < 6 or report is None:
+                    if index < 5 or report is None:
                         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
                         self.assertIn(f"generalist-{family} failed: reviewer report", recorded)
                         self.assertIn("missing valid VERDICT", recorded)
                         self.assertNotIn("verdict=", recorded)
                     else:
                         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                        self.assertIn("verdict=" + report.split("VERDICT: ")[1].strip().strip("*_"), recorded)
+                        self.assertIn("verdict=" + ("APPROVE" if report.rstrip().rstrip("*_").endswith("APPROVE") else "REQUEST_CHANGES"), recorded)
 
     def test_panel_clears_previous_outputs_before_preparation_or_skip(self):
         summary, output, env = self.panel_fixture(summary_exists=False)

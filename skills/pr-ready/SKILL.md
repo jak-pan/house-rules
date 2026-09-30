@@ -60,8 +60,10 @@ load no other rules.
   ([review template](references/review-prompt.md)). `scripts/review-panel.sh` runs
   the base resolver once, then `scripts/prepare.py review --base REF --no-fetch` per
   lens and CLI. Preparation failures, reviewer CLI failures, and reports without a
-  `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES` line (Markdown emphasis is accepted)
-  are recorded in `summary.txt` and make the panel exit nonzero. Each run resets `summary.txt` and removes each selected
+  `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES` token anywhere in the report
+  (Markdown emphasis is accepted; the last valid token wins)
+  are recorded in `summary.txt` and make the panel exit nonzero. Unknown configured CLIs
+  fail the reviewer; they are not successful skips. Each run resets `summary.txt` and removes each selected
   reviewer's previous report, raw logs and prompt before base resolution; a base-resolution
   failure is recorded in the new summary. Cleanup failures also make the panel exit nonzero. Before any output changes, panel names must match
   `[A-Za-z0-9][A-Za-z0-9._-]*` and the panel directory must resolve strictly beneath the
@@ -91,21 +93,26 @@ load no other rules.
   Markdown path named in PR/issue/commit text, then a Markdown design/spec file edited
   by the change. Design lines outrank ordinary mentions across those sources; otherwise
   the first mention wins (PR, issues, then range commits), and edited candidates use
-  lexical path order. Only the selected document is read; section tokens and test IDs
-  resolve within it. There is no document scoring or content scan. Hyphens are part of
+  lexical path order. Named paths match whole path tokens, including paths extracted
+  from blob/raw/src URLs, never a suffix of a longer path. Before reading the selected
+  document, `git cat-file -s` checks its size against a 2,000,000-byte limit. Oversized
+  documents are reported and skipped; unresolved section/test references remain visible.
+  Section tokens and test IDs resolve within the selected document. There is no document scoring or content scan. Hyphens are part of
   acceptance IDs: `AT1` does not match `AT1-case`. Linked issues come from PR-body
   `Refs/Closes/Fixes/Resolves #N`, `owner/repo#N`, issue URLs and `--issue`.
   GitHub reads use optional `gh`; unavailable automatic sources and unresolved references
   are reported at the top. An explicitly requested PR or issue that cannot be resolved
   is an error. Deleted maintainer accounts retain their comments with an unknown-author
-  notice. A later GitHub read failure names the failed source and preserves already
+  notice. Null PR and issue bodies are treated as empty. URL userinfo and credential-like
+  query values are redacted from warnings, errors and prompts. A later GitHub read failure names the failed source and preserves already
   fetched context. Comments are capped at 4,000 characters with a cut notice.
   Codex defaults to `structured` (full diffs), others to `pack` (file index and hunk
   headers); `--format diff` omits spec content. `--format` overrides defaults;
   diff reads are bounded before prompt construction, using numstat first and streaming
   hunk headers for pack mode. Changed paths use NUL-delimited metadata and byte-preserving
   decoding, then literal Git pathspecs. Non-UTF-8 bytes are displayed as escapes and
-  percent-encoded in links. Codex prompts over 800,000 characters fall back to pack for the change, then trim comments,
+  percent-encoded in links; NUL bytes are displayed as escapes. Size checks measure the
+  final displayed prompt, including its terminating newline. Codex prompts over 800,000 characters fall back to pack for the change, then trim comments,
   issue bodies and spec sections in that order (largest first within each source type).
   Notices identify every trim. If the prompt still exceeds the limit after all trim
   steps, preparation exits nonzero without emitting a prompt; the error names the limit,
