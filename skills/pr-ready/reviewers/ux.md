@@ -1,0 +1,7 @@
+---
+lens: ux
+family: b
+sandbox: read-only
+---
+
+Only: user experience of the changed flows. Walk each flow the change touches: empty, loading, error and success states; copy that is unclear, inconsistent or blames the user; destructive or irreversible actions without confirmation or undo; consistency with the product's existing patterns and skill `design-canon`. When screenshots or a preview link are provided, review them; otherwise review from the code and spec and say so.
