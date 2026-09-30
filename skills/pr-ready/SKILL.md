@@ -42,7 +42,9 @@ suite (AGENTS.md §Verification); everything below keeps local work small.
   refactors, and docs longer than the fact they carry.
 
 - Give the reviewer the diff range, the spec sections, the previous round's review, and
-  [the review template](references/review-prompt.md). The reviewer reviews statically and
+  [the review template](references/review-prompt.md). For substantial changes, run a
+  panel of focused reviewers across two model families ([review lenses](references/review-lenses.md))
+  and loop until a full panel round finds no blockers. The reviewer reviews statically and
   runs at most one targeted test, only to confirm or refute a specific finding.
 - The fixer closes every blocking item with the reviewer's smallest fix and a regression
   test, in one commit per round. The next review names that commit and marks each prior
