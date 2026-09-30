@@ -265,6 +265,13 @@ brevity must not remove evidence or content needed to complete the task.
   required gate on the resulting candidate or whenever the change invalidates prior
   full-gate evidence. Do not repeatedly run the full matrix after changes that cannot
   affect it.
+- **CI owns the full suite.** Where CI runs the complete gate on every push and merges wait
+  for it, agents do not run the full test suite locally. Implementers and fixers run
+  formatting, lint/compile checks, fast guard tests, and targeted tests for the code they
+  changed plus their new regressions. Reviewers review statically and run at most one
+  targeted test, only to confirm or refute a specific finding. Run the full suite locally
+  only when CI cannot, or to diagnose a CI failure. Operator direction: 2026-09-30, after
+  local full-suite runs took most of each review and fix round.
 - Long-running checks fail on no-progress, not wall-clock.
 - **Authorized, bounded, and durable before expensive.** Paid, long-running, or
   non-reproducible external runs (agents, model CLIs, remote jobs, benchmarks, crawls)

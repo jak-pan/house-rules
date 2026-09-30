@@ -41,7 +41,9 @@ violates. Git itself is used directly; repo commit/push wrappers are retired.
 
 ## Gates
 
-When to run the full gate versus a smaller one: AGENTS.md §Verification.
+When to run the full gate versus a smaller one: AGENTS.md §Verification. Where CI runs this
+gate on every push, the full `cargo test` line is CI's; locally run the first two plus
+targeted `cargo test <filter>` for the code you changed.
 
 ```
 cargo fmt --all --check
