@@ -30,6 +30,11 @@ suite (AGENTS.md §Verification); everything below keeps local work small.
 
 ## 3. Review rounds
 
+**Where reviews run.** If the repository has a server-side review gate (a review app
+running in CI), pushing triggers the review and only its result counts for merging; a
+local panel is optional pre-push feedback. Otherwise the agent runs the panel locally.
+External repositories always get local review rounds (skill `upstream-contribution`).
+
 **Review bar.** Every finding cites a concrete scenario. Reviewers check:
 - **Correctness and security:** invariants on every path, authorization and
   confidentiality, failure, crash and replay paths, and input handling.
