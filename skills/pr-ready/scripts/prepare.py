@@ -573,9 +573,10 @@ def review(repo, args, base, remote):
         notices.append(f"Size guard: prompt exceeds {CODEX_LIMIT:,} characters; change part uses pack (hunk headers).")
         change = change_part(repo, rng, files, url, head, "pack")
     trimmed = []
+    def trim_notes():
+        return [f"Size guard: trimmed R{n + 1} ({entries[n]['category']}): {entries[n]['source']}" for n in trimmed]
     def render():
-        trim_notes = [f"Size guard: trimmed R{n + 1} ({entries[n]['category']}): {entries[n]['source']}" for n in trimmed]
-        return "\n\n".join([*notices, *trim_notes, *parts, requirements_part(entries, mode), change])
+        return "\n\n".join([*notices, *trim_notes(), *parts, requirements_part(entries, mode), change])
     result = render()
     if args.cli == "codex" and len(result) > CODEX_LIMIT:
         if not packed:
@@ -596,8 +597,11 @@ def review(repo, args, base, remote):
                 entries[n]["body"] = entries[n]["body"][:keep] + "\n[Trimmed by size guard.]"
                 result = render()
         if len(result) > CODEX_LIMIT:
-            notices.append(f"Size guard: still exceeds {CODEX_LIMIT:,} characters after trimming; retained indexes, rules, task and author claims require a smaller input.")
-            result = render()
+            history = "\n".join(trim_notes() or ["No requirement bodies eligible for trimming."])
+            raise PrepareError(
+                f"Size guard: limit {CODEX_LIMIT:,} characters; final size {len(result):,} characters after trimming. "
+                "Retained indexes, rules, task and author claims require a smaller input.\n"
+                "Already trimmed: change part uses pack (hunk headers).\n" + history)
     return result
 
 
@@ -740,7 +744,7 @@ def main(argv=None):
         if command == "fix":
             p.add_argument("--reviews", nargs="+", default=[])
         if command in ("fix", "pr"):
-            p.add_argument("--update", action="store_true", help="merge the base even on external repositories")
+            p.add_argument("--update", action="store_true", help="merge the base even on external or unknown-ownership repositories")
     args = parser.parse_args(argv)
     try:
         repo = Path(git(args.checkout, "rev-parse", "--show-toplevel").strip())
@@ -754,8 +758,8 @@ def main(argv=None):
             status = ownership(repo, remote)
             if not fresh:
                 behind = git(repo, "rev-list", "--count", f"HEAD..{base}").strip()
-                update_note = f"{behind} commit(s) behind cached base {base}. Base merge skipped; freshness could not be verified."
-            elif status.startswith("external ") and not args.update:
+                update_note = f"{status}: {behind} commit(s) behind cached base {base}. Base merge skipped; freshness could not be verified."
+            elif not status.startswith("owned ") and not args.update:
                 behind = git(repo, "rev-list", "--count", f"HEAD..{base}").strip()
                 update_note = (f"{status}: {behind} commit(s) behind {base}. Base merge skipped; "
                                "leave the update method to the operator's instruction. --update forces a base merge.")

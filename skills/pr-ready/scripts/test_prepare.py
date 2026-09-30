@@ -270,6 +270,19 @@ print(json.dumps(value))
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("context preparation", (output / "round" / "summary.txt").read_text())
 
+    def test_panel_oversized_prompt_is_preparation_failure_without_reviewer(self):
+        summary, output, env = self.panel_fixture()
+        summary.write_text("s" * (prepare.CODEX_LIMIT + 1))
+        env["REVIEW_BASE"] = "origin/trunk"
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "round",
+                                 str(self.repo), str(summary), "generalist-a"],
+                                capture_output=True, text=True, env=env)
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("context preparation", (output / "round" / "summary.txt").read_text())
+        self.assertIn("800,000", (output / "round" / "generalist-a.prepare.err").read_text())
+        self.assertEqual((output / "round" / "generalist-a.prompt").read_text(), "")
+        self.assertFalse((output / "round" / "generalist-a.err").exists())
+
     def test_panel_resolves_and_fetches_once(self):
         summary, output, env = self.panel_fixture(summary_exists=False)
         real_git = prepare.shutil.which("git")
@@ -650,16 +663,37 @@ print(json.dumps(value))
         # Guard includes task/spec overhead, not just the raw diff size.
         summary = self.root / "summary.txt"
         summary.write_text("s" * 800_001)
-        prompt = self.review(summary=str(summary))
-        self.assertTrue(prompt.startswith("Size guard:"))
-        self.assertIn(summary.read_text(), prompt)
+        with self.assertRaisesRegex(prepare.PrepareError, "limit 800,000 characters"):
+            self.review(summary=str(summary))
+        self.assertEqual(summary.read_text(), "s" * 800_001)
+
+    def test_irreducible_prompt_fails_with_limit_final_size_and_trim_history(self):
+        self.write(self.repo, "docs/spec.md", "## 1 Behavior\n" + "x" * 1000)
+        self.commit(self.repo, "Requirements §1")
+        self.github(self.pr("Design: docs/spec.md [§1]\nRefs #2"),
+                    [self.issue(2, "i" * 1000)],
+                    pr_comments=[self.comment(1, body="c" * 1000)])
+        summary = self.root / "summary.txt"
+        summary.write_text("s" * (prepare.CODEX_LIMIT + 1))
+        code, out, err = self.invoke("review", str(self.repo), "--base", "origin/trunk",
+                                     "--no-fetch", "--summary", str(summary))
+        self.assertEqual(code, 1, err)
+        self.assertEqual(out, "")
+        self.assertIn("limit 800,000 characters", err)
+        final_size = re.search(r"final size ([\d,]+) characters", err)
+        self.assertIsNotNone(final_size, err)
+        self.assertGreater(int(final_size[1].replace(",", "")), prepare.CODEX_LIMIT)
+        self.assertIn("change part uses pack", err)
+        self.assertEqual(re.findall(r"trimmed R\d+ \((\w+)\)", err),
+                         ["comment", "issue", "spec"])
+        self.assertIn("docs/spec.md", err)
 
     def test_fix_merge_conflict_stops_and_leaves_merge_in_progress(self):
         self.write(self.repo, "src/core.py", "feature change\n")
         self.commit(self.repo, "Feature")
         self.write(self.origin, "src/core.py", "base change\n")
         self.commit(self.origin, "Base")
-        code, out, err = self.invoke("fix", str(self.repo))
+        code, out, err = self.invoke("fix", str(self.repo), "--update")
         self.assertEqual(code, 1)
         self.assertEqual(out, "")
         self.assertIn("range: origin/trunk...HEAD", err)
@@ -705,13 +739,40 @@ print(json.dumps(value))
                     self.assertEqual(self.git(self.repo, "rev-parse", "HEAD^2"), self.git(self.origin, "rev-parse", "HEAD"))
                     ownership.assert_called_once_with(self.repo.resolve(), "origin")
 
+    def test_unknown_ownership_skips_merge_reports_behind_and_update_forces(self):
+        self.write(self.repo, "feature.py", "pass\n")
+        self.commit(self.repo, "Feature")
+        feature = self.git(self.repo, "rev-parse", "HEAD")
+        for n in range(2):
+            self.write(self.origin, "upstream.py", f"value = {n}\n")
+            self.commit(self.origin, f"Base {n}")
+        (self.binaries / "gh").write_text("#!/bin/sh\necho 'network unavailable' >&2\nexit 2\n")
+        for command in ("fix", "pr"):
+            for unavailable in (True, False):
+                with self.subTest(command=command, no_gh=unavailable), mock.patch.object(
+                    prepare, "web_remote", return_value="https://github.com/example/project"
+                ), mock.patch.object(prepare.shutil, "which", return_value=None if unavailable else str(self.binaries / "gh")):
+                    self.git(self.repo, "checkout", "-B", "feature", feature)
+                    code, out, err = self.invoke(command, str(self.repo))
+                    self.assertEqual(code, 0, err)
+                    self.assertEqual(self.git(self.repo, "rev-parse", "HEAD"), feature)
+                    self.assertIn("unknown", out)
+                    self.assertIn("2 commit(s) behind origin/trunk", out)
+                    self.assertIn("Base merge skipped", out)
+                    self.assertIn("--update", out)
+                    code, out, err = self.invoke(command, str(self.repo), "--update")
+                    self.assertEqual(code, 0, err)
+                    self.assertEqual(self.git(self.repo, "rev-parse", "HEAD^1"), feature)
+                    self.assertEqual(self.git(self.repo, "rev-parse", "HEAD^2"),
+                                     self.git(self.origin, "rev-parse", "HEAD"))
+
     def test_fix_merges_without_rebasing_and_lists_reviews_without_running_tests(self):
         self.write(self.repo, "tests/test_feature.py", "raise RuntimeError('must not run')\n")
         self.commit(self.repo, "Feature")
         feature = self.git(self.repo, "rev-parse", "HEAD")
         self.write(self.origin, "upstream.py", "pass\n")
         self.commit(self.origin, "Base")
-        code, out, err = self.invoke("fix", str(self.repo), "--reviews", "review-a.md", "review-b.md")
+        code, out, err = self.invoke("fix", str(self.repo), "--update", "--reviews", "review-a.md", "review-b.md")
         self.assertEqual(code, 0, err)
         self.assertEqual(self.git(self.repo, "rev-parse", "HEAD^1"), feature)
         self.assertEqual(self.git(self.repo, "rev-parse", "HEAD^2"), self.git(self.origin, "rev-parse", "HEAD"))

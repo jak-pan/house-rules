@@ -15,9 +15,10 @@ suite (AGENTS.md §Verification); everything below keeps local work small.
 - Run `scripts/prepare.py fix <checkout> --reviews <files...>` before fixing, or
   `scripts/prepare.py pr <checkout>` before preparing a PR (Python 3.11+). It fetches the base and
   checks ownership with `upstream-contribution/scripts/repo-ownership.sh`. For external
-  repositories it reports how many commits the branch is behind and leaves the update
-  method to the operator; `--update` forces a base merge. Owned repositories (and unknown
-  ownership) keep the default base merge, never rebase, and stop on conflicts. It prints
+  repositories or unknown ownership it reports the ownership status and how many commits
+  the branch is behind, and leaves the update method to the operator; `--update` forces
+  a base merge. Only confirmed owned repositories merge by default, never rebase, and
+  stop on conflicts. It prints
   context and targeted test commands without running them. `--base REF` overrides remote
   default detection. An explicit local base requires no fetch. Failed remote discovery
   uses the cached remote-tracking default branch; a failed fetch keeps the selected
@@ -87,7 +88,9 @@ load no other rules.
   hunk headers for pack mode. Changed paths are literal Git pathspecs. Codex prompts
   over 800,000 characters fall back to pack for the change, then trim comments,
   issue bodies and spec sections in that order (largest first within each source type).
-  Notices identify every trim and any remaining excess from retained context.
+  Notices identify every trim. If the prompt still exceeds the limit after all trim
+  steps, preparation exits nonzero without emitting a prompt; the error names the limit,
+  final size and completed trims. The panel reports this as a preparation failure.
 - Run a panel of one generalist per model family, adding focused lenses where warranted
   ([review panels](references/review-lenses.md)), and loop until a full panel round finds
   no blockers. The reviewer reviews statically and runs at most one targeted test, only
