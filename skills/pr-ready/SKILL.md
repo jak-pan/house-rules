@@ -46,9 +46,10 @@ load no other rules.
 
 - Give the reviewer the diff range, the spec sections, the previous round's review, and
   [the review template](references/review-prompt.md). `scripts/review-panel.sh` puts the
-  change in context first, built by `scripts/review-handoff.py`: the full diff for the
-  Codex family, the changed files and touched functions for the others (a full diff cut
-  Codex tool calls without costing findings; other CLIs re-read the code regardless).
+  change in context after the stable rules (so prompt caches reuse them), built by
+  `scripts/review-handoff.py`: the full diff for the Codex family, the changed files and
+  touched functions for the others (a full diff cut Codex tool calls without costing
+  findings; other CLIs re-read the code regardless).
 - Run a panel of one generalist per model family, adding focused lenses where warranted
   ([review panels](references/review-lenses.md)), and loop until a full panel round finds
   no blockers. The reviewer reviews statically and runs at most one targeted test, only

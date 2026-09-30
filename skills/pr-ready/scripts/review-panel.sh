@@ -4,8 +4,9 @@
 #   reviewer: a file stem in ../reviewers/ (default: generalist-<family> for each configured family)
 # Config: ${REVIEW_PANEL_CONF:-<house-rules>/custom/review-panel.conf}, lines "<family> = <cli> <model> [tier] [effort]",
 #   cli one of codex | grok | kimi. Families without a config line are skipped.
-# Handoff: the change is put in context first (review-handoff.py): the full diff for codex, the
-#   changed files and touched functions for other CLIs. Range: ${REVIEW_BASE:-origin's default branch}...HEAD.
+# Prompt order: reviewers/common.md, the change (review-handoff.py), the task, the lens.
+#   Handoff: the full diff for codex, changed files and touched functions for other CLIs.
+#   Range: ${REVIEW_BASE:-origin's default branch}...HEAD.
 # Output directory: ${REVIEW_PANEL_OUT:-<checkout>/.tmp/review-panel}/<name>/ with <reviewer>.md,
 #   raw logs, and summary.txt (verdict and wall time per reviewer).
 set -u
@@ -37,8 +38,10 @@ run_one() {
   [ -n "$cfg" ] || { echo "$r skipped: family $fam not configured" >> "$out/summary.txt"; return; }
   read -r cli model tier effort <<<"$cfg"; [ "$tier" = - ] && tier=
   local handoff=pack; [ "$cli" = codex ] && handoff=diff
-  { "$here/review-handoff.py" "$dir" "$review_base" HEAD "$handoff"; echo; echo "# Task"
-    cat "$base"; printf '\nLens: %s\n' "$r"; body "$file"; echo; sed 1,2d "$reviewers_dir/common.md"; } > "$prompt"
+  # Stable text first so prompt caches share it across reviewers, rounds and PRs; then the
+  # change (shared by a round's reviewers of one CLI), the round's task, and the lens last.
+  { sed 1,2d "$reviewers_dir/common.md"; echo; "$here/review-handoff.py" "$dir" "$review_base" HEAD "$handoff"
+    echo; echo "# Task"; cat "$base"; printf '\nLens: %s\n' "$r"; body "$file"; } > "$prompt"
   t0=$(date +%s)
   case $cli in
     codex) codex exec --json --skip-git-repo-check -m "$model" -c model_reasoning_effort="${effort:-high}" \
