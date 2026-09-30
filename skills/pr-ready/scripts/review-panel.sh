@@ -80,7 +80,7 @@ run_one() {
   local r=$1 file=$reviewers_dir/$1.md
   local fam cfg cli model tier effort prompt=$out/$r.prompt t0 cli_status=0 verdict
   fam=$(frontmatter "$file" family); cfg=$(family_cfg "$fam")
-  [ -n "$cfg" ] || { echo "$r skipped: family $fam not configured" >> "$out/summary.txt"; return; }
+  [ -n "$cfg" ] || { echo "$r failed: family $fam not configured" >> "$out/summary.txt"; return 1; }
   read -r cli model tier effort <<<"$cfg"; [ "$tier" = - ] && tier=
   local prepare_args=(review "$dir" --lens "$r" --cli "$cli" --summary "$base" --base "$resolved_base" --no-fetch)
   if ! "$here/prepare.py" "${prepare_args[@]}" > "$prompt" 2> "$out/$r.prepare.err"; then

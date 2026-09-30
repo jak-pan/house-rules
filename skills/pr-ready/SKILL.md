@@ -122,7 +122,8 @@ load no other rules.
   edits, CI and build fixes, small refactors. Never for a first review of a feature, access
   control, confidentiality, durability, storage, security-sensitive paths or new mechanisms.
   It refuses changes above 300 changed lines by default; a blocker or spec issue it raises
-  sends the change back to the full panel after the fix.
+  sends the change back to the full panel after the fix. For an eligible change its approval
+  completes review; for a check-back it completes the round the full panel opened.
 - Run a panel of one generalist per model family, adding focused lenses where warranted
   ([review panels](references/review-lenses.md)), and loop until a full panel round finds
   no blockers. The reviewer reviews statically and runs at most one targeted test, only

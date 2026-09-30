@@ -9,15 +9,19 @@
 # the full panel. Changes above QUICK_REVIEW_MAX_LINES (default 300) changed lines are refused
 # unless QUICK_REVIEW_FORCE=1. A quick review that raises a blocker or a spec issue goes to the
 # full panel after the fix.
-set -u
+set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 [ $# -eq 3 ] || { sed -n '2,4p' "$0" >&2; exit 2; }
 dir=$(cd "$2" && pwd) || exit 2
 base_args=(base "$dir")
 [ -n "${REVIEW_BASE:-}" ] && base_args+=(--base "$REVIEW_BASE")
 base=$("$here/prepare.py" "${base_args[@]}") || exit 1
-changed=$(git -C "$dir" diff --numstat "$base...HEAD" | awk '{a+=$1; d+=$2} END {print a+d+0}')
+# Pin the base to a commit so the size check and the review see the same range.
+base=$(git -C "$dir" rev-parse --verify "$base^{commit}") || exit 1
+changed=$(git -C "$dir" diff --numstat "$base...HEAD" | awk '{a+=$1; d+=$2} END {print a+d+0}') || {
+  echo "quick review failed: cannot measure the change" >&2; exit 1; }
 max=${QUICK_REVIEW_MAX_LINES:-300}
+[[ "$max" =~ ^[0-9]+$ ]] || { echo "quick review failed: QUICK_REVIEW_MAX_LINES must be a whole number" >&2; exit 2; }
 if [ "$changed" -gt "$max" ] && [ "${QUICK_REVIEW_FORCE:-0}" != 1 ]; then
   echo "quick review refused: $changed changed lines exceed $max; run review-panel.sh (or set QUICK_REVIEW_FORCE=1)" >&2
   exit 2
