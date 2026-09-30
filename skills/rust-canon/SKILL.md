@@ -37,14 +37,14 @@ Rules.
 
 Where a repo ships build/test scripts (smoke gates, guard scripts), use them instead of
 raw commands — they encode repo law (scope checks, pinned flags) that raw cargo silently
-violates. Git itself is used directly; repo commit/push wrappers are retired.
+violates. Where CI owns the full suite, use their fast or targeted mode, not full runs. Git itself is used directly; repo commit/push wrappers are retired.
 
 ## Gates
 
 When to run the full gate versus a smaller one: AGENTS.md §Verification. Where CI runs this
 gate on every push, the full `cargo test` line is CI's; locally run the first two plus
-targeted `cargo test --release <filter>` for the code you changed. Use the same build
-profile as CI, so heavy fixtures run fast and timing bounds behave the same.
+targeted `cargo test <filter>` for the code you changed, in the same build profile as
+CI (release unless CI tests in debug), so heavy fixtures and timing bounds behave the same.
 
 ```
 cargo fmt --all --check

@@ -263,7 +263,8 @@ brevity must not remove evidence or content needed to complete the task.
 - E2E means the real stack — with mocks it's an integration test, not proof.
 - During iteration, run the smallest gate that proves the current change. Run the complete
   required gate on the resulting candidate or whenever the change invalidates prior
-  full-gate evidence. Do not repeatedly run the full matrix after changes that cannot
+  full-gate evidence; where CI owns the full suite (below), that is CI's run on the pushed
+  head. Do not repeatedly run the full matrix after changes that cannot
   affect it.
 - **CI owns the full suite.** Where CI runs the complete gate on every push and merges wait
   for it, agents do not run the full test suite locally. Implementers and fixers run

@@ -38,8 +38,8 @@ explicit goals.
   ⚒ Make one lane the budget owner when several hit the same provider.
 - Record the intended concurrency and measurement conditions before launch (bounds and
   isolation: AGENTS.md §Parallel work).
-- Never build `--release` in a shared tree while a paused run may depend on the existing
-  binary — release builds clobber it; use your lane's target dir.
+- Release builds and targeted release tests use the lane's own target dir, never a shared
+  tree where a paused run may depend on the existing binary.
 
 ## Lane cleanup
 
