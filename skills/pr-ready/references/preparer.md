@@ -8,7 +8,8 @@ Give the reviewer the spec sections, previous review and round task as needed
   the base resolver once, then `scripts/prepare.py review --base REF --no-fetch` per
   lens and CLI. Preparation failures, reviewer CLI failures, and reports without a
   `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES` token anywhere in the report
-  (Markdown emphasis is accepted; the last valid token wins)
+  (Markdown emphasis is accepted; `scripts/verdict.py` fails closed: any `REQUEST_CHANGES`
+  token means `REQUEST_CHANGES`, and `APPROVE` requires every token to agree)
   are recorded in `summary.txt` and make the panel exit nonzero. Unknown configured CLIs
   fail the reviewer; they are not successful skips. Each run resets `summary.txt` and removes each selected
   reviewer's previous report, raw logs and prompt before base resolution; a base-resolution
