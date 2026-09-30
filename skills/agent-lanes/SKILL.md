@@ -49,6 +49,11 @@ Housekeeping is part of the workflow, not a later chore. Cleanup follows AGENTS.
 - **At lane end.** When its PR merges or the work is abandoned, the lane owner removes its
   worktree and any build directory outside it in the same step as deleting the branch
   (skill `design-flow` §6).
+- **Not before.** A lane with an open PR keeps its worktree and build output while it waits
+  for review or CI, however long it idles; later fix rounds rebuild incrementally from it.
+  Under disk pressure, clear finished experiment and benchmark checkouts first, then ask
+  the operator. Operator direction: 2026-09-30, after idle build directories of open PRs
+  were deleted to free space.
 - **At session start, for every repo the session works in**, remove stale lanes left by
   any session: linked worktrees whose branch is merged (its PR merged at the same head, or
   its HEAD is on the default branch), and `.tmp/cargo-target/<lane>` directories whose lane

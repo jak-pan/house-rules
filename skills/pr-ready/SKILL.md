@@ -39,23 +39,20 @@ running in CI), pushing triggers the review and only its result counts for mergi
 local panel is optional pre-push feedback. Otherwise the agent runs the panel locally.
 External repositories always get local review rounds (skill `upstream-contribution`).
 
-**Review bar.** Every finding cites a concrete scenario. Reviewers check:
-- **Correctness and security:** invariants on every path, authorization and
-  confidentiality, failure, crash and replay paths, and input handling.
-- **Performance:** request-path cost against the declared bound, and no proportional
-  scans or unbounded memory, backed by measured numbers where the change claims a bound.
-- **Code quality:** the smallest change that works, in the surrounding code's style, with
-  one way to do each thing and names that say what things do.
-- **Waste, as a blocking class:** tests that do not guard a real behavior or defect,
-  duplicate or tautological checks, speculative abstractions, dead code, drive-by
-  refactors, and docs longer than the fact they carry.
+**Review bar.** [`reviewers/common.md`](reviewers/common.md) holds the bar and the review
+canon: correctness and security, performance, code quality, waste as a blocking class, and
+the House Rules a reviewer enforces. It is inlined into every reviewer prompt, so reviewers
+load no other rules.
 
 - Give the reviewer the diff range, the spec sections, the previous round's review, and
-  [the review template](references/review-prompt.md). Run a panel of one
-  generalist per model family, adding focused lenses where warranted
+  [the review template](references/review-prompt.md). `scripts/review-panel.sh` puts the
+  change in context first, built by `scripts/review-handoff.py`: the full diff for the
+  Codex family, the changed files and touched functions for the others (a full diff cut
+  Codex tool calls without costing findings; other CLIs re-read the code regardless).
+- Run a panel of one generalist per model family, adding focused lenses where warranted
   ([review panels](references/review-lenses.md)), and loop until a full panel round finds
-  no blockers. The reviewer reviews statically and
-  runs at most one targeted test, only to confirm or refute a specific finding.
+  no blockers. The reviewer reviews statically and runs at most one targeted test, only
+  to confirm or refute a specific finding.
 - The fixer closes every blocking item with the reviewer's smallest fix and a regression
   test, in one commit per round. The next review names that commit and marks each prior
   blocker RESOLVED or NOT. A fixer never approves its own fix.
