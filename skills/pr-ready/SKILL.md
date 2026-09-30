@@ -57,8 +57,9 @@ load no other rules.
 - Give the reviewer the spec sections, previous review and round task as needed
   ([review template](references/review-prompt.md)). `scripts/review-panel.sh` runs
   the base resolver once, then `scripts/prepare.py review --base REF --no-fetch` per
-  lens and CLI (a preparation or reviewer CLI failure makes the panel exit nonzero): stable rules and
-  lens first, then the
+  lens and CLI. Preparation failures, reviewer CLI failures, and reports without a
+  `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES` line are recorded in `summary.txt`
+  and make the panel exit nonzero. Prompt order: stable rules and lens first, then the
   base-prompt file as summary/task, PR/issue context, requirements and change. Requirements
   are indexed as R1, R2, … with source links, most authoritative first: design/spec
   sections and acceptance-test rows, linked issues (title, labels, body), non-bot

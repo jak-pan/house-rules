@@ -28,7 +28,7 @@ resolved_base=$("$here/prepare.py" "${base_args[@]}") || exit 1
 
 run_one() {
   local r=$1 file=$reviewers_dir/$1.md
-  local fam cfg cli model tier effort prompt=$out/$r.prompt t0 cli_status=0
+  local fam cfg cli model tier effort prompt=$out/$r.prompt t0 cli_status=0 verdict
   fam=$(frontmatter "$file" family); cfg=$(family_cfg "$fam")
   [ -n "$cfg" ] || { echo "$r skipped: family $fam not configured" >> "$out/summary.txt"; return; }
   read -r cli model tier effort <<<"$cfg"; [ "$tier" = - ] && tier=
@@ -60,7 +60,11 @@ run_one() {
     echo "$r failed: reviewer CLI (exit $cli_status; see $r.err)" >> "$out/summary.txt"
     return 1
   fi
-  echo "$r $cli/$model wall=$(( $(date +%s) - t0 ))s verdict=$(grep -o -m1 'VERDICT: [A-Z_]*' "$out/$r.md" | cut -d' ' -f2)" >> "$out/summary.txt"
+  if ! verdict=$(grep -E -m1 '^VERDICT: (APPROVE|REQUEST_CHANGES)[[:space:]]*$' "$out/$r.md" 2>> "$out/$r.err"); then
+    echo "$r failed: reviewer report missing valid VERDICT: APPROVE or VERDICT: REQUEST_CHANGES line (see $r.md and $r.err)" >> "$out/summary.txt"
+    return 1
+  fi
+  echo "$r $cli/$model wall=$(( $(date +%s) - t0 ))s verdict=${verdict#VERDICT: }" >> "$out/summary.txt"
 }
 
 : > "$out/summary.txt"

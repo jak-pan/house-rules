@@ -334,6 +334,45 @@ print(json.dumps(value))
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("failed: reviewer CLI (exit 99", (output / family / "summary.txt").read_text())
 
+    def test_panel_report_requires_valid_verdict(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        Path(env["REVIEW_PANEL_CONF"]).write_text(
+            "a = codex test-model - high\nb = grok test-model - high\nc = kimi test-model\n")
+        stub = "#!" + sys.executable + "\n" + r"""import json, os, pathlib, sys
+cli = pathlib.Path(sys.argv[0]).name
+report = json.loads(os.environ['TEST_REVIEW_REPORT'])
+if cli == 'codex':
+    if report is not None:
+        pathlib.Path(sys.argv[sys.argv.index('-o') + 1]).write_text(report)
+elif cli == 'grok':
+    print(json.dumps({} if report is None else {'text': report}))
+else:
+    print(report or '', end='')
+"""
+        for cli in ("codex", "grok", "kimi"):
+            (self.binaries / cli).write_text(stub)
+        reports = [None, "", "Review incomplete\n", "VERDICT: UNKNOWN\n",
+                   "VERDICT: APPROVED\n", "Example VERDICT: APPROVE\n",
+                   "VERDICT: APPROVE\n", "Findings\nVERDICT: REQUEST_CHANGES\n"]
+        for family, cli in (("a", "codex"), ("b", "grok"), ("c", "kimi")):
+            for index, report in enumerate(reports):
+                with self.subTest(cli=cli, report=report):
+                    name = f"{family}-{index}"
+                    env["TEST_REVIEW_REPORT"] = json.dumps(report)
+                    result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), name,
+                                             str(self.repo), str(summary), "generalist-" + family],
+                                            capture_output=True, text=True, env=env)
+                    recorded = (output / name / "summary.txt").read_text()
+                    if index < 6:
+                        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                        self.assertIn(f"generalist-{family} failed: reviewer report", recorded)
+                        self.assertIn("missing valid VERDICT", recorded)
+                        self.assertNotIn("verdict=", recorded)
+                    else:
+                        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                        self.assertIn("verdict=" + report.split("VERDICT: ")[1].strip(), recorded)
+
     def test_panel_preparation_failure_returns_nonzero(self):
         summary, output, env = self.panel_fixture(summary_exists=False)
         env["REVIEW_BASE"] = "origin/trunk"
