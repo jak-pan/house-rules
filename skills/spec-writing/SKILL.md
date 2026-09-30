@@ -34,6 +34,29 @@ from it without asking questions.** The document must explain the product and it
   Tentative framing ("we could maybe...") is for the open-questions list only.
 - **No development history**: docs describe the system, not the editing history.
 
+## Readable by people
+
+Buildable is not enough: people read specs to understand, review and decide.
+
+- **Reading order**: what it is (one paragraph and one diagram) → one walkthrough of a real
+  example from start to finish → setup and use → the rules → reference (schemas, event and
+  error tables, acceptance tests).
+- **Why before rules**: each section opens with a short paragraph on the problem it solves,
+  then states its rules.
+- **One idea per paragraph**, sections short enough to read in one sitting, and one concrete
+  example next to each concept rather than only in an appendix.
+- **Plain terms**: define every term at first use and in a glossary; no unexplained acronyms
+  or internal labels; ask for concrete things, not abstractions.
+- **Tables for lookup, prose for understanding**: behaviour is not buried in table cells.
+- **Label authority**: decisions, assumptions, estimates and open questions are marked as such.
+- **Reader test**: read each section alone, pretending the rest is unavailable. A new engineer
+  must be able to say what problem it solves, what the rule is and when it applies. If not,
+  add the missing opening, example or definition, or split the section.
+- **Polish after review**: review rounds add patches. Before merge, one pass restructures the
+  text, removes repetition and reruns the reader test.
+- **README**: a one-page user guide (what it does, how to use it, where the spec is), not a
+  second spec.
+
 ## Naming (spec work is naming work)
 
 - Names are isomorphic across docs, code, and UI — one concept, one name, everywhere.
