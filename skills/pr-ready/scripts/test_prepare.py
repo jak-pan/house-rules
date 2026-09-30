@@ -263,6 +263,77 @@ print(json.dumps(value))
         env = dict(os.environ, REVIEW_PANEL_CONF=str(conf), REVIEW_PANEL_OUT=str(output))
         return summary, output, env
 
+    def test_custom_rust_crate_roots_use_manifest_targets_not_module_filters(self):
+        for crate in (".", "crates/helper"):
+            for target_path in ("src/cli.rs", "tools/entry.rs", "tests/entry.rs", "./src/nested/../entry.rs"):
+                for kind, selector in (("bin", "--bin tool"), ("lib", "--lib")):
+                    with self.subTest(crate=crate, path=target_path, kind=kind):
+                        manifest = Path(crate) / "Cargo.toml"
+                        path = Path(os.path.normpath(str(Path(crate) / target_path)))
+                        table = '[[bin]]\nname="tool"' if kind == "bin" else "[lib]"
+                        self.write(self.repo, str(manifest), '[package]\nname="sample"\nversion="0.1.0"\n'
+                                   + table + f'\npath="{target_path}"\n')
+                        self.write(self.repo, str(path), "#[test] fn parses_args() {}\n")
+                        commands, unresolved = prepare.test_commands(self.repo, [("1", "0", str(path))])
+                        prefix = "cargo test --release"
+                        if crate != ".":
+                            prefix += f" --manifest-path {manifest}"
+                        self.assertEqual(commands, [prefix + " " + selector])
+                        self.assertEqual(unresolved, [])
+
+    def test_custom_binary_without_target_name_is_unresolved(self):
+        self.write(self.repo, "Cargo.toml", '[package]\nname="sample"\nversion="0.1.0"\n'
+                   '[[bin]]\npath="src/cli.rs"\n')
+        self.write(self.repo, "src/cli.rs", "#[test] fn parses_args() {}\n")
+        self.assertEqual(prepare.test_commands(self.repo, [("1", "0", "src/cli.rs")]),
+                         ([], ["src/cli.rs"]))
+
+    def test_upstream_skill_documents_unknown_ownership_without_merging(self):
+        skill = (SCRIPT.parents[2] / "upstream-contribution" / "SKILL.md").read_text()
+        section = " ".join(skill.split("## 5.")[1].split("## 6.")[0].split())
+        self.assertIn("external repositories or unknown ownership", section)
+        self.assertIn("report how many commits the branch is behind without merging", section)
+        self.assertIn("--update` forces a base merge", section)
+        self.assertIn("Only confirmed owned repositories merge by default", section)
+        self.assertIn("preparing a brief posts nothing", section)
+
+    def test_unsupported_source_files_are_reported_in_a_mixed_gate(self):
+        paths = ["src/core.py", "src/main.go", "src/app.js", "src/app.ts", "other/entry.rs", "tests/test_core.py"]
+        self.write(self.repo, "Cargo.toml", '[package]\nname="sample"\nversion="0.1.0"\n')
+        for path in paths:
+            self.write(self.repo, path, "// source\n")
+        commands, unresolved = prepare.test_commands(self.repo, [("1", "0", p) for p in paths])
+        self.assertEqual(commands, ["pytest tests/test_core.py"])
+        self.assertEqual(unresolved, sorted(paths[:-1]))
+
+    def test_panel_logs_size_guard_after_missing_reference(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        self.write(self.repo, "large.py", "# " + "x" * 800_001 + "\n")
+        self.commit(self.repo, "Implement PT999")
+        subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "round",
+                        str(self.repo), str(summary), "generalist-a"],
+                       capture_output=True, text=True, env=env)
+        prompt = (output / "round" / "generalist-a.prompt").read_text()
+        self.assertTrue(prompt.startswith("not found: PT999"), prompt[:200])
+        notice = next(line for line in prompt.splitlines() if line.startswith("Size guard:"))
+        self.assertIn("generalist-a: " + notice, (output / "round" / "summary.txt").read_text())
+
+    def test_panel_reviewer_cli_failure_returns_nonzero(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        Path(env["REVIEW_PANEL_CONF"]).write_text(
+            "a = codex test-model - high\nb = grok test-model - high\nc = kimi test-model\n")
+        # Valid JSON must not hide Grok's failing exit status during text extraction.
+        (self.binaries / "grok").write_text('#!/bin/sh\nprintf \'{"text":"partial"}\\n\'\nexit 99\n')
+        for family in ("a", "b", "c"):
+            with self.subTest(family=family):
+                result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), family,
+                                         str(self.repo), str(summary), "generalist-" + family],
+                                        capture_output=True, text=True, env=env)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("failed: reviewer CLI (exit 99", (output / family / "summary.txt").read_text())
+
     def test_panel_preparation_failure_returns_nonzero(self):
         summary, output, env = self.panel_fixture(summary_exists=False)
         env["REVIEW_BASE"] = "origin/trunk"

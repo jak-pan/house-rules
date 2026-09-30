@@ -28,7 +28,7 @@ resolved_base=$("$here/prepare.py" "${base_args[@]}") || exit 1
 
 run_one() {
   local r=$1 file=$reviewers_dir/$1.md
-  local fam cfg cli model tier effort prompt=$out/$r.prompt t0
+  local fam cfg cli model tier effort prompt=$out/$r.prompt t0 cli_status=0
   fam=$(frontmatter "$file" family); cfg=$(family_cfg "$fam")
   [ -n "$cfg" ] || { echo "$r skipped: family $fam not configured" >> "$out/summary.txt"; return; }
   read -r cli model tier effort <<<"$cfg"; [ "$tier" = - ] && tier=
@@ -39,22 +39,27 @@ run_one() {
     return 1
   fi
   cat "$out/$r.prepare.err" >&2
-  if head -1 "$prompt" | grep -q '^Size guard:'; then
-    echo "$r: prompt over 800k characters, using pack" >> "$out/summary.txt"
-  fi
+  sed -n '/^# 1\. Review pack/q; /^Size guard:/p' "$prompt" |
+    while IFS= read -r notice; do printf '%s: %s\n' "$r" "$notice"; done >> "$out/summary.txt"
   t0=$(date +%s)
   case $cli in
     codex) codex exec --json --skip-git-repo-check -m "$model" -c model_reasoning_effort="${effort:-high}" \
              ${tier:+-c service_tier="\"$tier\""} -s read-only -C "$dir" -o "$out/$r.md" - < "$prompt" \
-             > "$out/$r.jsonl" 2> "$out/$r.err" ;;
+             > "$out/$r.jsonl" 2> "$out/$r.err" || cli_status=$? ;;
     grok)  (cd "$dir" && env GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_SKILLS_ENABLED=0 GROK_CLAUDE_RULES_ENABLED=0 \
              GROK_CLAUDE_MCPS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 GROK_CURSOR_AGENTS_ENABLED=0 \
              GROK_CURSOR_SKILLS_ENABLED=0 GROK_CURSOR_RULES_ENABLED=0 \
-             grok -m "$model" --reasoning-effort "${effort:-high}" --output-format json --always-approve --disable-web-search --prompt-file "$prompt" > "$out/$r.json" 2> "$out/$r.err")
-           python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('text',''))" "$out/$r.json" > "$out/$r.md" 2>/dev/null ;;
-    kimi)  (cd "$dir" && kimi -m "$model" -p "$(cat "$prompt")" > "$out/$r.md" 2> "$out/$r.err") ;;
+             grok -m "$model" --reasoning-effort "${effort:-high}" --output-format json --always-approve --disable-web-search --prompt-file "$prompt" > "$out/$r.json" 2> "$out/$r.err") || cli_status=$?
+           if [ "$cli_status" -eq 0 ]; then
+             python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('text',''))" "$out/$r.json" > "$out/$r.md" 2>> "$out/$r.err" || cli_status=$?
+           fi ;;
+    kimi)  (cd "$dir" && kimi -m "$model" -p "$(cat "$prompt")" > "$out/$r.md" 2> "$out/$r.err") || cli_status=$? ;;
     *)     echo "$r skipped: unknown cli $cli" >> "$out/summary.txt"; return ;;
   esac
+  if [ "$cli_status" -ne 0 ]; then
+    echo "$r failed: reviewer CLI (exit $cli_status; see $r.err)" >> "$out/summary.txt"
+    return 1
+  fi
   echo "$r $cli/$model wall=$(( $(date +%s) - t0 ))s verdict=$(grep -o -m1 'VERDICT: [A-Z_]*' "$out/$r.md" | cut -d' ' -f2)" >> "$out/summary.txt"
 }
 

@@ -116,7 +116,7 @@ def link(url, head, path, line=1):
 
 def kind(path):
     p = Path(path)
-    if "docs" in p.parts or p.suffix.lower() in (".md", ".rst", ".txt", ".adoc") and p.name != "CMakeLists.txt":
+    if "docs" in p.parts or (p.suffix.lower() in (".md", ".rst", ".txt", ".adoc") and p.name != "CMakeLists.txt"):
         return "docs"
     return "test" if TEST.search(path) else "source"
 
@@ -609,7 +609,7 @@ def cmake_tests(repo, paths):
     """Resolve literal add_test names through their executable's source list."""
     names, targets, registrations = set(), set(), []
     for file in git(repo, "ls-files", "-z").split("\0"):
-        if not file or Path(file).name != "CMakeLists.txt" and not file.endswith(".cmake"):
+        if not file or (Path(file).name != "CMakeLists.txt" and not file.endswith(".cmake")):
             continue
         source = (repo / file).read_text(errors="replace")
         source = re.sub(r"^\s*#.*$", "", source, flags=re.M)
@@ -649,7 +649,24 @@ def test_commands(repo, files):
                 prefix = ["cargo", "test", "--release"]
                 if manifest.parent != Path("."):
                     prefix += ["--manifest-path", str(manifest)]
-                if rel.parts[0] == "tests" and len(rel.parts) > 1:
+                with (repo / manifest).open("rb") as source:
+                    metadata = tomllib.load(source)
+                # A manifest target is a crate root, even when its filename looks
+                # like a module or integration test. Resolve paths before heuristics.
+                configured = [target for target in metadata.get("bin", [])
+                              if target.get("path") is not None
+                              and (repo / manifest.parent / target["path"]).resolve() == (repo / p).resolve()]
+                lib_path = metadata.get("lib", {}).get("path", "src/lib.rs")
+                is_lib = (repo / manifest.parent / lib_path).resolve() == (repo / p).resolve()
+                if configured or is_lib:
+                    for target in configured:
+                        if target.get("name"):
+                            commands.add(shlex.join(prefix + ["--bin", target["name"]]))
+                        else:
+                            unresolved.append(path)
+                    if is_lib:
+                        commands.add(shlex.join(prefix + ["--lib"]))
+                elif rel.parts[0] == "tests" and len(rel.parts) > 1:
                     target = Path(rel.parts[1]).stem
                     # tests/common.rs is a target; tests/common/mod.rs is shared support.
                     if len(rel.parts) > 2 and not (repo / manifest.parent / "tests" / target / "main.rs").is_file():
@@ -657,13 +674,9 @@ def test_commands(repo, files):
                         continue
                     commands.add(shlex.join(prefix + ["--test", target]))
                 elif rel.as_posix() == "src/main.rs" or rel.parts[:2] == ("src", "bin"):
-                    with (repo / manifest).open("rb") as source:
-                        metadata = tomllib.load(source)
-                    configured = next((target.get("name") for target in metadata.get("bin", [])
-                                       if target.get("path") == rel.as_posix()), None)
-                    target = configured or (metadata.get("package", {}).get("name") if rel.as_posix() == "src/main.rs"
-                                            else Path(rel.parts[2]).stem if len(rel.parts) == 3
-                                            else rel.parts[2] if len(rel.parts) >= 4 else None)
+                    target = (metadata.get("package", {}).get("name") if rel.as_posix() == "src/main.rs"
+                              else Path(rel.parts[2]).stem if len(rel.parts) == 3
+                              else rel.parts[2] if len(rel.parts) >= 4 else None)
                     if target:
                         commands.add(shlex.join(prefix + ["--bin", target]))
                     else:
@@ -676,10 +689,12 @@ def test_commands(repo, files):
                         commands.add(shlex.join(prefix + ["::".join(modules)]))
                     else:
                         unresolved.append(path)
+                else:
+                    unresolved.append(path)
                 continue
         if kind(path) == "test" and p.suffix == ".py":
             commands.add(shlex.join(["pytest", path]))
-        elif kind(path) == "test":
+        elif kind(path) == "test" or p.suffix in (".rs", ".py", ".go", ".js", ".jsx", ".ts", ".tsx"):
             unresolved.append(path)
     if any(Path(p).name == "CMakeLists.txt" for p in git(repo, "ls-files", "-z").split("\0")):
         names = cmake_tests(repo, paths)
@@ -712,7 +727,8 @@ def brief(repo, args, base, status, update_note):
     out.extend(f"- {kind(path)}: {path} (+{added}/-{removed})" for added, removed, path in files)
     commands, unresolved = test_commands(repo, files)
     out.extend(["\n## Targeted local gate (commands only; not run)",
-                "Run from the checkout; run ctest from its configured build directory.", *commands])
+                "Run from the checkout; run ctest from its configured build directory.",
+                "Rust suggestions use --release; adjust to the repository's declared gate and CI build profile.", *commands])
     if unresolved:
         out.extend(["Confirm test targets for these files (static inference is incomplete):", *unresolved])
     if not commands:

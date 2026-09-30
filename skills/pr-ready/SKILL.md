@@ -57,7 +57,7 @@ load no other rules.
 - Give the reviewer the spec sections, previous review and round task as needed
   ([review template](references/review-prompt.md)). `scripts/review-panel.sh` runs
   the base resolver once, then `scripts/prepare.py review --base REF --no-fetch` per
-  lens and CLI (a preparation failure makes the panel exit nonzero): stable rules and
+  lens and CLI (a preparation or reviewer CLI failure makes the panel exit nonzero): stable rules and
   lens first, then the
   base-prompt file as summary/task, PR/issue context, requirements and change. Requirements
   are indexed as R1, R2, … with source links, most authoritative first: design/spec
@@ -65,7 +65,9 @@ load no other rules.
   OWNER/MEMBER/COLLABORATOR comments oldest first, then the PR description (author claims).
   Without a PR or issue, range commit messages supply the task. Standalone use accepts
   `--pr`, repeatable `--issue`, `--spec PATH[#SEC,SEC]`, `--tests ID,ID`,
-  `--test-prefix PREFIX` (default `PT`) and `--summary FILE`. Section references, ranges
+  `--test-prefix PREFIX` (default `PT`, the acceptance-test ID prefix, e.g. `PT1`)
+  and `--summary FILE`. Use the repository's prefix, such as `--test-prefix AT` for `AT1`.
+  Section references, ranges
   such as `§3A.2.5–§3A.2.6` (also `-`), and test IDs are collected from PR/issue bodies
   and range commit messages; ranges expand in document order. Inline reference titles
   (`§10.2 Actions` when the words match the heading's leading words, or an explicit
