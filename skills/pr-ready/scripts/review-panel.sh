@@ -28,7 +28,7 @@ run_one() {
   fam=$(frontmatter "$file" family); cfg=$(family_cfg "$fam")
   [ -n "$cfg" ] || { echo "$r skipped: family $fam not configured" >> "$out/summary.txt"; return; }
   read -r cli model tier effort <<<"$cfg"; [ "$tier" = - ] && tier=
-  { cat "$base"; printf '\nLens: %s\n' "$r"; body "$file"; echo; body "$reviewers_dir/common.md"; } > "$prompt"
+  { cat "$base"; printf '\nLens: %s\n' "$r"; body "$file"; echo; sed 1,2d "$reviewers_dir/common.md"; } > "$prompt"
   t0=$(date +%s)
   case $cli in
     codex) codex exec --json --skip-git-repo-check -m "$model" -c model_reasoning_effort="${effort:-high}" \
