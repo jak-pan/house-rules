@@ -30,6 +30,17 @@ suite (AGENTS.md §Verification); everything below keeps local work small.
 
 ## 3. Review rounds
 
+**Review bar.** Every finding cites a concrete scenario. Reviewers check:
+- **Correctness and security:** invariants on every path, authorization and
+  confidentiality, failure, crash and replay paths, and input handling.
+- **Performance:** request-path cost against the declared bound, and no proportional
+  scans or unbounded memory, backed by measured numbers where the change claims a bound.
+- **Code quality:** the smallest change that works, in the surrounding code's style, with
+  one way to do each thing and names that say what things do.
+- **Waste, as a blocking class:** tests that do not guard a real behavior or defect,
+  duplicate or tautological checks, speculative abstractions, dead code, drive-by
+  refactors, and docs longer than the fact they carry.
+
 - Give the reviewer the diff range, the spec sections, the previous round's review, and
   [the review template](references/review-prompt.md). The reviewer reviews statically and
   runs at most one targeted test, only to confirm or refute a specific finding.

@@ -38,8 +38,11 @@ our patches is ours (AGENTS.md §Prove necessity before expanding the critical p
   upstream's style; split unrelated fixes into separate PRs.
 - Red→green tests in upstream's framework. Before posting, run the upstream CI
   equivalent that covers the change; its CI cannot run for us earlier.
-- Run review rounds as in skill `pr-ready` §3, including performance and compatibility
-  for upstream's other users, until reviewers approve.
+- Run review rounds as in skill `pr-ready` §3, applying its review bar strictly and adding
+  compatibility for upstream's other users, until reviewers approve.
+- Contribute only what the fix needs. Tests prove the defect and guard the fix; add no
+  speculative coverage, no extra checks, no refactors or reformatting outside the change,
+  and no new dependencies unless they are required.
 
 ## 4. Carry the fix meanwhile
 
@@ -49,9 +52,14 @@ later, not forgotten.
 
 ## 5. Draft, approve, post
 
-- Draft the text in `.tmp/`: reproduction, root cause, fix, tests, performance and
-  compatibility impact. Code references use full-SHA permalinks on their own line, so
-  they render as snippets.
+- Draft the text in `.tmp/`. One problem per issue or PR. Lead with the observable
+  failure and the smallest reproduction, then root cause, fix, tests, and performance and
+  compatibility impact, with measured numbers where relevant. Write in upstream's own terms
+  for a maintainer with no knowledge of our context: short, complete and
+  polished, with no filler, no speculation, and no unrequested design proposals. Code
+  references use full-SHA permalinks on their own line, so they render as snippets.
+- Review the draft text itself before showing it: every claim is verified, and every
+  sentence either helps the maintainer act or goes.
 - Keep provenance generic: no internal product names, private data, hosts, customers, or
   internal links.
 - Show the operator the exact text and target, then post once they say ready. Link

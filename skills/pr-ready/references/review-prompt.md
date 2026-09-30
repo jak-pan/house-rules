@@ -7,8 +7,9 @@ Review <PR link or branch> in this checkout; diff `git diff <base>...HEAD`.
 <First round: "Review the whole change." | Later round: "Previous review: <path>. Mark
 each of its blocking items RESOLVED or NOT, then look for new issues in <new commit>.">
 Scope: <modules/directories>. Spec: <document and sections>; read the module README.
-Blocking review for correctness, security and performance: <the invariants that matter
-for this change, e.g. authorization on every path, crash/replay, bounded cost>.
+Blocking review against the review bar (skill `pr-ready` §3: correctness, security,
+performance, code quality, waste), focused on: <the invariants that matter for this
+change, e.g. authorization on every path, crash/replay, bounded cost>.
 Review statically; CI runs the full suite. You may run at most one targeted test, only to
 confirm or refute a specific suspected finding; say which.
 Output: VERDICT: APPROVE or REQUEST_CHANGES; Blocking (numbered: file:line, concrete
