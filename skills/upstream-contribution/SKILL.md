@@ -53,9 +53,12 @@ later, not forgotten.
 ## 5. Draft, approve, post
 
 `../pr-ready/scripts/prepare.py pr <checkout>` works on external forks and plain clones,
-without a PR or GitHub access. It fetches and merges the base (upstream preferred to
-origin), prints the local gate and checks ownership when available. Unknown ownership
-keeps the operator-approval reminder; preparing a brief posts nothing.
+without a PR or GitHub access. It fetches the base (upstream preferred to origin), prints
+the local gate and checks ownership when available. For external repositories, `fix`
+and `pr` report how many commits the branch is behind without merging; the operator
+chooses the update method, and `--update` forces a base merge. Owned repositories and
+unknown ownership keep the default merge behavior. Unknown ownership keeps the
+operator-approval reminder; preparing a brief posts nothing.
 
 - Draft the text in `.tmp/`. One problem per issue or PR. Lead with the observable
   failure and the smallest reproduction, then root cause, fix, tests, and performance and

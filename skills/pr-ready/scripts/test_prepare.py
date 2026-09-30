@@ -173,7 +173,7 @@ print(json.dumps(value))
             ["Review pack", "Instructions", "Pull request and issue", "Requirements", "Change"], 1)]
         self.assertEqual(positions, sorted(positions))
         spec = prompt[positions[3]:positions[4]]
-        self.assertIn("R1. Design/spec docs/design.md — 2 Behavior — [docs/design.md:4]", spec)
+        self.assertIn("R1. Design/spec docs/design.md — 2 Behavior (matched by number only; verify) — [docs/design.md:4]", spec)
         self.assertIn("##### 2.1 Detail", spec)
         self.assertIn("# Not a heading", spec)
         self.assertIn("| AT1-case | Included row |", spec)
@@ -221,6 +221,87 @@ print(json.dumps(value))
         prompt = self.review(spec="docs/design.md#99", tests="MISSING")
         self.assertTrue(prompt.startswith("not found: §99, MISSING"))
         self.assertIn("# 5. Change", prompt)
+
+    def test_titled_section_references_reject_stale_numbers(self):
+        self.write(self.repo, "docs/spec.md", "## 10.2 Notifications\nUnrelated requirement\n## 10.3 Actions\nMoved requirement\n")
+        self.commit(self.repo, "Renumber spec")
+        for reference in ("§10.2 Actions", "§10.2 (Actions)"):
+            with self.subTest(reference=reference):
+                self.github(self.pr("Design: docs/spec.md\n" + reference))
+                prompt = self.review()
+                top = prompt.split("# 1. Review pack")[0]
+                self.assertIn("title mismatch", top)
+                for text in ("docs/spec.md", "§10.2", "Actions", "Notifications"):
+                    self.assertIn(text, top)
+                requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
+                self.assertNotIn("Unrelated requirement", requirements)
+                self.assertNotIn("Moved requirement", requirements)
+
+    def test_matching_titles_and_number_only_ranges_are_distinguished(self):
+        self.write(self.repo, "docs/spec.md", "## 10.2 Actions\nAction requirement\n## 10.3 Events\nEvent requirement\n## 10.4 Results\nResult requirement\n")
+        self.commit(self.repo, "Spec")
+        for reference in ("§10.2 Actions", "§10.2 (Actions)"):
+            with self.subTest(reference=reference):
+                self.github(self.pr("Design: docs/spec.md\n" + reference))
+                prompt = self.review()
+                self.assertIn("Action requirement", prompt)
+                self.assertNotIn("matched by number only", prompt)
+                self.assertNotIn("title mismatch", prompt)
+        self.github(self.pr("Design: docs/spec.md [§10.2–§10.4]"))
+        prompt = self.review()
+        top = prompt.split("# 1. Review pack")[0]
+        index = prompt.split("# 4. Requirements")[1].split("\n## R1.")[0]
+        for title in ("10.2 Actions", "10.3 Events", "10.4 Results"):
+            for part in (top, index):
+                row = next(line for line in part.splitlines() if title in line)
+                self.assertIn("matched by number only; verify", row)
+
+    def test_renumbered_spec_is_flagged_for_untitled_commit_reference(self):
+        self.write(self.repo, "docs/spec.md", "## 10.2 Actions\nOld action requirement\n")
+        self.commit(self.repo, "Base spec")
+        self.git(self.repo, "update-ref", "refs/remotes/origin/trunk", "HEAD")
+        self.write(self.repo, "src/core.py", "pass\n")
+        self.commit(self.repo, "Implement §10.2")
+        self.write(self.repo, "docs/spec.md", "## 10.2 Notifications\nNew unrelated requirement\n## 10.3 Actions\nAction requirement\n")
+        self.commit(self.repo, "Renumber sections")
+        prompt = self.review()
+        top = prompt.split("# 1. Review pack")[0]
+        self.assertIn("10.2 Notifications", top)
+        self.assertIn("matched by number only; verify", top)
+        requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
+        self.assertIn("New unrelated requirement", requirements)
+
+    def test_stale_title_in_issue_is_not_bypassed_by_bare_selector_or_range(self):
+        self.write(self.repo, "docs/spec.md", "## 10.1 Start\nStart requirement\n## 10.2 Notifications\nUnrelated requirement\n## 10.3 End\nEnd requirement\n")
+        self.commit(self.repo, "Implement §10.1–§10.3")
+        self.github(self.pr("Refs #2"), [self.issue(2, "Design: docs/spec.md\n§10.2 (Actions)")])
+        prompt = self.review(spec="docs/spec.md#10.2")
+        self.assertIn("title mismatch", prompt.split("# 1. Review pack")[0])
+        requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
+        self.assertNotIn("Unrelated requirement", requirements)
+        self.assertIn("Start requirement", requirements)
+        self.assertIn("End requirement", requirements)
+
+    def test_stale_nested_section_is_not_included_through_its_parent(self):
+        self.write(self.repo, "docs/spec.md", "## 10 Behavior\nParent requirement\n### 10.2 Notifications\nUnrelated requirement\n### 10.3 Events\nEvent requirement\n")
+        self.commit(self.repo, "Implement §10\n\n§10.2 (Actions)")
+        prompt = self.review()
+        top = prompt.split("# 1. Review pack")[0]
+        self.assertIn("title mismatch", top)
+        requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
+        self.assertIn("Parent requirement", requirements)
+        self.assertIn("Event requirement", requirements)
+        self.assertNotIn("Unrelated requirement", requirements)
+
+    def test_diff_format_keeps_number_only_warning_in_index_and_notice(self):
+        self.write(self.repo, "docs/spec.md", "## 10.2 Actions\nAction requirement\n")
+        self.commit(self.repo, "Implement §10.2")
+        prompt = self.review(format="diff")
+        top = prompt.split("# 1. Review pack")[0]
+        requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
+        for part in (top, requirements):
+            self.assertIn("10.2 Actions (matched by number only; verify)", part)
+        self.assertNotIn("Action requirement", requirements)
 
     def test_ranges_expand_in_document_order_and_collect_all_reference_sources(self):
         self.write(self.repo, "docs/spec.md", "# Design\n## 3A.2.5 First\nFirst requirement\n## 3A.2.5a Middle\nMiddle requirement\n## 3A.2.6 Last\nLast requirement\n## 3A.5 Other\nOther requirement\n## 9 Outside\nExcluded requirement\n## Tests\n| PT1 | One |\n| PT10 | Ten |\n| PT2 | Two |\n")
@@ -426,6 +507,44 @@ print(json.dumps(value))
         self.assertIn("merge left in progress", err)
         self.assertIn("src/core.py", err)
         self.git(self.repo, "rev-parse", "--verify", "MERGE_HEAD")
+
+    def test_external_fix_and_pr_report_behind_without_merging(self):
+        self.write(self.repo, "feature.py", "pass\n")
+        self.commit(self.repo, "Feature")
+        feature = self.git(self.repo, "rev-parse", "HEAD")
+        for n in range(2):
+            self.write(self.origin, "upstream.py", f"value = {n}\n")
+            self.commit(self.origin, f"Base {n}")
+        for command in ("fix", "pr"):
+            with self.subTest(command=command), mock.patch.object(
+                prepare, "ownership", return_value="external example/project"
+            ) as ownership:
+                code, out, err = self.invoke(command, str(self.repo))
+                self.assertEqual(code, 0, err)
+                self.assertEqual(self.git(self.repo, "rev-parse", "HEAD"), feature)
+                self.assertEqual(self.git(self.repo, "rev-list", "--count", "HEAD..origin/trunk"), "2")
+                self.assertIn("2 commit(s) behind origin/trunk", out)
+                self.assertIn("operator", out)
+                self.assertIn("--update", out)
+                ownership.assert_called_once_with(self.repo.resolve(), "origin")
+
+    def test_owned_and_explicit_external_updates_merge_for_fix_and_pr(self):
+        self.write(self.repo, "feature.py", "pass\n")
+        self.commit(self.repo, "Feature")
+        feature = self.git(self.repo, "rev-parse", "HEAD")
+        self.write(self.origin, "upstream.py", "pass\n")
+        self.commit(self.origin, "Base")
+        for command in ("fix", "pr"):
+            for status, flags in (("owned", ()), ("external", ("--update",))):
+                with self.subTest(command=command, status=status), mock.patch.object(
+                    prepare, "ownership", return_value=status + " example/project"
+                ) as ownership:
+                    self.git(self.repo, "checkout", "-B", f"{command}-{status}", feature)
+                    code, out, err = self.invoke(command, str(self.repo), *flags)
+                    self.assertEqual(code, 0, err)
+                    self.assertEqual(self.git(self.repo, "rev-parse", "HEAD^1"), feature)
+                    self.assertEqual(self.git(self.repo, "rev-parse", "HEAD^2"), self.git(self.origin, "rev-parse", "HEAD"))
+                    ownership.assert_called_once_with(self.repo.resolve(), "origin")
 
     def test_fix_merges_without_rebasing_and_lists_reviews_without_running_tests(self):
         self.write(self.repo, "tests/test_feature.py", "raise RuntimeError('must not run')\n")

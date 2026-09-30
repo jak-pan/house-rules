@@ -13,9 +13,13 @@ suite (AGENTS.md §Verification); everything below keeps local work small.
 ## 1. Local gate (implementer or fixer)
 
 - Run `scripts/prepare.py fix <checkout> --reviews <files...>` before fixing, or
-  `scripts/prepare.py pr <checkout>` before preparing a PR. It fetches and merges the
-  base (never rebases), stops on conflicts, and prints context and targeted test commands
-  without running them. `--base REF` overrides remote default detection.
+  `scripts/prepare.py pr <checkout>` before preparing a PR. It fetches the base and
+  checks ownership with `upstream-contribution/scripts/repo-ownership.sh`. For external
+  repositories it reports how many commits the branch is behind and leaves the update
+  method to the operator; `--update` forces a base merge. Owned repositories (and unknown
+  ownership) keep the default base merge, never rebase, and stop on conflicts. It prints
+  context and targeted test commands without running them. `--base REF` overrides remote
+  default detection.
 - Use the repository's declared gates (its `AGENTS.md`, or the CI workflow when none are
   declared) in CI's build profile. Rust: skill `rust-canon` §Gates.
 - Run formatting, lint/compile checks, fast guard tests, and **targeted** tests: the
@@ -57,7 +61,11 @@ load no other rules.
   `--pr`, repeatable `--issue`, `--spec PATH[#SEC,SEC]`, `--tests ID,ID`,
   `--test-prefix PREFIX` (default `PT`) and `--summary FILE`. Section references, ranges
   such as `§3A.2.5–§3A.2.6` (also `-`), and test IDs are collected from PR/issue bodies
-  and range commit messages; ranges expand in document order. `--spec` wins, then a
+  and range commit messages; ranges expand in document order. Inline reference titles
+  (`§10.2 Actions` or `§10.2 (Actions)`) must match the heading title; mismatches omit
+  that section and are reported at the top. Sections selected without a title, including
+  range members, are marked in the index and individually at the top as
+  "matched by number only; verify" to expose potentially stale numbering. `--spec` wins, then a
   path named in PR/issue text (including the exact `Design: <path> [§...]` form), then
   an edited Markdown design/spec, then the best heading match under `docs/`, preferring
   `design/`, `spec/` and `specs/` on ties. Linked issues come from PR-body

@@ -240,10 +240,48 @@ def section_requests(text):
     return [(m[1], m[2]) for m in SECTION_REF.finditer(text)]
 
 
-def spec_sections(doc, wanted, missing):
+def section_titles(text):
+    """Collect inline titles; punctuation delimits bare titles, parentheses quote them."""
+    titles = {}
+    for match in SECTION_REF.finditer(text):
+        tail = text[match.end():]
+        parenthesized = re.match(r"[ \t]+\(([^)\n]+)\)", tail)
+        bare = re.match(r"[ \t]+([^\n§,;:()\[\]]+)", tail)
+        title = parenthesized[1] if parenthesized else bare[1] if bare else ""
+        if not parenthesized:
+            title = re.split(r"\.(?:\s|$)|\s+[–—]\s+", title)[0].strip()
+            # Conjunctions introduce the next reference, not a section title.
+            title = re.sub(r"\s+(?:and|or)$", "", title)
+            if re.match(r"^(?:and|or|to)\b", title):
+                title = ""
+        if title.strip():
+            titles.setdefault(match[2] or match[1], set()).add(title.strip())
+    return titles
+
+
+def normalized_title(title):
+    return " ".join(title.strip("`*_ ").casefold().split())
+
+
+def spec_sections(doc, wanted, missing, titles, notices, path):
     lines, headings = doc.splitlines(), markdown_headings(doc)
     if not wanted:
-        return [("Full document", 1, doc)]
+        return [("Full document", 1, doc, False)]
+    # Validate all titled references before selection so a bare selector or range
+    # cannot reintroduce a section rejected by a title from another source.
+    rejected, verified = set(), set()
+    for token, expected in titles.items():
+        for n, (_, _, heading) in enumerate(headings):
+            if not heading_matches(heading, token):
+                continue
+            actual = re.sub(r"^§?\s*" + re.escape(token) + r"[.)]?\s*", "", heading)
+            mismatches = sorted(title for title in expected if normalized_title(title) != normalized_title(actual))
+            if mismatches:
+                rejected.add(n)
+                for title in mismatches:
+                    notices.append(f"{path} §{token}: title mismatch; expected {title!r}, found {actual!r}; section omitted.")
+            else:
+                verified.add(n)
     selected = []
     for start, stop in wanted:
         bounds = []
@@ -262,10 +300,15 @@ def spec_sections(doc, wanted, missing):
         else:
             selected.extend(n for n in bounds if n is not None)
     result = []
+    def section_end(n):
+        return next((i for i, depth, _ in headings[n + 1:] if depth <= headings[n][1]), len(lines))
+    rejected_lines = {i for n in rejected for i in range(headings[n][0], section_end(n))}
     for n in dict.fromkeys(selected):
-        start, level, title = headings[n]
-        end = next((i for i, depth, _ in headings[n + 1:] if depth <= level), len(lines))
-        result.append((title, start + 1, "\n".join(lines[start + 1:end]).strip()))
+        if headings[n][0] in rejected_lines:
+            continue
+        start, _, title = headings[n]
+        body = "\n".join(lines[i] for i in range(start + 1, section_end(n)) if i not in rejected_lines).strip()
+        result.append((title, start + 1, body, n not in verified))
     return result
 
 
@@ -315,6 +358,7 @@ def requirement_entries(repo, args, pr, issues, comments, texts, commits, files,
         entries.append(dict(category=category, source=source, link=source_link, body=body))
     reference_text = "\n".join([*texts, *(body for _, body in commits)])
     wanted = []
+    titles = section_titles(reference_text)
     if args.spec and "#" in args.spec:
         for selector in args.spec.partition("#")[2].split(","):
             selector = selector.strip()
@@ -337,9 +381,13 @@ def requirement_entries(repo, args, pr, issues, comments, texts, commits, files,
         def source_link(line):
             return link(url, head, path, line) if url else f"[{path}:{line}]({quote(path, safe='/')}#L{line})"
         # With only test references, include just those rows, not the entire document.
-        sections = spec_sections(doc, wanted, missing) if wanted or not tests else []
-        for title, line, body in sections:
-            add("spec", f"Design/spec {path} — {title}", source_link(line), demote(body))
+        sections = spec_sections(doc, wanted, missing, titles, notices, path) if wanted or not tests else []
+        for title, line, body, number_only in sections:
+            source = f"Design/spec {path} — {title}"
+            if number_only:
+                source += " (matched by number only; verify)"
+                notices.append(f"{source} — {source_link(line)}")
+            add("spec", source, source_link(line), demote(body))
         for test in tests:
             rows = [(n, row) for n, row in enumerate(doc.splitlines(), 1)
                     if row.lstrip().startswith("|") and re.search(r"(?<!\w)" + re.escape(test) + r"(?!\w)", row.split("|")[1])]
@@ -539,10 +587,11 @@ def ownership(repo, remote):
     return "unknown (ownership check failed)"
 
 
-def brief(repo, args, base, remote):
+def brief(repo, args, base, status, update_note):
     rng = f"{base}...HEAD"
     files = changed_files(repo, rng)
     out = ["# " + ("Fixer brief" if args.command == "fix" else "PR-preparation brief"), f"Range: `{rng}`"]
+    out.extend(["\n## Branch update", update_note])
     if args.command == "pr":
         out.extend(["\n## Commits", git(repo, "log", "--oneline", f"{base}..HEAD").strip()])
     out.append("\n## Changed files by kind")
@@ -557,7 +606,6 @@ def brief(repo, args, base, remote):
     if args.command == "fix":
         out.extend(["\n## Reviews to address", *args.reviews] if args.reviews else ["\n## Reviews to address", "(none supplied)"])
     else:
-        status = ownership(repo, remote)
         out.extend(["\n## Ownership", status])
         if not status.startswith("owned "):
             out.append("Upstream-contribution checklist: prove on unmodified upstream; sweep existing work and contribution rules; fix, test and review locally; draft for operator approval. Nothing is posted without operator approval.")
@@ -580,6 +628,8 @@ def main(argv=None):
             p.add_argument("--cli", choices=("codex", "grok", "kimi"), default="codex")
         if command == "fix":
             p.add_argument("--reviews", nargs="+", default=[])
+        if command != "review":
+            p.add_argument("--update", action="store_true", help="merge the base even on external repositories")
     args = parser.parse_args(argv)
     try:
         repo = Path(git(args.checkout, "rev-parse", "--show-toplevel").strip())
@@ -588,8 +638,15 @@ def main(argv=None):
         if args.command == "review":
             print(review(repo, args, base, remote))
         else:
-            update(repo, base)
-            print(brief(repo, args, base, remote))
+            status = ownership(repo, remote)
+            if status.startswith("external ") and not args.update:
+                behind = git(repo, "rev-list", "--count", f"HEAD..{base}").strip()
+                update_note = (f"{status}: {behind} commit(s) behind {base}. Base merge skipped; "
+                               "leave the update method to the operator's instruction. --update forces a base merge.")
+            else:
+                update(repo, base)
+                update_note = f"Merged {base} (or already up to date)."
+            print(brief(repo, args, base, status, update_note))
         return 0
     except (PrepareError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
