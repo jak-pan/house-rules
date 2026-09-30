@@ -588,8 +588,8 @@ else:
                                          str(self.repo), str(summary), reviewer],
                                         capture_output=True, text=True, env=env)
                 recorded = (panel / "summary.txt").read_text()
-                self.assertIn("context preparation" if family == "a" else "skipped", recorded)
-                self.assertEqual(result.returncode, 1 if family == "a" else 0, result.stderr)
+                self.assertIn("context preparation" if family == "a" else "not configured", recorded)
+                self.assertEqual(result.returncode, 1, result.stderr)
                 self.assertNotIn("previous run", recorded)
                 for suffix in suffixes:
                     path = panel / f"{reviewer}.{suffix}"
