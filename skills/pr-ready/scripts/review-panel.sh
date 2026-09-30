@@ -15,11 +15,13 @@ reviewers_dir=$here/../reviewers
 conf=${REVIEW_PANEL_CONF:-$here/../../../custom/review-panel.conf}
 name=$1; dir=$(cd "$2" && pwd); base=$(cd "$(dirname "$3")" && pwd)/$(basename "$3"); shift 3
 out=${REVIEW_PANEL_OUT:-$dir/.tmp/review-panel}/$name; mkdir -p "$out"
-default_base() {
-  git -C "$dir" rev-parse --abbrev-ref origin/HEAD 2>/dev/null && return
+default_base() {  # the remote's current default branch; a local origin/HEAD can be stale
+  local b; b=$(git -C "$dir" ls-remote --symref origin HEAD 2>/dev/null | awk '/^ref:/{sub("refs/heads/", "", $2); print $2}')
+  [ -n "$b" ] && git -C "$dir" fetch -q origin "$b" && { echo "origin/$b"; return; }
   for b in origin/main origin/master; do git -C "$dir" rev-parse -q --verify "$b" >/dev/null && { echo "$b"; return; }; done
 }
 review_base=${REVIEW_BASE:-$(default_base)}
+echo "review range: $review_base...HEAD" >&2
 [ -n "$review_base" ] || { echo "no base branch: set REVIEW_BASE" >&2; exit 2; }
 
 family_cfg() { sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "$conf" 2>/dev/null | head -1; }
@@ -38,6 +40,9 @@ run_one() {
   [ -n "$cfg" ] || { echo "$r skipped: family $fam not configured" >> "$out/summary.txt"; return; }
   read -r cli model tier effort <<<"$cfg"; [ "$tier" = - ] && tier=
   local handoff=pack; [ "$cli" = codex ] && handoff=diff
+  # Codex refuses input over 1 MiB characters; a diff that large goes as the pack instead.
+  [ "$handoff" = diff ] && [ "$("$here/review-handoff.py" "$dir" "$review_base" HEAD diff | wc -c)" -gt 800000 ] \
+    && { handoff=pack; echo "$r: diff over 800k characters, using pack" >> "$out/summary.txt"; }
   # Stable text first so prompt caches share it across reviewers, rounds and PRs; then the
   # change (shared by a round's reviewers of one CLI), the round's task, and the lens last.
   { sed 1,2d "$reviewers_dir/common.md"; echo; "$here/review-handoff.py" "$dir" "$review_base" HEAD "$handoff"
