@@ -49,12 +49,26 @@ load no other rules.
 - Give the reviewer the spec sections, previous review and round task as needed
   ([review template](references/review-prompt.md)). `scripts/review-panel.sh` runs
   `scripts/prepare.py review` per lens and CLI: stable rules and lens first, then the
-  base-prompt file as summary/task, PR/issue context, spec and change. Standalone use
-  accepts `--pr`, `--issue`, `--spec PATH[#SEC,SEC]`, `--tests ID,ID` and `--summary FILE`;
-  a PR's `Design: <path> [§a, §b]` supplies the spec when omitted. Codex defaults to
-  `structured` (full diffs), others to `pack` (file index and hunk headers); `--format diff`
-  omits spec content. `--format` overrides defaults; Codex prompts over 800,000
-  characters fall back to pack for the change, with a notice.
+  base-prompt file as summary/task, PR/issue context, requirements and change. Requirements
+  are indexed as R1, R2, … with source links, most authoritative first: design/spec
+  sections and acceptance-test rows, linked issues (title, labels, body), non-bot
+  OWNER/MEMBER/COLLABORATOR comments oldest first, then the PR description (author claims).
+  Without a PR or issue, range commit messages supply the task. Standalone use accepts
+  `--pr`, repeatable `--issue`, `--spec PATH[#SEC,SEC]`, `--tests ID,ID`,
+  `--test-prefix PREFIX` (default `PT`) and `--summary FILE`. Section references, ranges
+  such as `§3A.2.5–§3A.2.6` (also `-`), and test IDs are collected from PR/issue bodies
+  and range commit messages; ranges expand in document order. `--spec` wins, then a
+  path named in PR/issue text (including the exact `Design: <path> [§...]` form), then
+  an edited Markdown design/spec, then the best heading match under `docs/`, preferring
+  `design/`, `spec/` and `specs/` on ties. Linked issues come from PR-body
+  `Refs/Closes/Fixes/Resolves #N`, `owner/repo#N`, issue URLs and `--issue`.
+  GitHub reads use optional `gh`; unavailable GitHub sources and unresolved references
+  are reported at the top. Comments are capped at 4,000 characters with a cut notice.
+  Codex defaults to `structured` (full diffs), others to `pack` (file index and hunk
+  headers); `--format diff` omits spec content. `--format` overrides defaults; Codex
+  prompts over 800,000 characters fall back to pack for the change, then trim comments,
+  issue bodies and spec sections in that order (largest first within each source type).
+  Notices identify every trim and any remaining excess from retained context.
 - Run a panel of one generalist per model family, adding focused lenses where warranted
   ([review panels](references/review-lenses.md)), and loop until a full panel round finds
   no blockers. The reviewer reviews statically and runs at most one targeted test, only

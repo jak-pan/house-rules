@@ -12,6 +12,9 @@ from urllib.parse import quote, urlsplit
 
 HERE = Path(__file__).resolve().parent
 CODEX_LIMIT = 800_000
+COMMENT_LIMIT = 4_000
+SECTION = r"\d+[A-Za-z]?(?:\.\d+[A-Za-z]?)*"
+SECTION_REF = re.compile(r"§\s*(" + SECTION + r")(?:\s*[–-]\s*§?\s*(" + SECTION + r"))?")
 LOCK = re.compile(r"(^|/)([^/]*\.lock|package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|go\.sum)$")
 TEST = re.compile(r"(^|/)(tests?(/|\.)|test_[^/]*|[^/]*[_\-.](tests?|spec)\.[^/]+$)", re.I)
 
@@ -110,29 +113,105 @@ def changed_files(repo, rng):
     return sorted(files, key=lambda row: (("source", "test", "docs").index(kind(row[2])), row[2]))
 
 
+class GitHubUnavailable(Exception):
+    pass
+
+
 def gh_json(repo, *args):
-    if not shutil.which("gh"):
-        return {}
-    result = run(repo, "gh", *args)
+    try:
+        result = subprocess.run(["gh", *args], cwd=repo, text=True, encoding="utf-8",
+                                errors="replace", capture_output=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise GitHubUnavailable(str(exc)) from exc
     if result.returncode:
-        print("warning: GitHub context unavailable: " + result.stderr.strip(), file=sys.stderr)
-        return {}
+        if re.search(r"HTTP 404|no pull requests? found", result.stderr, re.I):
+            return None
+        raise GitHubUnavailable(result.stderr.strip() or "gh failed")
     try:
         return json.loads(result.stdout)
     except json.JSONDecodeError as exc:
-        raise PrepareError("invalid gh JSON: " + str(exc)) from exc
+        raise GitHubUnavailable("invalid gh JSON: " + str(exc)) from exc
+
+
+def issue_refs(text):
+    # Bare numbers require a linking keyword; qualified references and URLs do not.
+    ref = r"https://github\.com/[\w.-]+/[\w.-]+/issues/\d+|[\w.-]+/[\w.-]+#\d+"
+    pattern = r"(?:" + ref + r")|\b(?:refs|closes|fixes|resolves)\s+((?:#\d+(?:\s*(?:,|and)\s*)?)+)"
+    found = []
+    for match in re.finditer(pattern, text, re.I):
+        found.extend(re.findall(r"#\d+", match[1]) if match[1] else [match[0]])
+    return found
+
+
+def issue_location(ref, url):
+    match = re.fullmatch(r"https://github\.com/([\w.-]+/[\w.-]+)/issues/(\d+)/?", ref)
+    if not match:
+        match = re.fullmatch(r"([\w.-]+/[\w.-]+)#(\d+)", ref)
+    if match:
+        return match[1], match[2]
+    if re.fullmatch(r"#?\d+", ref) and url and urlsplit(url).hostname == "github.com":
+        return urlsplit(url).path.strip("/"), ref.lstrip("#")
+    return None
+
+
+def api_comments(repo, endpoint):
+    pages = gh_json(repo, "api", "--method", "GET", "--paginate", "--slurp",
+                    endpoint + "?per_page=100")
+    if pages is None:
+        raise GitHubUnavailable("comments not found: " + endpoint)
+    return [comment for page in pages for comment in page]
 
 
 def pr_context(repo, args, url):
-    pr = {}
-    if args.pr or url and urlsplit(url).hostname == "github.com":
-        pr = gh_json(repo, "pr", "view", *([args.pr] if args.pr else []),
-                     "--json", "url,title,body")
-    issue = gh_json(repo, "issue", "view", args.issue, "--json", "url,title,body") if args.issue else {}
-    pr_link = pr.get("url") or args.pr or "(none)"
-    if args.pr and args.pr.isdigit() and url and urlsplit(url).hostname == "github.com":
-        pr_link = pr.get("url") or f"{url}/pull/{args.pr}"
-    return pr, issue, pr_link
+    pr, issues, comments, notices, missing = {}, [], [], [], []
+    texts = []
+    refs = list(args.issue)
+    pr_link = args.pr or "(none)"
+    if args.pr and args.pr.isdigit() and url:
+        pr_link = f"{url}/pull/{args.pr}"
+    try:
+        if not shutil.which("gh"):
+            raise GitHubUnavailable("gh is not installed")
+        if args.pr or url and urlsplit(url).hostname == "github.com":
+            pr = gh_json(repo, "pr", "view", *([args.pr] if args.pr else []),
+                         "--json", "url,title,body") or {}
+            pr_link = pr.get("url") or pr_link
+            texts.append(pr.get("body") or "")
+        # A PR URL determines where bare issue numbers belong, including forks.
+        issue_url = pr.get("url", "").split("/pull/")[0] or url
+        refs.extend(issue_refs(pr.get("body", "")))
+        seen = set()
+        for ref in refs:
+            location = issue_location(ref, issue_url)
+            if not location or location in seen:
+                if not location:
+                    missing.append(ref)
+                continue
+            seen.add(location)
+            owner_repo, number = location
+            issue = gh_json(repo, "api", "--method", "GET", f"repos/{owner_repo}/issues/{number}")
+            if not issue or "pull_request" in issue:
+                missing.append(ref if not ref.isdigit() else "#" + ref)
+                continue
+            issues.append(issue)
+            texts.append(issue.get("body") or "")
+            comments.extend(api_comments(repo, f"repos/{owner_repo}/issues/{number}/comments"))
+        if pr.get("url"):
+            match = re.fullmatch(r"https://github\.com/([\w.-]+/[\w.-]+)/pull/(\d+)", pr["url"])
+            if match:
+                owner_repo, number = match.groups()
+                for endpoint in (f"issues/{number}/comments", f"pulls/{number}/comments", f"pulls/{number}/reviews"):
+                    comments.extend(api_comments(repo, f"repos/{owner_repo}/{endpoint}"))
+    except GitHubUnavailable as exc:
+        notices.append(f"GitHub context unavailable; skipped linked issues, maintainer comments and PR description (sources 2–4): {exc}")
+        missing.extend(ref if not ref.isdigit() else "#" + ref for ref in refs)
+        pr, issues, comments = {}, [], []
+    comments = [c for c in comments if c.get("author_association") in {"OWNER", "MEMBER", "COLLABORATOR"}
+                and c.get("user", {}).get("type", "").lower() != "bot"
+                and not c.get("user", {}).get("login", "").lower().endswith("[bot]")
+                and c.get("body")]
+    comments.sort(key=lambda c: (c.get("created_at") or c.get("submitted_at") or "", c.get("html_url", "")))
+    return pr, issues, comments, pr_link, texts, missing, notices
 
 
 def markdown_headings(doc):
@@ -152,21 +231,75 @@ def markdown_headings(doc):
     return headings
 
 
-def spec_sections(doc, wanted):
+def heading_matches(title, want):
+    title = title.lstrip("§ ")
+    return title == want or bool(re.match(re.escape(want) + r"(?:[.)]?(?:\s|$))", title))
+
+
+def section_requests(text):
+    return [(m[1], m[2]) for m in SECTION_REF.finditer(text)]
+
+
+def spec_sections(doc, wanted, missing):
     lines, headings = doc.splitlines(), markdown_headings(doc)
     if not wanted:
         return [("Full document", 1, doc)]
+    selected = []
+    for start, stop in wanted:
+        bounds = []
+        for token in (start, stop) if stop else (start,):
+            matches = [n for n, (_, _, title) in enumerate(headings) if heading_matches(title, token)]
+            if len(matches) != 1:
+                missing.append("§" + token)
+                bounds.append(None)
+            else:
+                bounds.append(matches[0])
+        if stop and all(n is not None for n in bounds):
+            if bounds[0] > bounds[1]:
+                missing.append(f"§{start}–§{stop} (reversed range)")
+            else:
+                selected.extend(range(bounds[0], bounds[1] + 1))
+        else:
+            selected.extend(n for n in bounds if n is not None)
     result = []
-    for want in wanted:
-        want = want.strip().lstrip("§").strip()
-        matches = [(i, level, title) for i, level, title in headings
-                   if title == want or re.match(re.escape(want) + r"(?:[.)]?(?:\s|$))", title)]
-        if len(matches) != 1:
-            raise PrepareError(f"spec section {want!r}: expected one heading, found {len(matches)}")
-        start, level, title = matches[0]
-        end = next((i for i, depth, _ in headings if i > start and depth <= level), len(lines))
+    for n in dict.fromkeys(selected):
+        start, level, title = headings[n]
+        end = next((i for i, depth, _ in headings[n + 1:] if depth <= level), len(lines))
         result.append((title, start + 1, "\n".join(lines[start + 1:end]).strip()))
     return result
+
+
+def discover_spec(repo, head, explicit, texts, files, wanted):
+    if explicit:
+        return explicit.partition("#")[0]
+    paths = git(repo, "ls-tree", "-r", "--name-only", "-z", head).split("\0")
+    for text in texts:
+        design = re.search(r"^Design:\s+(\S+?)(?:\s+\[[^\]]*\])?\s*$", text, re.M)
+        if design:
+            return design[1]
+        # Match repository paths inside ordinary prose, Markdown links and blob URLs.
+        named = [(match.start(), path) for path in paths if path.lower().endswith(".md")
+                 for match in [re.search(r"(?<![\w.-])" + re.escape(path) + r"(?![\w.-])", text)] if match]
+        if named:
+            return min(named)[1]
+        path = re.search(r"(?<![\w/])((?:[\w.-]+/)*[\w.-]+\.md)\b", text, re.I)
+        if path:
+            return path[1]
+    def priority(path):
+        return (0 if any(p in ("design", "spec", "specs") for p in Path(path).parts[:-1]) else 1, path)
+    edited = [path for _, _, path in files if path in paths and path.lower().endswith(".md")
+              and any(re.search(r"(?:^|[-_.])(design|spec|specs)(?:$|[-_.])", part, re.I)
+                      for part in Path(path).parts)]
+    if edited:
+        return min(edited, key=priority)
+    tokens = {token for pair in wanted for token in pair if token}
+    scores = []
+    for path in sorted((p for p in paths if p.startswith("docs/") and p.lower().endswith(".md")), key=priority):
+        headings = markdown_headings(git(repo, "show", f"{head}:{path}"))
+        score = sum(any(heading_matches(title, token) for _, _, title in headings) for token in tokens)
+        if score:
+            scores.append((score, path))
+    return max(scores, key=lambda row: row[0])[1] if scores else None
 
 
 def demote(doc):
@@ -176,32 +309,74 @@ def demote(doc):
     return "\n".join(lines)
 
 
-def spec_part(repo, spec, tests, url, head, mode):
-    out = ["# 4. Spec", "", "## Index"]
-    if not spec:
-        if tests:
-            raise PrepareError("--tests requires --spec or a PR Design: line")
-        return "\n".join(out + ["(No spec supplied.)"])
-    path, _, selectors = spec.partition("#")
-    doc = git(repo, "show", f"{head}:{path}")
-    sections = spec_sections(doc, selectors.split(",") if selectors else [])
-    rows = []
-    for test in tests:
-        matches = [(i, line) for i, line in enumerate(doc.splitlines(), 1)
-                   if line.lstrip().startswith("|") and
-                   line.strip().split("|")[1].strip().lstrip("`*_ ").startswith(test)]
-        if not matches:
-            raise PrepareError(f"acceptance test {test!r} not found")
-        rows.extend(row for row in matches if row not in rows)
-    for n, (title, line, _) in enumerate(sections, 1):
-        out.append(f"- S{n}. {title} — {link(url, head, path, line)}")
-    if rows:
-        out.append(f"- S{len(sections) + 1}. Acceptance tests {', '.join(tests)} — {link(url, head, path, rows[0][0])}")
-    if mode != "diff":
-        for n, (title, line, body) in enumerate(sections, 1):
-            out.extend(["", f"## S{n}. {title} ({path}:{line})", demote(body)])
-        if rows:
-            out.extend(["", f"## S{len(sections) + 1}. Acceptance tests", *[row for _, row in rows]])
+def requirement_entries(repo, args, pr, issues, comments, texts, commits, files, url, head, missing, notices):
+    entries = []
+    def add(category, source, source_link, body):
+        entries.append(dict(category=category, source=source, link=source_link, body=body))
+    reference_text = "\n".join([*texts, *(body for _, body in commits)])
+    wanted = []
+    if args.spec and "#" in args.spec:
+        for selector in args.spec.partition("#")[2].split(","):
+            selector = selector.strip()
+            wanted.extend(section_requests("§" + selector.lstrip("§")) or [(selector, None)])
+    wanted = list(dict.fromkeys([*wanted, *section_requests(reference_text)]))
+    tests = list(dict.fromkeys([*[t.strip() for t in (args.tests or "").split(",") if t.strip()],
+                              *re.findall(r"\b" + re.escape(args.test_prefix) + r"\d+\b", reference_text)]))
+    path = discover_spec(repo, head, args.spec, texts, files, wanted)
+    doc = None
+    if path:
+        result = run(repo, "git", "show", f"{head}:{path}")
+        if result.returncode:
+            missing.append(path)
+        else:
+            doc = result.stdout
+    if doc is None:
+        missing.extend("§" + token for pair in wanted for token in pair if token)
+        missing.extend(tests)
+    else:
+        def source_link(line):
+            return link(url, head, path, line) if url else f"[{path}:{line}]({quote(path, safe='/')}#L{line})"
+        # With only test references, include just those rows, not the entire document.
+        sections = spec_sections(doc, wanted, missing) if wanted or not tests else []
+        for title, line, body in sections:
+            add("spec", f"Design/spec {path} — {title}", source_link(line), demote(body))
+        for test in tests:
+            rows = [(n, row) for n, row in enumerate(doc.splitlines(), 1)
+                    if row.lstrip().startswith("|") and re.search(r"(?<!\w)" + re.escape(test) + r"(?!\w)", row.split("|")[1])]
+            if not rows:
+                missing.append(test)
+            for line, row in rows:
+                add("spec", f"Acceptance test {test} — {path}", source_link(line), row)
+    for issue in issues:
+        labels = ", ".join(label["name"] for label in issue.get("labels", [])) or "(none)"
+        add("issue", f"Issue #{issue['number']}: {issue['title']} (labels: {labels})",
+            issue["html_url"], issue.get("body") or "")
+    for comment in comments:
+        body = comment["body"]
+        source = f"Maintainer comment by {comment['user']['login']} ({comment['author_association']})"
+        if len(body) > COMMENT_LIMIT:
+            notices.append(f"Comment capped at {COMMENT_LIMIT:,} characters: {comment['html_url']}")
+            body = body[:COMMENT_LIMIT] + "\n[Comment cut at character cap.]"
+        add("comment", source, comment["html_url"], body)
+    if pr:
+        add("pr", "PR description (author claims): " + pr["title"], pr["url"], pr.get("body") or "")
+    if not pr and not issues:
+        for sha, body in commits:
+            source_link = f"{url}/commit/{sha}" if url else f"[local checkout]({quote(str(repo), safe='/')}) (`git show {sha}`)"
+            add("commit", "Commit message " + sha[:12], source_link, body)
+    return entries
+
+
+def requirements_part(entries, mode):
+    out = ["# 4. Requirements", "", "## Index"]
+    for n, entry in enumerate(entries, 1):
+        out.append(f"- R{n}. {entry['source']} — {entry['link']}")
+    if not entries:
+        out.append("(No requirements found.)")
+    for n, entry in enumerate(entries, 1):
+        if mode == "diff" and entry["category"] == "spec":
+            continue
+        out.extend(["", f"## R{n}. {entry['source']}", entry["body"]])
     return "\n".join(out)
 
 
@@ -228,13 +403,10 @@ def change_part(repo, rng, files, url, head, mode):
 def review(repo, args, base, remote):
     rng, head = f"{base}...HEAD", git(repo, "rev-parse", "HEAD").strip()
     url = web_remote(repo, remote)
-    pr, issue, pr_link = pr_context(repo, args, url)
-    summary = Path(args.summary).read_text() if args.summary else pr.get("body") or git(repo, "log", "--format=%s", f"{base}..HEAD").strip()
-    spec = args.spec
-    if spec is None:
-        design = re.search(r"^Design:\s+(\S+?)(?:\s+\[([^\]]+)\])?\s*$", pr.get("body", ""), re.M)
-        if design:
-            spec = design[1] + ("#" + design[2].replace("§", "").replace(" ", "") if design[2] else "")
+    pr, issues, comments, pr_link, texts, missing, notices = pr_context(repo, args, url)
+    log = git(repo, "log", "--reverse", "--format=%H%x00%B%x00", f"{base}..HEAD").split("\0")
+    commits = [(log[n].strip(), log[n + 1].strip()) for n in range(0, len(log) - 1, 2)]
+    summary = Path(args.summary).read_text() if args.summary else pr.get("title") or "\n".join(body.splitlines()[0] for _, body in commits if body)
     lens = args.lens or {"codex": "generalist-a", "grok": "generalist-b", "kimi": "generalist-c"}[args.cli]
     if not re.fullmatch(r"[a-zA-Z0-9_-]+", lens):
         raise PrepareError("invalid lens name")
@@ -247,14 +419,39 @@ def review(repo, args, base, remote):
     parts = ["# 1. Review pack\n" + common, "# 2. Instructions\n" + instructions,
              "\n".join(["# 3. Pull request and issue", f"Pull request: {pr_link}",
                         f"Title: {pr.get('title') or git(repo, 'log', '-1', '--format=%s').strip()}",
-                        f"Issue: {issue.get('url') or args.issue or '(none)'}",
-                        *([f"Issue title: {issue['title']}", issue.get("body", "")] if issue else []),
-                        f"Range: `{rng}`; head: `{head}`", "", summary]),
-             spec_part(repo, spec, [t.strip() for t in (args.tests or "").split(",") if t.strip()], url, head, mode)]
+                        "Issues: " + (", ".join(i["html_url"] for i in issues) or "(none)"),
+                        f"Range: `{rng}`; head: `{head}`", "", summary])]
     files = changed_files(repo, rng)
-    result = "\n\n".join(parts + [change_part(repo, rng, files, url, head, mode)])
-    if args.cli == "codex" and len(result) > CODEX_LIMIT and mode != "pack":
-        result = "Size guard: prompt exceeds 800,000 characters; change part uses pack (hunk headers).\n\n" + "\n\n".join(parts + [change_part(repo, rng, files, url, head, "pack")])
+    entries = requirement_entries(repo, args, pr, issues, comments, texts, commits, files, url, head, missing, notices)
+    if missing:
+        notices.insert(0, "not found: " + ", ".join(dict.fromkeys(missing)))
+    change = change_part(repo, rng, files, url, head, mode)
+    trimmed = []
+    def render():
+        trim_notes = [f"Size guard: trimmed R{n + 1} ({entries[n]['category']}): {entries[n]['source']}" for n in trimmed]
+        return "\n\n".join([*notices, *trim_notes, *parts, requirements_part(entries, mode), change])
+    result = render()
+    if args.cli == "codex" and len(result) > CODEX_LIMIT:
+        if mode != "pack":
+            notices.append(f"Size guard: prompt exceeds {CODEX_LIMIT:,} characters; change part uses pack (hunk headers).")
+            change = change_part(repo, rng, files, url, head, "pack")
+            result = render()
+        for category in ("comment", "issue", "spec"):
+            candidates = sorted((n for n, e in enumerate(entries) if e["category"] == category
+                                 and e["body"] and not (mode == "diff" and category == "spec")),
+                                key=lambda n: len(entries[n]["body"]), reverse=True)
+            for n in candidates:
+                if len(result) <= CODEX_LIMIT:
+                    break
+                trimmed.append(n)
+                # Include the trim notice in the budget before retaining a prefix.
+                result = render()
+                keep = max(0, len(entries[n]["body"]) - (len(result) - CODEX_LIMIT) - 64)
+                entries[n]["body"] = entries[n]["body"][:keep] + "\n[Trimmed by size guard.]"
+                result = render()
+        if len(result) > CODEX_LIMIT:
+            notices.append(f"Size guard: still exceeds {CODEX_LIMIT:,} characters after trimming; retained indexes, rules, task and author claims require a smaller input.")
+            result = render()
     return result
 
 
@@ -375,8 +572,10 @@ def main(argv=None):
         p.add_argument("checkout", type=Path)
         p.add_argument("--base")
         if command == "review":
-            for option in ("pr", "issue", "spec", "tests", "lens", "summary"):
+            for option in ("pr", "spec", "tests", "lens", "summary"):
                 p.add_argument("--" + option)
+            p.add_argument("--issue", action="append", default=[])
+            p.add_argument("--test-prefix", default="PT")
             p.add_argument("--format", choices=("structured", "diff", "pack"))
             p.add_argument("--cli", choices=("codex", "grok", "kimi"), default="codex")
         if command == "fix":

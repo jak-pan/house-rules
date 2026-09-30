@@ -4,9 +4,12 @@ import argparse
 import contextlib
 import importlib.util
 import io
+import json
 import os
+import re
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -22,7 +25,7 @@ class PrepareTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
-        # Ignore host Git aliases, hooks, signing and credentials; all remotes are local.
+        # Ignore host Git aliases, hooks, signing and credentials; fetches use local remotes.
         self.env = mock.patch.dict(os.environ, {
             "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
             "GIT_AUTHOR_NAME": "Test Author", "GIT_AUTHOR_EMAIL": "test@example.invalid",
@@ -31,6 +34,35 @@ class PrepareTests(unittest.TestCase):
         })
         self.env.start()
         self.addCleanup(self.env.stop)
+        self.binaries = self.root / "bin"
+        self.binaries.mkdir()
+        self.fixtures = self.root / "gh.json"
+        self.fixtures.write_text("{}")
+        self.gh_log = self.root / "gh.log"
+        stub = self.binaries / "gh"
+        stub.write_text("#!" + sys.executable + "\n" + r"""import json, os, pathlib, sys
+args = sys.argv[1:]
+assert args[:2] == ['pr', 'view'] or args[:3] == ['api', '--method', 'GET'], args
+with open(os.environ['GH_TEST_LOG'], 'a') as log:
+    log.write(json.dumps(args) + '\n')
+fixtures = json.loads(pathlib.Path(os.environ['GH_TEST_FIXTURES']).read_text())
+key = ' '.join(args)
+if key not in fixtures:
+    print('Unexpected gh request: ' + key, file=sys.stderr)
+    sys.exit(2)
+value = fixtures[key]
+if isinstance(value, dict) and '_error' in value:
+    print(value['_error'], file=sys.stderr)
+    sys.exit(1)
+print(json.dumps(value))
+""")
+        stub.chmod(0o755)
+        patch = mock.patch.dict(os.environ, {
+            "PATH": str(self.binaries) + os.pathsep + os.environ["PATH"],
+            "GH_TEST_FIXTURES": str(self.fixtures), "GH_TEST_LOG": str(self.gh_log),
+        })
+        patch.start()
+        self.addCleanup(patch.stop)
         self.origin = self.root / "origin"
         self.origin.mkdir()
         self.git(self.origin, "init", "-b", "trunk")
@@ -60,10 +92,40 @@ class PrepareTests(unittest.TestCase):
         return code, out.getvalue(), err.getvalue()
 
     def review(self, **kwargs):
-        args = dict(pr=None, issue=None, spec=None, tests=None, lens="generalist-a",
+        args = dict(pr=None, issue=[], spec=None, tests=None, test_prefix="PT", lens="generalist-a",
                     summary=None, format=None, cli="codex")
         args.update(kwargs)
         return prepare.review(self.repo, argparse.Namespace(**args), "origin/trunk", "origin")
+
+    def github(self, pr=None, issues=(), pr_comments=(), review_comments=(), reviews=(), issue_comments=None):
+        self.git(self.repo, "remote", "set-url", "origin", "https://github.com/example/project.git")
+        data = {}
+        pr_value = pr or {"_error": "no pull requests found for branch feature"}
+        for arg in ("", "1 "):
+            data[f"pr view {arg}--json url,title,body"] = pr_value
+        def comments(endpoint, values):
+            data[f"api --method GET --paginate --slurp repos/{endpoint}?per_page=100"] = values
+        if pr:
+            comments("example/project/issues/1/comments", [list(pr_comments)])
+            comments("example/project/pulls/1/comments", [list(review_comments)])
+            comments("example/project/pulls/1/reviews", [list(reviews)])
+        for issue in issues:
+            location = issue["html_url"].removeprefix("https://github.com/")
+            data[f"api --method GET repos/{location}"] = issue
+            comments(location + "/comments", (issue_comments or {}).get(issue["number"], [[]]))
+        self.fixtures.write_text(json.dumps(data))
+
+    def pr(self, body):
+        return {"url": "https://github.com/example/project/pull/1", "title": "Change title", "body": body}
+
+    def issue(self, number, body="Issue requirement", owner_repo="example/project"):
+        return {"number": number, "title": f"Requirement {number}", "body": body,
+                "html_url": f"https://github.com/{owner_repo}/issues/{number}", "labels": [{"name": "acceptance"}]}
+
+    def comment(self, number, association="MEMBER", login="maintainer", user_type="User", body=None):
+        return {"html_url": f"https://github.com/example/project/issues/2#issuecomment-{number}",
+                "author_association": association, "user": {"login": login, "type": user_type},
+                "created_at": f"2026-01-{number:02d}T00:00:00Z", "body": body or f"Comment body {number}"}
 
     def test_remote_default_overrides_stale_local_head_and_is_fetched(self):
         self.git(self.repo, "update-ref", "refs/remotes/origin/main", "HEAD")
@@ -108,10 +170,10 @@ class PrepareTests(unittest.TestCase):
         self.add_review_change()
         prompt = self.review(spec="docs/design.md#2", tests="AT1")
         positions = [prompt.index(f"# {n}. {title}") for n, title in enumerate(
-            ["Review pack", "Instructions", "Pull request and issue", "Spec", "Change"], 1)]
+            ["Review pack", "Instructions", "Pull request and issue", "Requirements", "Change"], 1)]
         self.assertEqual(positions, sorted(positions))
         spec = prompt[positions[3]:positions[4]]
-        self.assertIn("S1. 2 Behavior — docs/design.md:4", spec)
+        self.assertIn("R1. Design/spec docs/design.md — 2 Behavior — [docs/design.md:4]", spec)
         self.assertIn("##### 2.1 Detail", spec)
         self.assertIn("# Not a heading", spec)
         self.assertIn("| AT1-case | Included row |", spec)
@@ -129,8 +191,8 @@ class PrepareTests(unittest.TestCase):
     def test_diff_has_only_spec_index_pack_has_hunks_and_cli_defaults(self):
         self.add_review_change()
         diff = self.review(spec="docs/design.md#2", format="diff")
-        spec = diff.split("# 4. Spec", 1)[1].split("# 5. Change", 1)[0]
-        self.assertIn("S1. 2 Behavior", spec)
+        spec = diff.split("# 4. Requirements", 1)[1].split("# 5. Change", 1)[0]
+        self.assertIn("R1. Design/spec docs/design.md — 2 Behavior", spec)
         self.assertNotIn("Required behavior", spec)
         self.assertIn("```diff", diff)
         pack = self.review(cli="grok")
@@ -143,23 +205,188 @@ class PrepareTests(unittest.TestCase):
         self.add_review_change()
         summary = self.root / "summary.txt"
         summary.write_text("Round task override")
-        pr = {"url": "https://example.invalid/pull/1", "title": "Change title",
+        pr = {"url": "https://github.com/example/project/pull/1", "title": "Change title",
               "body": "PR body\nDesign: docs/design.md [§2, §20]\n"}
-        with mock.patch.object(prepare, "gh_json", return_value=pr):
-            prompt = self.review(pr="1", summary=str(summary), tests="AT1")
+        self.github(pr)
+        prompt = self.review(pr="1", summary=str(summary), tests="AT1")
         self.assertIn("Round task override", prompt)
-        self.assertIn("S2. 20 Other", prompt)
+        self.assertIn("R2. Design/spec docs/design.md — 20 Other", prompt)
         self.assertIn("Title: Change title", prompt)
         with mock.patch.object(prepare.shutil, "which", return_value=None):
             prompt = self.review(pr="1")
         self.assertIn("Implement behavior", prompt)
 
-    def test_missing_spec_sections_or_tests_fail_visibly(self):
+    def test_missing_spec_sections_or_tests_report_at_top(self):
         self.add_review_change()
-        with self.assertRaisesRegex(prepare.PrepareError, "expected one heading"):
-            self.review(spec="docs/design.md#99")
-        with self.assertRaisesRegex(prepare.PrepareError, "acceptance test"):
-            self.review(spec="docs/design.md#2", tests="MISSING")
+        prompt = self.review(spec="docs/design.md#99", tests="MISSING")
+        self.assertTrue(prompt.startswith("not found: §99, MISSING"))
+        self.assertIn("# 5. Change", prompt)
+
+    def test_ranges_expand_in_document_order_and_collect_all_reference_sources(self):
+        self.write(self.repo, "docs/spec.md", "# Design\n## 3A.2.5 First\nFirst requirement\n## 3A.2.5a Middle\nMiddle requirement\n## 3A.2.6 Last\nLast requirement\n## 3A.5 Other\nOther requirement\n## 9 Outside\nExcluded requirement\n## Tests\n| PT1 | One |\n| PT10 | Ten |\n| PT2 | Two |\n")
+        self.commit(self.repo, "Implement §3A.5\n\nAcceptance PT2")
+        for dash in ("–", "-"):
+            with self.subTest(dash=dash):
+                self.github(self.pr(f"Refs #2\nDesign: docs/spec.md [§3A.2.5{dash}§3A.2.6]\nPT1"),
+                            [self.issue(2, "Also §3A.5 and PT2")])
+                prompt = self.review()
+                requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
+                titles = [f"R{n}. Design/spec docs/spec.md — {title}" for n, title in enumerate(
+                    ["3A.2.5 First", "3A.2.5a Middle", "3A.2.6 Last", "3A.5 Other"], 1)]
+                positions = [requirements.index(title) for title in titles]
+                self.assertEqual(positions, sorted(positions))
+                self.assertIn("| PT1 | One |", requirements)
+                self.assertIn("| PT2 | Two |", requirements)
+                self.assertNotIn("| PT10 | Ten |", requirements)
+                self.assertNotIn("Excluded requirement", requirements)
+                self.assertNotIn("not found:", prompt)
+
+    def test_document_discovery_precedence_and_heading_match(self):
+        for path, body in {
+            "docs/other.md": "## 3A.5 Shared\nWrong tie\n",
+            "docs/specs/right.md": "## 3A.5 Shared\nPreferred tie\n## 3A.6 More\nMatched two\n",
+            "docs/design/wrong.md": "## 8 Wrong\nIrrelevant\n",
+            "docs/named.md": "## 3A.5 Shared\nNamed document\n",
+        }.items():
+            self.write(self.repo, path, body)
+        self.commit(self.repo, "Base docs")
+        self.git(self.repo, "update-ref", "refs/remotes/origin/trunk", "HEAD")
+        self.write(self.repo, "src/core.py", "pass\n")
+        self.commit(self.repo, "Implement §3A.5 and §3A.6")
+        prompt = self.review()
+        self.assertIn("Design/spec docs/specs/right.md", prompt)
+        self.github(self.pr("Refs #2"), [self.issue(2, "See [design](docs/named.md): §3A.5")])
+        self.assertIn("Design/spec docs/named.md", self.review())
+        self.github(self.pr("See [design](https://github.com/example/project/blob/main/docs/named.md): §3A.5"))
+        self.assertIn("Design/spec docs/named.md", self.review())
+        self.assertIn("Design/spec docs/other.md", self.review(spec="docs/other.md#3A.5"))
+        self.write(self.repo, "docs/design/wrong.md", "## 3A.5 Shared\nEdited design\n")
+        self.commit(self.repo, "Update design")
+        self.github()
+        self.assertIn("Design/spec docs/design/wrong.md", self.review())
+
+    def test_heading_discovery_prefers_more_matches_before_directory_priority(self):
+        self.write(self.repo, "docs/spec/a.md", "## 1 One\nOne\n")
+        self.write(self.repo, "docs/guide.md", "## 1 One\nOne\n## 2 Two\nTwo\n")
+        self.commit(self.repo, "Docs baseline")
+        self.git(self.repo, "update-ref", "refs/remotes/origin/trunk", "HEAD")
+        self.write(self.repo, "src/core.py", "pass\n")
+        self.commit(self.repo, "Implement §1–§2")
+        self.assertIn("Design/spec docs/guide.md", self.review())
+
+    def test_issue_forms_repeatable_cli_comments_associations_bots_and_order(self):
+        self.add_review_change()
+        issues = [self.issue(n, owner_repo="other/project" if n == 3 else "example/project") for n in range(2, 7)]
+        self.github(self.pr("Closes #2; Refs other/project#3; Fixes https://github.com/example/project/issues/4; Resolves #5; Refs #2"),
+                    issues, pr_comments=[self.comment(6, "OWNER"), self.comment(2, "CONTRIBUTOR"),
+                                         self.comment(3, login="automation[bot]"), self.comment(4, user_type="Bot")],
+                    review_comments=[self.comment(7, "COLLABORATOR")], reviews=[self.comment(8, "MEMBER")],
+                    issue_comments={2: [[self.comment(5, "MEMBER")], [self.comment(1, "OWNER")]]})
+        code, prompt, err = self.invoke("review", str(self.repo), "--base", "origin/trunk", "--pr", "1",
+                                        "--issue", "6", "--issue", "example/project#2")
+        self.assertEqual(code, 0, err)
+        requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
+        for n in range(2, 7):
+            self.assertIn(f"Issue #{n}: Requirement {n} (labels: acceptance)", requirements)
+        for n in (2, 3, 4):
+            self.assertNotIn(f"Comment body {n}", prompt)
+        positions = [requirements.index(f"Comment body {n}") for n in (1, 5, 6, 7, 8)]
+        self.assertEqual(positions, sorted(positions))
+        self.assertLess(requirements.index("Design/spec"), requirements.index("Issue #"))
+        self.assertLess(requirements.index("Issue #"), requirements.index("Maintainer comment"))
+        self.assertLess(requirements.index("Maintainer comment"), requirements.index("PR description (author claims)"))
+        calls = [json.loads(line) for line in self.gh_log.read_text().splitlines()]
+        self.assertEqual(sum(call[-1] == "repos/example/project/issues/2" for call in calls), 1)
+
+    def test_unresolved_references_are_reported_without_dropping_found_content(self):
+        self.write(self.repo, "docs/spec.md", "## 3A.5 Found\nKnown requirement\n## Tests\n| PT4 | Known test |\n| PT400 | Different test |\n")
+        self.commit(self.repo, "Implement §3A.5")
+        self.github(self.pr("Design: docs/spec.md [§3A.5–§3A.9]\nPT4 PT40\nRefs #77"))
+        fixtures = json.loads(self.fixtures.read_text())
+        fixtures["api --method GET repos/example/project/issues/77"] = {"_error": "HTTP 404: Not Found"}
+        self.fixtures.write_text(json.dumps(fixtures))
+        prompt = self.review()
+        top = prompt.split("# 1. Review pack")[0]
+        for ref in ("§3A.9", "PT40", "#77"):
+            self.assertIn(ref, top)
+        self.assertIn("Known requirement", prompt)
+        self.assertIn("| PT4 | Known test |", prompt)
+        self.assertNotIn("GitHub context unavailable", prompt)
+
+    def test_no_gh_and_network_failure_keep_local_commits_spec_and_missing_issues(self):
+        self.write(self.repo, "docs/spec.md", "## 2 Behavior\nLocal requirement\n## Tests\n| PT1 | Test requirement |\n")
+        self.commit(self.repo, "Implement §2\n\nPT1 Full commit body")
+        self.github(self.pr("PR body must be skipped"))
+        with mock.patch.object(prepare.shutil, "which", return_value=None):
+            prompt = self.review(issue=["77"], spec="docs/spec.md")
+        top = prompt.split("# 1. Review pack")[0]
+        self.assertIn("sources 2–4", top)
+        self.assertIn("gh is not installed", top)
+        self.assertIn("not found: #77", top)
+        self.assertIn("Local requirement", prompt)
+        self.assertIn("Full commit body", prompt)
+        self.assertIn("Commit message", prompt)
+        fixtures = json.loads(self.fixtures.read_text())
+        fixtures["pr view --json url,title,body"] = {"_error": "network unavailable"}
+        self.fixtures.write_text(json.dumps(fixtures))
+        prompt = self.review()
+        self.assertTrue(prompt.startswith("GitHub context unavailable"))
+        self.assertIn("network unavailable", prompt)
+        self.assertIn("Full commit body", prompt)
+        self.assertNotIn("PR body must be skipped", prompt)
+
+    def test_later_network_failure_keeps_already_collected_references(self):
+        self.write(self.repo, "docs/spec.md", "## 2 Known\nLocal requirement\n")
+        self.commit(self.repo, "Change")
+        self.github(self.pr("Design: docs/spec.md [§2, §9]\nPT40\nRefs #2"), [self.issue(2)])
+        fixtures = json.loads(self.fixtures.read_text())
+        fixtures["api --method GET --paginate --slurp repos/example/project/issues/2/comments?per_page=100"] = {
+            "_error": "network unavailable"}
+        self.fixtures.write_text(json.dumps(fixtures))
+        prompt = self.review()
+        top = prompt.split("# 1. Review pack")[0]
+        for token in ("§9", "PT40", "#2", "network unavailable"):
+            self.assertIn(token, top)
+        self.assertIn("Local requirement", prompt)
+        requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
+        self.assertNotIn("PR description", requirements)
+        self.assertNotIn("Issue #2", requirements)
+
+    def test_custom_test_prefix_and_local_issue_without_pr(self):
+        self.write(self.repo, "docs/design.md", "## 1 Behavior\nRequired\n## Tests\n| AT2 | Custom test |\n| PT3 | Default test |\n")
+        self.commit(self.repo, "Implement AT2 PT3")
+        self.github(issues=[self.issue(2, "Design: docs/design.md [§1]\nAT2")])
+        code, prompt, err = self.invoke("review", str(self.repo), "--base", "origin/trunk",
+                                        "--issue", "2", "--test-prefix", "AT")
+        self.assertEqual(code, 0, err)
+        requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
+        self.assertIn("| AT2 | Custom test |", requirements)
+        self.assertNotIn("| PT3 | Default test |", requirements)
+        self.assertIn("Issue #2", requirements)
+        self.assertNotIn("Commit message", requirements)
+
+    def test_comment_cap_and_size_guard_trim_in_authority_order_largest_first(self):
+        self.write(self.repo, "docs/spec.md", "## 1 Small\n" + "s" * 1000 + "\n## 2 Large\n" + "l" * 8000)
+        self.commit(self.repo, "Requirements §1, §2")
+        self.github(self.pr("Design: docs/spec.md [§1, §2]\nRefs #2"), [self.issue(2, "i" * 7000)],
+                    pr_comments=[self.comment(1, body="c" * 5000)])
+        full = self.review(format="pack")
+        self.assertIn("Comment capped at 4,000 characters", full.split("# 1. Review pack")[0])
+        self.assertIn("c" * 4000, full)
+        self.assertNotIn("c" * 4001, full)
+        for reduction, expected in [(1000, ["comment"]), (6000, ["comment", "issue"]),
+                                     (14000, ["comment", "issue", "spec"])]:
+            with self.subTest(reduction=reduction), mock.patch.object(prepare, "CODEX_LIMIT", len(full) - reduction):
+                prompt = self.review(format="pack")
+                top = prompt.split("# 1. Review pack")[0]
+                trimmed = re.findall(r"Size guard: trimmed R\d+ \((\w+)\)", top)
+                self.assertEqual(trimmed, expected)
+                self.assertLessEqual(len(prompt), len(full) - reduction)
+                if "spec" in expected:
+                    self.assertIn("trimmed R2 (spec)", top)
+                    self.assertNotIn("trimmed R1 (spec)", top)
+                self.assertIn("PR description (author claims)", prompt)
+                self.assertIn("s" * 1000, prompt)
 
     def test_web_links_use_base_remote_and_head_sha(self):
         head = self.git(self.repo, "rev-parse", "HEAD")
@@ -255,7 +482,7 @@ class PrepareTests(unittest.TestCase):
     def test_panel_keeps_family_cli_options_and_summary_task(self):
         self.add_review_change()
         binaries = self.root / "bin"
-        binaries.mkdir()
+        binaries.mkdir(exist_ok=True)
         stub = """#!/usr/bin/env python3
 import json, os, pathlib, sys
 cli = pathlib.Path(sys.argv[0]).name
