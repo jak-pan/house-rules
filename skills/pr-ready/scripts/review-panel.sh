@@ -133,7 +133,7 @@ sys.exit(0 if ok else 1)' 2>> "$out/$r.err"; then
                grok -m "$model" --reasoning-effort "${effort:-high}" --tools read_file,list_dir,grep --output-format json --always-approve --disable-web-search --prompt-file "$prompt.grok" > "$out/$r.json" 2> "$out/$r.err") || cli_status=$?
            rmdir "$neutral" 2>/dev/null
              if [ "$cli_status" -eq 0 ]; then
-               python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('text',''))" "$out/$r.json" > "$out/$r.md" 2>> "$out/$r.err" || cli_status=$?
+               "$here/grok_final.py" "$out/$r.json" > "$out/$r.md" 2>> "$out/$r.err" || cli_status=$?
              fi ;;
       kimi)  (cd "$dir" && kimi -m "$model" -p "$(cat "$prompt")" > "$out/$r.md" 2> "$out/$r.err") || cli_status=$? ;;
       *)     echo "$r failed: unknown cli $cli" >> "$out/summary.txt"; return 1 ;;
