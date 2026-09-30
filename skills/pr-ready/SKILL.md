@@ -24,6 +24,10 @@ suite (AGENTS.md §Verification); everything below keeps local work small.
 
 ## 2. Push and CI
 
+- Open PRs as drafts (`gh pr create --draft`) while work is in progress; mark them ready
+  (`gh pr ready`) only once the local gate passes. Ready means "review this": a server-side
+  review gate reviews each new head of a ready PR and ignores drafts. To push unfinished
+  work without a review, convert back to draft (`gh pr ready --undo`).
 - Push; wait for CI to finish green on the exact head commit.
 - On a CI failure, reproduce only the failing tests locally. Before attributing a failure
   to the change, compare it against the default branch under the same conditions.
