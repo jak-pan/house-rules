@@ -40,8 +40,8 @@ def grok_models():
     if not shutil.which("grok") or not path.exists():
         return []
     found = set(re.findall(r'"(grok-[0-9][0-9a-z.\-]*)"', path.read_text()))
-    # Newest version first; within a version prefer the faster-infrastructure variant.
-    return sorted(found, key=lambda m: (version(m)[0], m.endswith("-build-fast")), reverse=True)
+    # Newest version first; within a version prefer the standard model over its faster-infrastructure variant.
+    return sorted(found, key=lambda m: (version(m)[0], not m.endswith("-build-fast")), reverse=True)
 
 
 def kimi_models():
