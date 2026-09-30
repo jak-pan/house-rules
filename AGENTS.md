@@ -271,7 +271,8 @@ brevity must not remove evidence or content needed to complete the task.
   changed plus their new regressions. Reviewers review statically and run at most one
   targeted test, only to confirm or refute a specific finding. Run the full suite locally
   only when CI cannot, or to diagnose a CI failure. Operator direction: 2026-09-30, after
-  local full-suite runs took most of each review and fix round.
+  local full-suite runs took most of each review and fix round. Procedure for the whole
+  change loop: skill `pr-ready`.
 - Long-running checks fail on no-progress, not wall-clock.
 - **Authorized, bounded, and durable before expensive.** Paid, long-running, or
   non-reproducible external runs (agents, model CLIs, remote jobs, benchmarks, crawls)
