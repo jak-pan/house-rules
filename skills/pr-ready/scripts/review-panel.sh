@@ -34,6 +34,8 @@ import sys
 reviewers_dir, output_root, name, *reviewers = sys.argv[1:]
 if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", name):
     sys.exit(f"invalid panel name: {name!r}; expected [A-Za-z0-9][A-Za-z0-9._-]*")
+if len(reviewers) != len(set(reviewers)):
+    sys.exit("duplicate reviewer names are not allowed")
 for reviewer in reviewers:
     if not re.fullmatch(r"[a-z0-9-]+", reviewer):
         sys.exit(f"invalid reviewer: {reviewer!r}; expected [a-z0-9-]+")
@@ -57,19 +59,26 @@ except (OSError, RuntimeError) as exc:
 PY
 mkdir -p "$out" || exit 1
 
+: > "$out/summary.txt" || exit 1
+for r in "$@"; do
+  # A reused panel directory must never supply evidence from a previous run.
+  if ! rm -f -- "$out/$r.md" "$out/$r.jsonl" "$out/$r.json" \
+      "$out/$r.err" "$out/$r.prepare.err" "$out/$r.prompt"; then
+    echo "$r failed: clearing previous reviewer outputs" >> "$out/summary.txt"
+    exit 1
+  fi
+done
+
 base_args=(base "$dir")
 [ -n "${REVIEW_BASE:-}" ] && base_args+=(--base "$REVIEW_BASE")
-resolved_base=$("$here/prepare.py" "${base_args[@]}") || exit 1
+resolved_base=$("$here/prepare.py" "${base_args[@]}") || {
+  echo "panel failed: base resolution" >> "$out/summary.txt"
+  exit 1
+}
 
 run_one() {
   local r=$1 file=$reviewers_dir/$1.md
   local fam cfg cli model tier effort prompt=$out/$r.prompt t0 cli_status=0 verdict
-  # A reused panel directory must never supply evidence from a previous run.
-  if ! rm -f -- "$out/$r.md" "$out/$r.jsonl" "$out/$r.json" \
-      "$out/$r.err" "$out/$r.prepare.err" "$prompt"; then
-    echo "$r failed: clearing previous reviewer outputs" >> "$out/summary.txt"
-    return 1
-  fi
   fam=$(frontmatter "$file" family); cfg=$(family_cfg "$fam")
   [ -n "$cfg" ] || { echo "$r skipped: family $fam not configured" >> "$out/summary.txt"; return; }
   read -r cli model tier effort <<<"$cfg"; [ "$tier" = - ] && tier=
@@ -101,14 +110,28 @@ run_one() {
     echo "$r failed: reviewer CLI (exit $cli_status; see $r.err)" >> "$out/summary.txt"
     return 1
   fi
-  if ! verdict=$(grep -E -m1 '^VERDICT: (APPROVE|REQUEST_CHANGES)[[:space:]]*$' "$out/$r.md" 2>> "$out/$r.err"); then
+  if ! verdict=$(python3 - "$out/$r.md" 2>> "$out/$r.err" <<'PYVERDICT'
+import re
+import sys
+from pathlib import Path
+for line in Path(sys.argv[1]).read_text().splitlines():
+    line = line.strip()
+    # Markdown emphasis can wrap the whole line, label, or verdict value.
+    line = re.sub(r"\*{1,3}|_{1,3}(?![A-Z])|(?<![A-Z])_{1,3}", "", line)
+    match = re.fullmatch(r"VERDICT: (APPROVE|REQUEST_CHANGES)", line)
+    if match:
+        print(match[1])
+        break
+else:
+    sys.exit(1)
+PYVERDICT
+  ); then
     echo "$r failed: reviewer report missing valid VERDICT: APPROVE or VERDICT: REQUEST_CHANGES line (see $r.md and $r.err)" >> "$out/summary.txt"
     return 1
   fi
-  echo "$r $cli/$model wall=$(( $(date +%s) - t0 ))s verdict=${verdict#VERDICT: }" >> "$out/summary.txt"
+  echo "$r $cli/$model wall=$(( $(date +%s) - t0 ))s verdict=$verdict" >> "$out/summary.txt"
 }
 
-: > "$out/summary.txt" || exit 1
 "$here/review-panel-models.py" --check >&2 || true   # notice only: newer models available
 pids=()
 for r in "$@"; do

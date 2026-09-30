@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-"""Prepare local review, fix and PR context. Python 3.11+ stdlib and git; gh is optional."""
+"""Prepare local review, fix and PR context. Python 3.9+ stdlib and git; gh is optional."""
 import argparse
 import json
+import os
 import re
-import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
-import tomllib
 from pathlib import Path
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote, quote_from_bytes, urlsplit
 
 HERE = Path(__file__).resolve().parent
 CODEX_LIMIT = 800_000
@@ -25,9 +24,22 @@ class PrepareError(Exception):
     pass
 
 
+def noninteractive_env():
+    return dict(os.environ, GIT_TERMINAL_PROMPT="0", GH_PROMPT_DISABLED="1")
+
+
+def display(text):
+    """Keep undecodable bytes visible without changing paths passed back to Git."""
+    return text.encode("utf-8", errors="surrogateescape").decode("utf-8", errors="backslashreplace")
+
+
 def run(repo, *args):
-    return subprocess.run(args, cwd=repo, text=True, encoding="utf-8", errors="replace",
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.run(args, cwd=repo, env=noninteractive_env(),
+                            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # Decode bytes ourselves: text mode also rewrites CR/LF inside NUL-delimited paths.
+    result.stdout = result.stdout.decode("utf-8", errors="surrogateescape")
+    result.stderr = result.stderr.decode("utf-8", errors="surrogateescape")
+    return result
 
 
 def git(repo, *args):
@@ -45,7 +57,7 @@ def resolve_base(repo, explicit=None, no_fetch=False):
         selected = next((r for r in remotes if explicit.startswith((r + "/", "refs/remotes/" + r + "/"))), None)
         git(repo, "rev-parse", "--verify", explicit + "^{commit}")
         if not selected or no_fetch:
-            return explicit, selected or remote, not no_fetch
+            return explicit, selected or remote, True
         remote = selected
         branch = explicit.removeprefix("refs/remotes/").removeprefix(remote + "/")
         base = explicit
@@ -107,11 +119,11 @@ def web_remote(repo, remote):
 
 
 def link(url, head, path, line=1):
-    label = f"{path}:{line}"
+    label = f"{display(path)}:{line}"
     if not url:
         return label
     route = "/-/blob/" if urlsplit(url).hostname == "gitlab.com" else "/blob/"
-    return f"[{label}]({url}{route}{head}/{quote(path, safe='/')}#L{line})"
+    return f"[{label}]({url}{route}{head}/{quote_from_bytes(os.fsencode(path), safe='/')}#L{line})"
 
 
 def kind(path):
@@ -135,7 +147,8 @@ class GitHubUnavailable(Exception):
 def gh_json(repo, *args):
     try:
         result = subprocess.run(["gh", *args], cwd=repo, text=True, encoding="utf-8",
-                                errors="replace", capture_output=True, timeout=30)
+                                errors="replace", capture_output=True, timeout=30,
+                                env=noninteractive_env(), stdin=subprocess.DEVNULL)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise GitHubUnavailable(str(exc)) from exc
     if result.returncode:
@@ -194,15 +207,20 @@ def pr_context(repo, args, url):
             unavailable(endpoint, exc)
 
     if not shutil.which("gh"):
+        if args.pr or refs:
+            raise PrepareError("cannot resolve explicitly requested PR/issue: gh is not installed")
         notices.append("GitHub context unavailable; skipped linked issues, maintainer comments and PR description (sources 2–4): gh is not installed")
-        missing.extend(ref if not ref.isdigit() else "#" + ref for ref in refs)
     else:
         if args.pr or url and urlsplit(url).hostname == "github.com":
             try:
                 pr = gh_json(repo, "pr", "view", *([args.pr] if args.pr else []),
                              "--json", "url,title,body") or {}
             except GitHubUnavailable as exc:
+                if args.pr:
+                    raise PrepareError(f"cannot resolve requested PR {args.pr}: {exc}") from exc
                 unavailable("PR description", exc)
+            if args.pr and not pr:
+                raise PrepareError(f"requested PR not found: {args.pr}")
             pr_link = pr.get("url") or pr_link
             texts.append(pr.get("body") or "")
         # A PR URL determines where bare issue numbers belong, including forks.
@@ -213,6 +231,8 @@ def pr_context(repo, args, url):
             location = issue_location(ref, issue_url)
             if not location or location in seen:
                 if not location:
+                    if ref in args.issue:
+                        raise PrepareError(f"cannot resolve requested issue: {ref}")
                     missing.append(ref)
                 continue
             seen.add(location)
@@ -221,9 +241,13 @@ def pr_context(repo, args, url):
             try:
                 issue = gh_json(repo, "api", "--method", "GET", endpoint)
             except GitHubUnavailable as exc:
+                if ref in args.issue:
+                    raise PrepareError(f"cannot resolve requested issue {ref}: {exc}") from exc
                 unavailable(endpoint, exc)
                 continue
             if not issue or "pull_request" in issue:
+                if ref in args.issue:
+                    raise PrepareError(f"requested issue not found: {ref}")
                 missing.append(ref if not ref.isdigit() else "#" + ref)
                 continue
             issues.append(issue)
@@ -236,9 +260,12 @@ def pr_context(repo, args, url):
                 for endpoint in (f"issues/{number}/comments", f"pulls/{number}/comments", f"pulls/{number}/reviews"):
                     collect_comments(f"repos/{owner_repo}/{endpoint}")
     comments = [c for c in comments if c.get("author_association") in {"OWNER", "MEMBER", "COLLABORATOR"}
-                and c.get("user", {}).get("type", "").lower() != "bot"
-                and not c.get("user", {}).get("login", "").lower().endswith("[bot]")
+                and (c.get("user") or {}).get("type", "").lower() != "bot"
+                and not (c.get("user") or {}).get("login", "").lower().endswith("[bot]")
                 and c.get("body")]
+    for comment in comments:
+        if not (comment.get("user") or {}).get("login"):
+            notices.append(f"Maintainer author unknown: {comment.get('html_url', '(no URL)')}")
     comments.sort(key=lambda c: (c.get("created_at") or c.get("submitted_at") or "", c.get("html_url", "")))
     return pr, issues, comments, pr_link, texts, missing, notices
 
@@ -350,35 +377,25 @@ def spec_sections(doc, wanted, missing, titles, notices, path):
     return result
 
 
-def discover_spec(repo, head, explicit, texts, files, wanted):
-    paths = git(repo, "ls-tree", "-r", "--name-only", "-z", head).split("\0")
+def discover_spec(repo, head, explicit, texts, files):
     if explicit:
         path = explicit.partition("#")[0]
-        return path if path in paths else None
+        return path if run(repo, "git", "cat-file", "-e", f"{head}:{path}").returncode == 0 else None
+    paths = git(repo, "ls-tree", "-r", "--name-only", "-z", head).split("\0")
+    # Explicit Design lines outrank ordinary path mentions across all sources.
     for text in texts:
-        design = re.search(r"^Design:\s+(\S+?)(?:\s+\[[^\]]*\])?\s*$", text, re.M)
-        if design and design[1] in paths:
-            return design[1]
-        # Match repository paths inside ordinary prose, Markdown links and blob URLs.
+        for design in re.finditer(r"^Design:\s+(\S+?)(?:\s+\[[^\]]*\])?\s*$", text, re.M):
+            if design[1] in paths:
+                return design[1]
+    for text in texts:
         named = [(match.start(), path) for path in paths if path.lower().endswith(".md")
                  for match in [re.search(r"(?<![\w.-])" + re.escape(path) + r"(?![\w.-])", text)] if match]
         if named:
             return min(named)[1]
-    def priority(path):
-        return (0 if any(p in ("design", "spec", "specs") for p in Path(path).parts[:-1]) else 1, path)
     edited = [path for _, _, path in files if path in paths and path.lower().endswith(".md")
               and any(re.search(r"(?:^|[-_.])(design|spec|specs)(?:$|[-_.])", part, re.I)
                       for part in Path(path).parts)]
-    if edited:
-        return min(edited, key=priority)
-    tokens = {token for pair in wanted for token in pair if token}
-    scores = []
-    for path in sorted((p for p in paths if p.startswith("docs/") and p.lower().endswith(".md")), key=priority):
-        headings = markdown_headings(git(repo, "show", f"{head}:{path}"))
-        score = sum(any(heading_matches(title, token) for _, _, title in headings) for token in tokens)
-        if score:
-            scores.append((score, path))
-    return max(scores, key=lambda row: row[0])[1] if scores else None
+    return min(edited) if edited else None
 
 
 def demote(doc):
@@ -401,8 +418,8 @@ def requirement_entries(repo, args, pr, issues, comments, texts, commits, files,
             wanted.extend(section_requests("§" + selector.lstrip("§")) or [(selector, None)])
     wanted = list(dict.fromkeys([*wanted, *section_requests(reference_text)]))
     tests = list(dict.fromkeys([*[t.strip() for t in (args.tests or "").split(",") if t.strip()],
-                              *re.findall(r"\b" + re.escape(args.test_prefix) + r"\d+\b", reference_text)]))
-    path = discover_spec(repo, head, args.spec, texts, files, wanted)
+                              *re.findall(r"(?<![A-Za-z0-9_-])" + re.escape(args.test_prefix) + r"\d+(?![A-Za-z0-9_-])", reference_text)]))
+    path = discover_spec(repo, head, args.spec, [*texts, *(body for _, body in commits)], files)
     doc = None
     if args.spec and not path:
         missing.append(args.spec.partition("#")[0])
@@ -417,7 +434,7 @@ def requirement_entries(repo, args, pr, issues, comments, texts, commits, files,
         missing.extend(tests)
     else:
         def source_link(line):
-            return link(url, head, path, line) if url else f"[{path}:{line}]({quote(path, safe='/')}#L{line})"
+            return link(url, head, path, line) if url else f"[{path}:{line}]({quote_from_bytes(os.fsencode(path), safe='/')}#L{line})"
         # With only test references, include just those rows, not the entire document.
         sections = spec_sections(doc, wanted, missing, titles, notices, path) if wanted or not tests else []
         for title, line, body, number_only in sections:
@@ -428,7 +445,7 @@ def requirement_entries(repo, args, pr, issues, comments, texts, commits, files,
             add("spec", source, source_link(line), demote(body))
         for test in tests:
             rows = [(n, row) for n, row in enumerate(doc.splitlines(), 1)
-                    if row.lstrip().startswith("|") and re.search(r"(?<!\w)" + re.escape(test) + r"(?!\w)", row.split("|")[1])]
+                    if row.lstrip().startswith("|") and re.search(r"(?<![A-Za-z0-9_-])" + re.escape(test) + r"(?![A-Za-z0-9_-])", row.split("|")[1])]
             if not rows:
                 missing.append(test)
             for line, row in rows:
@@ -439,7 +456,7 @@ def requirement_entries(repo, args, pr, issues, comments, texts, commits, files,
             issue["html_url"], issue.get("body") or "")
     for comment in comments:
         body = comment["body"]
-        source = f"Maintainer comment by {comment['user']['login']} ({comment['author_association']})"
+        source = f"Maintainer comment by {(comment.get('user') or {}).get('login') or 'unknown'} ({comment['author_association']})"
         if len(body) > COMMENT_LIMIT:
             notices.append(f"Comment capped at {COMMENT_LIMIT:,} characters: {comment['html_url']}")
             body = body[:COMMENT_LIMIT] + "\n[Comment cut at character cap.]"
@@ -476,14 +493,15 @@ def file_diff(repo, rng, path, mode, budget):
                "-U0" if mode == "pack" else "-U3" if kind(path) == "test" else "-U10",
                rng, "--", ":(literal)" + path]
     with tempfile.TemporaryFile() as errors, subprocess.Popen(
-        command, cwd=repo, stdout=subprocess.PIPE, stderr=errors
+        command, cwd=repo, stdout=subprocess.PIPE, stderr=errors,
+        env=noninteractive_env(), stdin=subprocess.DEVNULL
     ) as process:
         try:
             if mode == "pack":
                 hunks, size, continuation = [], 0, False
                 while chunk := process.stdout.readline(8192):
                     if not continuation and chunk.startswith(b"@@"):
-                        header = chunk.decode("utf-8", errors="replace").rstrip()
+                        header = chunk.decode("utf-8", errors="backslashreplace").rstrip()
                         if not chunk.endswith(b"\n"):
                             header += " [Hunk header cut at 8192 bytes.]"
                         size += len(header) + 1
@@ -496,7 +514,7 @@ def file_diff(repo, rng, path, mode, budget):
                 data = process.stdout.read(max(0, budget) + 1)
                 if len(data) > budget:
                     raise DiffTooLarge()
-                result = data.decode("utf-8", errors="replace").rstrip()
+                result = data.decode("utf-8", errors="backslashreplace").rstrip()
             if process.wait():
                 errors.seek(0)
                 raise PrepareError(errors.read().decode("utf-8", errors="replace").strip() or f"git diff failed for {path}")
@@ -516,13 +534,13 @@ def change_part(repo, rng, files, url, head, mode, budget=None):
     out = ["# 5. Change", f"Range: `{rng}`", "", "## Index"]
     for n, (added, removed, path) in enumerate(files, 1):
         note = " (lockfile: listed only)" if LOCK.search(path) else ""
-        out.append(f"- F{n}. {path} — {kind(path)} +{added}/-{removed} — {link(url, head, path)}{note}")
+        out.append(f"- F{n}. {display(path)} — {kind(path)} +{added}/-{removed} — {link(url, head, path)}{note}")
     size = sum(len(line) + 1 for line in out)
     for n, (_, _, path) in enumerate(files, 1):
         if LOCK.search(path):
             continue
         diff = file_diff(repo, rng, path, mode, max(0, budget - size))
-        header = f"## F{n}. {path}"
+        header = f"## F{n}. {display(path)}"
         out.extend(["", header])
         if mode == "pack":
             body = ["Touched functions (hunk headers):", diff or "(No textual hunks.)"]
@@ -605,105 +623,6 @@ def review(repo, args, base, remote):
     return result
 
 
-def cmake_tests(repo, paths):
-    """Resolve literal add_test names through their executable's source list."""
-    names, targets, registrations = set(), set(), []
-    for file in git(repo, "ls-files", "-z").split("\0"):
-        if not file or (Path(file).name != "CMakeLists.txt" and not file.endswith(".cmake")):
-            continue
-        source = (repo / file).read_text(errors="replace")
-        source = re.sub(r"^\s*#.*$", "", source, flags=re.M)
-        commands = []
-        pattern = r'\b(add_executable|add_test)\s*\(((?:"(?:\\.|[^"\\])*"|[^)"])*)\)'
-        for match in re.finditer(pattern, source, re.I | re.S):
-            try:
-                tokens = shlex.split(match[2], comments=True)
-            except ValueError as exc:
-                raise PrepareError(f"cannot infer CMake tests from {file}: {exc}") from exc
-            if tokens:
-                commands.append((match[1].lower(), tokens))
-        for command, tokens in commands:
-            if command == "add_executable" and any((Path(file).parent / t).as_posix() in paths for t in tokens[1:]):
-                targets.add(tokens[0])
-        registrations.extend((file, tokens) for command, tokens in commands if command == "add_test")
-    for file, tokens in registrations:
-        name = tokens[1] if tokens[0] == "NAME" and len(tokens) > 1 else tokens[0]
-        if "$" in name:
-            continue
-        referenced = any(t in targets or (Path(file).parent / t).as_posix() in paths for t in tokens)
-        if referenced or file in paths:
-            names.add(name)
-    return sorted(names)
-
-
-def test_commands(repo, files):
-    paths = [path for _, _, path in files if (repo / path).is_file()]
-    commands, unresolved = set(), []
-    for path in paths:
-        p = Path(path)
-        if p.suffix == ".rs":
-            manifest = next((parent / "Cargo.toml" for parent in (p.parent, *p.parent.parents)
-                             if (repo / parent / "Cargo.toml").is_file()), None)
-            if manifest:
-                rel = p.relative_to(manifest.parent)
-                prefix = ["cargo", "test", "--release"]
-                if manifest.parent != Path("."):
-                    prefix += ["--manifest-path", str(manifest)]
-                with (repo / manifest).open("rb") as source:
-                    metadata = tomllib.load(source)
-                # A manifest target is a crate root, even when its filename looks
-                # like a module or integration test. Resolve paths before heuristics.
-                configured = [target for target in metadata.get("bin", [])
-                              if target.get("path") is not None
-                              and (repo / manifest.parent / target["path"]).resolve() == (repo / p).resolve()]
-                lib_path = metadata.get("lib", {}).get("path", "src/lib.rs")
-                is_lib = (repo / manifest.parent / lib_path).resolve() == (repo / p).resolve()
-                if configured or is_lib:
-                    for target in configured:
-                        if target.get("name"):
-                            commands.add(shlex.join(prefix + ["--bin", target["name"]]))
-                        else:
-                            unresolved.append(path)
-                    if is_lib:
-                        commands.add(shlex.join(prefix + ["--lib"]))
-                elif rel.parts[0] == "tests" and len(rel.parts) > 1:
-                    target = Path(rel.parts[1]).stem
-                    # tests/common.rs is a target; tests/common/mod.rs is shared support.
-                    if len(rel.parts) > 2 and not (repo / manifest.parent / "tests" / target / "main.rs").is_file():
-                        unresolved.append(path)
-                        continue
-                    commands.add(shlex.join(prefix + ["--test", target]))
-                elif rel.as_posix() == "src/main.rs" or rel.parts[:2] == ("src", "bin"):
-                    target = (metadata.get("package", {}).get("name") if rel.as_posix() == "src/main.rs"
-                              else Path(rel.parts[2]).stem if len(rel.parts) == 3
-                              else rel.parts[2] if len(rel.parts) >= 4 else None)
-                    if target:
-                        commands.add(shlex.join(prefix + ["--bin", target]))
-                    else:
-                        unresolved.append(path)
-                elif rel.parts[0] == "src":
-                    modules = list(rel.with_suffix("").parts[1:])
-                    if modules and modules[-1] in ("lib", "main", "mod"):
-                        modules.pop()
-                    if modules:
-                        commands.add(shlex.join(prefix + ["::".join(modules)]))
-                    else:
-                        unresolved.append(path)
-                else:
-                    unresolved.append(path)
-                continue
-        if kind(path) == "test" and p.suffix == ".py":
-            commands.add(shlex.join(["pytest", path]))
-        elif kind(path) == "test" or p.suffix in (".rs", ".py", ".go", ".js", ".jsx", ".ts", ".tsx"):
-            unresolved.append(path)
-    if any(Path(p).name == "CMakeLists.txt" for p in git(repo, "ls-files", "-z").split("\0")):
-        names = cmake_tests(repo, paths)
-        if names:
-            commands.add(shlex.join(["ctest", "-R", "^(" + "|".join(re.escape(n) for n in names) + ")$"]))
-        unresolved.extend(p for p in paths if Path(p).suffix in (".c", ".cc", ".cpp", ".h", ".hpp") and p not in unresolved)
-    return sorted(commands), sorted(set(unresolved))
-
-
 def ownership(repo, remote):
     url = web_remote(repo, remote)
     if not shutil.which("gh") or not url or urlsplit(url).hostname != "github.com":
@@ -724,15 +643,10 @@ def brief(repo, args, base, status, update_note):
     if args.command == "pr":
         out.extend(["\n## Commits", git(repo, "log", "--oneline", f"{base}..HEAD").strip()])
     out.append("\n## Changed files by kind")
-    out.extend(f"- {kind(path)}: {path} (+{added}/-{removed})" for added, removed, path in files)
-    commands, unresolved = test_commands(repo, files)
-    out.extend(["\n## Targeted local gate (commands only; not run)",
-                "Run from the checkout; run ctest from its configured build directory.",
-                "Rust suggestions use --release; adjust to the repository's declared gate and CI build profile.", *commands])
-    if unresolved:
-        out.extend(["Confirm test targets for these files (static inference is incomplete):", *unresolved])
-    if not commands:
-        out.append("No targeted commands inferred; use the repository's declared gate and changed tests above.")
+    out.extend(f"- {kind(path)}: {display(path)} (+{added}/-{removed})" for added, removed, path in files)
+    out.extend(["\n## Local gate",
+                "Use the repository's declared gates in AGENTS.md, or its CI workflow when none are declared.",
+                "Select targeted tests for the changed source and test files above, including every new regression."])
     if args.command == "fix":
         out.extend(["\n## Reviews to address", *args.reviews] if args.reviews else ["\n## Reviews to address", "(none supplied)"])
     else:
@@ -769,12 +683,12 @@ def main(argv=None):
         if args.command == "base":
             print(base)
         elif args.command == "review":
-            print(review(repo, args, base, remote))
+            print(display(review(repo, args, base, remote)))
         else:
             status = ownership(repo, remote)
             if not fresh:
                 behind = git(repo, "rev-list", "--count", f"HEAD..{base}").strip()
-                update_note = f"{status}: {behind} commit(s) behind cached base {base}. Base merge skipped; freshness could not be verified."
+                update_note = f"{status}: {behind} commit(s) behind cached base {base}. Base merge skipped; ls-remote or fetch failed, so freshness could not be verified (even with --update)."
             elif not status.startswith("owned ") and not args.update:
                 behind = git(repo, "rev-list", "--count", f"HEAD..{base}").strip()
                 update_note = (f"{status}: {behind} commit(s) behind {base}. Base merge skipped; "

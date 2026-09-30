@@ -128,6 +128,150 @@ print(json.dumps(value))
                 "author_association": association, "user": {"login": login, "type": user_type},
                 "created_at": f"2026-01-{number:02d}T00:00:00Z", "body": body or f"Comment body {number}"}
 
+    def test_no_fetch_still_merges_resolved_base(self):
+        self.write(self.repo, "feature.py", "pass\n")
+        self.commit(self.repo, "Feature")
+        feature = self.git(self.repo, "rev-parse", "HEAD")
+        self.write(self.origin, "base.py", "pass\n")
+        self.commit(self.origin, "Base")
+        self.git(self.repo, "fetch", "origin")
+        for command in ("fix", "pr"):
+            for status, flags in (("owned", ()), ("external", ("--update",)), ("unknown", ("--update",))):
+                with self.subTest(command=command, status=status), mock.patch.object(
+                    prepare, "ownership", return_value=status + " example/project"
+                ), mock.patch.object(prepare, "run", wraps=prepare.run) as calls:
+                    self.git(self.repo, "checkout", "-B", "feature", feature)
+                    code, out, err = self.invoke(command, str(self.repo), "--base", "origin/trunk", "--no-fetch", *flags)
+                    self.assertEqual(code, 0, err)
+                    self.assertEqual(self.git(self.repo, "rev-list", "--count", "HEAD..origin/trunk"), "0")
+                    self.assertFalse(any(c.args[1:3] in (("git", "fetch"), ("git", "ls-remote")) for c in calls.call_args_list))
+
+    def test_null_github_users_keep_maintainer_comments(self):
+        comment = self.comment(1, body="Deleted maintainer requirement")
+        comment["user"] = None
+        self.github(self.pr("Change"), pr_comments=[comment], review_comments=[comment], reviews=[comment])
+        prompt = self.review()
+        self.assertIn("Maintainer comment by unknown", prompt)
+        self.assertIn("Deleted maintainer requirement", prompt)
+        self.assertIn("unknown", prompt.split("# 1. Review pack")[0])
+
+    def test_git_and_gh_are_noninteractive(self):
+        stub = "#!" + sys.executable + "\n" + "import os, sys\nprint(os.environ.get('GIT_TERMINAL_PROMPT'), os.environ.get('GH_PROMPT_DISABLED'), sys.stdin.read())\n"
+        (self.binaries / "git").write_text(stub)
+        (self.binaries / "git").chmod(0o755)
+        (self.binaries / "gh").write_text("#!" + sys.executable + "\nimport json, os, sys\n"
+                                           "print(json.dumps([os.environ.get('GIT_TERMINAL_PROMPT'), os.environ.get('GH_PROMPT_DISABLED'), sys.stdin.read()]))\n")
+        with mock.patch.dict(os.environ, {"GIT_TERMINAL_PROMPT": "1", "GH_PROMPT_DISABLED": "0"}):
+            with self.subTest(cli="git"):
+                self.assertEqual(prepare.run(self.repo, "git", "fetch").stdout.strip(), "0 1")
+            with self.subTest(cli="gh"):
+                self.assertEqual(prepare.gh_json(self.repo, "pr", "view"), ["0", "1", ""])
+
+    def test_non_utf8_paths_keep_the_actual_diff(self):
+        path = os.fsdecode(b"src/non-utf8-\xff.py")
+        # Build the real Git tree directly: macOS cannot create this filesystem name.
+        blob = subprocess.run(["git", "hash-object", "-w", "--stdin"], cwd=self.repo,
+                              input=b"unique_non_utf8_marker = 1\n", capture_output=True, check=True).stdout.strip()
+        subprocess.run(["git", "update-index", "-z", "--index-info"], cwd=self.repo,
+                       input=b"100644 " + blob + b"\t" + os.fsencode(path) + b"\0", check=True)
+        self.git(self.repo, "commit", "-m", "Non UTF8 filename")
+        files = prepare.changed_files(self.repo, "origin/trunk...HEAD")
+        self.assertEqual(files[0][2], path)
+        for mode in ("structured", "diff", "pack"):
+            with self.subTest(mode=mode):
+                output = prepare.change_part(self.repo, "origin/trunk...HEAD", files,
+                                             "https://github.com/example/project", "HEAD", mode)
+                self.assertIn("@@ -", output)
+                self.assertIn("%FF.py", output)
+                output.encode("utf-8")
+                if mode != "pack":
+                    self.assertIn("+unique_non_utf8_marker = 1", output)
+
+    def test_explicit_missing_pr_or_issue_is_an_error(self):
+        self.github()
+        fixtures = json.loads(self.fixtures.read_text())
+        fixtures["pr view missing-branch --json url,title,body"] = {"_error": "no pull requests found"}
+        fixtures["api --method GET repos/example/project/issues/77"] = {"_error": "HTTP 404: Not Found"}
+        self.fixtures.write_text(json.dumps(fixtures))
+        for selector, value in (("--pr", "missing-branch"), ("--issue", "77")):
+            with self.subTest(selector=selector):
+                code, out, err = self.invoke("review", str(self.repo), "--base", "origin/trunk", "--no-fetch", selector, value)
+                self.assertEqual(code, 1)
+                self.assertEqual(out, "")
+                self.assertIn(value, err)
+        self.assertIn("# 1. Review pack", self.review())
+
+    def test_panel_rejects_duplicate_reviewers_before_output_changes(self):
+        summary, output, env = self.panel_fixture()
+        panel = output / "duplicate"
+        panel.mkdir(parents=True)
+        (panel / "summary.txt").write_text("Existing summary")
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "duplicate",
+                                 str(self.repo), str(summary), "generalist-a", "generalist-a"],
+                                capture_output=True, text=True, env=env)
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("duplicate reviewer", result.stderr)
+        self.assertEqual((panel / "summary.txt").read_text(), "Existing summary")
+
+    def test_panel_base_failure_clears_previous_approvals(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "missing-ref"
+        panel = output / "badbase"
+        panel.mkdir(parents=True)
+        (panel / "summary.txt").write_text("verdict=APPROVE")
+        for suffix in ("md", "jsonl", "json", "err", "prepare.err", "prompt"):
+            (panel / ("generalist-a." + suffix)).write_text("Old approval")
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "badbase",
+                                 str(self.repo), str(summary), "generalist-a"], capture_output=True, text=True, env=env)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("base resolution", (panel / "summary.txt").read_text())
+        self.assertFalse(any(panel.glob("generalist-a.*")))
+
+    def test_hyphens_are_part_of_acceptance_ids(self):
+        self.write(self.repo, "docs/spec.md", "## Tests\n| AT1-case | Extended ID |\n| AT1 | Exact ID |\n| AT10 | Other ID |\n")
+        self.commit(self.repo, "Implement AT1-case")
+        prompt = self.review(tests="AT1", test_prefix="AT")
+        requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
+        self.assertIn("| AT1 | Exact ID |", requirements)
+        self.assertNotIn("| AT1-case |", requirements)
+        self.assertNotIn("| AT10 |", requirements)
+        prompt = self.review(test_prefix="AT", spec="absent.md")
+        self.assertNotIn("AT1", prompt.split("# 1. Review pack")[0])
+
+    def test_spec_selection_reads_no_unselected_documents(self):
+        for path in ("README.md", "docs/spec.md", "docs/other.md"):
+            self.write(self.repo, path, "## 1 Behavior\nRequired\n")
+        self.commit(self.repo, "Baseline documents")
+        self.git(self.repo, "update-ref", "refs/remotes/origin/trunk", "HEAD")
+        self.write(self.repo, "src/core.py", "pass\n")
+        self.commit(self.repo, "Implement §1")
+        with mock.patch.object(prepare, "run", wraps=prepare.run) as calls:
+            prompt = self.review()
+        self.assertNotIn("Design/spec", prompt)
+        self.assertFalse(any(c.args[1:3] == ("git", "show") for c in calls.call_args_list))
+        self.git(self.repo, "commit", "--allow-empty", "-m", "Requirements\n\nDesign: docs/spec.md [§1]")
+        self.github(self.pr("See README.md"))
+        with mock.patch.object(prepare, "run", wraps=prepare.run) as calls:
+            prompt = self.review()
+        self.assertIn("Design/spec docs/spec.md", prompt)
+        reads = [c.args[3] for c in calls.call_args_list if c.args[1:3] == ("git", "show")]
+        self.assertEqual(reads, [self.git(self.repo, "rev-parse", "HEAD") + ":docs/spec.md"])
+
+    def test_briefs_list_files_without_reading_stack_manifests(self):
+        for path in ("Cargo.toml", "CMakeLists.txt", "tests/test_core.py", "docs/guide.md"):
+            self.write(self.repo, path, "invalid manifest contents\n")
+        self.commit(self.repo, "Mixed change")
+        for command in ("fix", "pr"):
+            with self.subTest(command=command):
+                code, out, err = self.invoke(command, str(self.repo), "--base", "origin/trunk", "--no-fetch")
+                self.assertEqual(code, 0, err)
+                for entry in ("source: Cargo.toml", "source: CMakeLists.txt", "test: tests/test_core.py", "docs: docs/guide.md"):
+                    self.assertIn(entry, out)
+                self.assertIn("declared gates in AGENTS.md", out)
+                self.assertNotIn("cargo test", out)
+                self.assertNotIn("ctest", out)
+                self.assertNotIn("pytest", out)
+
     def test_changed_paths_are_literal_in_every_format(self):
         paths = ["prepar[e].py", "prepare.py", ":(glob)*.py", "star*.py", "starx.py",
                  "question?.py", "questionx.py", "-option.py", "tab\tname.py", "line\nname.py"]
@@ -215,8 +359,8 @@ print(json.dumps(value))
         files = prepare.changed_files(self.repo, "origin/trunk...HEAD")
         for text in ("See changelog.md", "Design: absent.md [§2]"):
             with self.subTest(text=text):
-                self.assertEqual(prepare.discover_spec(self.repo, "HEAD", None, [text], files, [("2", None)]), "docs/design.md")
-        self.assertIsNone(prepare.discover_spec(self.repo, "HEAD", "absent.md", [], files, []))
+                self.assertEqual(prepare.discover_spec(self.repo, "HEAD", None, [text], files), "docs/design.md")
+        self.assertIsNone(prepare.discover_spec(self.repo, "HEAD", "absent.md", [], files))
 
     def test_oxford_comma_issue_lists(self):
         self.assertEqual(prepare.issue_refs("Resolves #2, #3, and #4"), ["#2", "#3", "#4"])
@@ -236,19 +380,6 @@ print(json.dumps(value))
                 self.assertIn("Touched functions", prompt)
                 self.assertNotIn("x" * 1000, prompt)
 
-    def test_rust_binary_targets_are_not_module_filters(self):
-        for path, body in {
-            "Cargo.toml": '[package]\nname="sample"\nversion="0.1.0"\n',
-            "src/main.rs": "#[test] fn main_test() {}\n",
-            "src/bin/tool.rs": "#[test] fn tool_test() {}\n",
-        }.items():
-            self.write(self.repo, path, body)
-        self.commit(self.repo, "Binary tests")
-        commands, unresolved = prepare.test_commands(self.repo, prepare.changed_files(self.repo, "origin/trunk...HEAD"))
-        self.assertIn("cargo test --release --bin tool", commands)
-        self.assertIn("cargo test --release --bin sample", commands)
-        self.assertNotIn("src/main.rs", unresolved)
-
     def panel_fixture(self, summary_exists=True):
         for cli in ("codex", "grok", "kimi"):
             stub = self.binaries / cli
@@ -263,31 +394,6 @@ print(json.dumps(value))
         env = dict(os.environ, REVIEW_PANEL_CONF=str(conf), REVIEW_PANEL_OUT=str(output))
         return summary, output, env
 
-    def test_custom_rust_crate_roots_use_manifest_targets_not_module_filters(self):
-        for crate in (".", "crates/helper"):
-            for target_path in ("src/cli.rs", "tools/entry.rs", "tests/entry.rs", "./src/nested/../entry.rs"):
-                for kind, selector in (("bin", "--bin tool"), ("lib", "--lib")):
-                    with self.subTest(crate=crate, path=target_path, kind=kind):
-                        manifest = Path(crate) / "Cargo.toml"
-                        path = Path(os.path.normpath(str(Path(crate) / target_path)))
-                        table = '[[bin]]\nname="tool"' if kind == "bin" else "[lib]"
-                        self.write(self.repo, str(manifest), '[package]\nname="sample"\nversion="0.1.0"\n'
-                                   + table + f'\npath="{target_path}"\n')
-                        self.write(self.repo, str(path), "#[test] fn parses_args() {}\n")
-                        commands, unresolved = prepare.test_commands(self.repo, [("1", "0", str(path))])
-                        prefix = "cargo test --release"
-                        if crate != ".":
-                            prefix += f" --manifest-path {manifest}"
-                        self.assertEqual(commands, [prefix + " " + selector])
-                        self.assertEqual(unresolved, [])
-
-    def test_custom_binary_without_target_name_is_unresolved(self):
-        self.write(self.repo, "Cargo.toml", '[package]\nname="sample"\nversion="0.1.0"\n'
-                   '[[bin]]\npath="src/cli.rs"\n')
-        self.write(self.repo, "src/cli.rs", "#[test] fn parses_args() {}\n")
-        self.assertEqual(prepare.test_commands(self.repo, [("1", "0", "src/cli.rs")]),
-                         ([], ["src/cli.rs"]))
-
     def test_upstream_skill_documents_unknown_ownership_without_merging(self):
         skill = (SCRIPT.parents[2] / "upstream-contribution" / "SKILL.md").read_text()
         section = " ".join(skill.split("## 5.")[1].split("## 6.")[0].split())
@@ -296,15 +402,6 @@ print(json.dumps(value))
         self.assertIn("--update` forces a base merge", section)
         self.assertIn("Only confirmed owned repositories merge by default", section)
         self.assertIn("preparing a brief posts nothing", section)
-
-    def test_unsupported_source_files_are_reported_in_a_mixed_gate(self):
-        paths = ["src/core.py", "src/main.go", "src/app.js", "src/app.ts", "other/entry.rs", "tests/test_core.py"]
-        self.write(self.repo, "Cargo.toml", '[package]\nname="sample"\nversion="0.1.0"\n')
-        for path in paths:
-            self.write(self.repo, path, "// source\n")
-        commands, unresolved = prepare.test_commands(self.repo, [("1", "0", p) for p in paths])
-        self.assertEqual(commands, ["pytest tests/test_core.py"])
-        self.assertEqual(unresolved, sorted(paths[:-1]))
 
     def test_panel_logs_size_guard_after_missing_reference(self):
         summary, output, env = self.panel_fixture()
@@ -354,7 +451,7 @@ else:
             (self.binaries / cli).write_text(stub)
         reports = [None, "", "Review incomplete\n", "VERDICT: UNKNOWN\n",
                    "VERDICT: APPROVED\n", "Example VERDICT: APPROVE\n",
-                   "VERDICT: APPROVE\n", "Findings\nVERDICT: REQUEST_CHANGES\n", None]
+                   "VERDICT: APPROVE\n", "Findings\nVERDICT: REQUEST_CHANGES\n", "**VERDICT: REQUEST_CHANGES**\n", "_VERDICT: APPROVE_\n", None]
         for family, cli in (("a", "codex"), ("b", "grok"), ("c", "kimi")):
             for index, report in enumerate(reports):
                 with self.subTest(cli=cli, report=report):
@@ -372,7 +469,7 @@ else:
                         self.assertNotIn("verdict=", recorded)
                     else:
                         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                        self.assertIn("verdict=" + report.split("VERDICT: ")[1].strip(), recorded)
+                        self.assertIn("verdict=" + report.split("VERDICT: ")[1].strip().strip("*_"), recorded)
 
     def test_panel_clears_previous_outputs_before_preparation_or_skip(self):
         summary, output, env = self.panel_fixture(summary_exists=False)
@@ -617,7 +714,8 @@ else:
         self.assertIn("R1. Design/spec docs/design.md — 2 Behavior (matched by number only; verify) — [docs/design.md:4]", spec)
         self.assertIn("##### 2.1 Detail", spec)
         self.assertIn("# Not a heading", spec)
-        self.assertIn("| AT1-case | Included row |", spec)
+        self.assertNotIn("| AT1-case | Included row |", spec)
+        self.assertIn("not found: AT1", prompt)
         self.assertNotIn("Excluded row", spec)
         self.assertNotIn("Unselected section", spec)
         files = prepare.changed_files(self.repo, "origin/trunk...HEAD")
@@ -654,7 +752,9 @@ else:
         self.assertIn("R2. Design/spec docs/design.md — 20 Other", prompt)
         self.assertIn("Title: Change title", prompt)
         with mock.patch.object(prepare.shutil, "which", return_value=None):
-            prompt = self.review(pr="1")
+            with self.assertRaisesRegex(prepare.PrepareError, "explicitly requested PR/issue"):
+                self.review(pr="1")
+            prompt = self.review()
         self.assertIn("Implement behavior", prompt)
 
     def test_missing_spec_sections_or_tests_report_at_top(self):
@@ -763,7 +863,7 @@ else:
                 self.assertNotIn("Excluded requirement", requirements)
                 self.assertNotIn("not found:", prompt)
 
-    def test_document_discovery_precedence_and_heading_match(self):
+    def test_document_discovery_uses_only_named_or_edited_documents(self):
         for path, body in {
             "docs/other.md": "## 3A.5 Shared\nWrong tie\n",
             "docs/specs/right.md": "## 3A.5 Shared\nPreferred tie\n## 3A.6 More\nMatched two\n",
@@ -776,7 +876,7 @@ else:
         self.write(self.repo, "src/core.py", "pass\n")
         self.commit(self.repo, "Implement §3A.5 and §3A.6")
         prompt = self.review()
-        self.assertIn("Design/spec docs/specs/right.md", prompt)
+        self.assertNotIn("Design/spec", prompt)
         self.github(self.pr("Refs #2"), [self.issue(2, "See [design](docs/named.md): §3A.5")])
         self.assertIn("Design/spec docs/named.md", self.review())
         self.github(self.pr("See [design](https://github.com/example/project/blob/main/docs/named.md): §3A.5"))
@@ -786,15 +886,6 @@ else:
         self.commit(self.repo, "Update design")
         self.github()
         self.assertIn("Design/spec docs/design/wrong.md", self.review())
-
-    def test_heading_discovery_prefers_more_matches_before_directory_priority(self):
-        self.write(self.repo, "docs/spec/a.md", "## 1 One\nOne\n")
-        self.write(self.repo, "docs/guide.md", "## 1 One\nOne\n## 2 Two\nTwo\n")
-        self.commit(self.repo, "Docs baseline")
-        self.git(self.repo, "update-ref", "refs/remotes/origin/trunk", "HEAD")
-        self.write(self.repo, "src/core.py", "pass\n")
-        self.commit(self.repo, "Implement §1–§2")
-        self.assertIn("Design/spec docs/guide.md", self.review())
 
     def test_issue_forms_repeatable_cli_comments_associations_bots_and_order(self):
         self.add_review_change()
@@ -840,11 +931,10 @@ else:
         self.commit(self.repo, "Implement §2\n\nPT1 Full commit body")
         self.github(self.pr("PR body must be skipped"))
         with mock.patch.object(prepare.shutil, "which", return_value=None):
-            prompt = self.review(issue=["77"], spec="docs/spec.md")
+            prompt = self.review(spec="docs/spec.md")
         top = prompt.split("# 1. Review pack")[0]
         self.assertIn("sources 2–4", top)
         self.assertIn("gh is not installed", top)
-        self.assertIn("not found: #77", top)
         self.assertIn("Local requirement", prompt)
         self.assertIn("Full commit body", prompt)
         self.assertIn("Commit message", prompt)
@@ -1046,47 +1136,10 @@ else:
         self.assertEqual(code, 0, err)
         self.assertEqual(self.git(self.repo, "rev-parse", "HEAD^1"), feature)
         self.assertEqual(self.git(self.repo, "rev-parse", "HEAD^2"), self.git(self.origin, "rev-parse", "HEAD"))
-        self.assertIn("pytest tests/test_feature.py", out)
+        self.assertIn("test: tests/test_feature.py", out)
+        self.assertIn("declared gates", out)
+        self.assertNotIn("pytest", out)
         self.assertIn("review-a.md\nreview-b.md", out)
-
-    def test_rust_module_and_integration_filters(self):
-        for path, content in {
-            "Cargo.toml": '[package]\nname="sample"\nversion="0.1.0"\n',
-            "src/net/codec.rs": "fn decode() {}\n",
-            "src/net/mod.rs": "mod codec;\n",
-            "tests/roundtrip.rs": "#[test] fn roundtrip() {}\n",
-            "crates/helper/Cargo.toml": '[package]\nname="helper"\nversion="0.1.0"\n',
-            "crates/helper/src/parse.rs": "fn parse() {}\n",
-        }.items():
-            self.write(self.repo, path, content)
-        self.commit(self.repo, "Rust change")
-        commands, _ = prepare.test_commands(self.repo, prepare.changed_files(self.repo, "origin/trunk...HEAD"))
-        self.assertIn("cargo test --release net::codec", commands)
-        self.assertIn("cargo test --release net", commands)
-        self.assertIn("cargo test --release --test roundtrip", commands)
-        self.assertIn("cargo test --release --manifest-path crates/helper/Cargo.toml parse", commands)
-        self.assertNotIn("cargo test --release", commands)
-
-    def test_ctest_registered_names_and_pytest_changed_files(self):
-        self.write(self.repo, "CMakeLists.txt", 'add_executable(check_codec tests/codec.cpp)\nadd_test(NAME codec.roundtrip COMMAND check_codec "--case=(roundtrip)")\nadd_executable(check_other tests/other.cpp)\nadd_test(NAME other COMMAND check_other)\n')
-        self.write(self.repo, "tests/codec.cpp", "int main() {}\n")
-        self.write(self.repo, "tests/other.cpp", "int main() {}\n")
-        self.commit(self.repo, "Baseline CMake")
-        self.git(self.repo, "update-ref", "refs/remotes/origin/trunk", "HEAD")
-        self.write(self.repo, "tests/codec.cpp", "int main() { return 0; }\n")
-        self.write(self.repo, "tests/test_codec.py", "assert True\n")
-        self.commit(self.repo, "Test change")
-        commands, _ = prepare.test_commands(self.repo, prepare.changed_files(self.repo, "origin/trunk...HEAD"))
-        self.assertIn("ctest -R '^(codec\\.roundtrip)$'", commands)
-        self.assertIn("pytest tests/test_codec.py", commands)
-        self.assertFalse(any("other" in command for command in commands))
-
-    def test_ctest_registration_can_live_in_a_different_file(self):
-        self.write(self.repo, "CMakeLists.txt", "add_test(NAME codec COMMAND check_codec)\n")
-        self.write(self.repo, "tests/CMakeLists.txt", "add_executable(check_codec codec.cpp)\n")
-        self.write(self.repo, "tests/codec.cpp", "int main() {}\n")
-        self.commit(self.repo, "CMake layout")
-        self.assertEqual(prepare.cmake_tests(self.repo, ["tests/codec.cpp"]), ["codec"])
 
     def test_panel_keeps_family_cli_options_and_summary_task(self):
         self.add_review_change()
