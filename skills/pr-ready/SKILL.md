@@ -59,7 +59,9 @@ load no other rules.
   the base resolver once, then `scripts/prepare.py review --base REF --no-fetch` per
   lens and CLI. Preparation failures, reviewer CLI failures, and reports without a
   `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES` line are recorded in `summary.txt`
-  and make the panel exit nonzero. Prompt order: stable rules and lens first, then the
+  and make the panel exit nonzero. Each run resets `summary.txt` and removes each selected
+  reviewer's previous report, raw logs and prompt before preparation; cleanup failures
+  also make the panel exit nonzero. Prompt order: stable rules and lens first, then the
   base-prompt file as summary/task, PR/issue context, requirements and change. Requirements
   are indexed as R1, R2, … with source links, most authoritative first: design/spec
   sections and acceptance-test rows, linked issues (title, labels, body), non-bot

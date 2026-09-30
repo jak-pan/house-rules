@@ -29,6 +29,12 @@ resolved_base=$("$here/prepare.py" "${base_args[@]}") || exit 1
 run_one() {
   local r=$1 file=$reviewers_dir/$1.md
   local fam cfg cli model tier effort prompt=$out/$r.prompt t0 cli_status=0 verdict
+  # A reused panel directory must never supply evidence from a previous run.
+  if ! rm -f -- "$out/$r.md" "$out/$r.jsonl" "$out/$r.json" \
+      "$out/$r.err" "$out/$r.prepare.err" "$prompt"; then
+    echo "$r failed: clearing previous reviewer outputs" >> "$out/summary.txt"
+    return 1
+  fi
   fam=$(frontmatter "$file" family); cfg=$(family_cfg "$fam")
   [ -n "$cfg" ] || { echo "$r skipped: family $fam not configured" >> "$out/summary.txt"; return; }
   read -r cli model tier effort <<<"$cfg"; [ "$tier" = - ] && tier=
@@ -67,7 +73,7 @@ run_one() {
   echo "$r $cli/$model wall=$(( $(date +%s) - t0 ))s verdict=${verdict#VERDICT: }" >> "$out/summary.txt"
 }
 
-: > "$out/summary.txt"
+: > "$out/summary.txt" || exit 1
 "$here/review-panel-models.py" --check >&2 || true   # notice only: newer models available
 pids=()
 for r in "$@"; do

@@ -354,17 +354,18 @@ else:
             (self.binaries / cli).write_text(stub)
         reports = [None, "", "Review incomplete\n", "VERDICT: UNKNOWN\n",
                    "VERDICT: APPROVED\n", "Example VERDICT: APPROVE\n",
-                   "VERDICT: APPROVE\n", "Findings\nVERDICT: REQUEST_CHANGES\n"]
+                   "VERDICT: APPROVE\n", "Findings\nVERDICT: REQUEST_CHANGES\n", None]
         for family, cli in (("a", "codex"), ("b", "grok"), ("c", "kimi")):
             for index, report in enumerate(reports):
                 with self.subTest(cli=cli, report=report):
-                    name = f"{family}-{index}"
+                    # Reuse the panel directory, including valid output followed by no output.
+                    name = family
                     env["TEST_REVIEW_REPORT"] = json.dumps(report)
                     result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), name,
                                              str(self.repo), str(summary), "generalist-" + family],
                                             capture_output=True, text=True, env=env)
                     recorded = (output / name / "summary.txt").read_text()
-                    if index < 6:
+                    if index < 6 or report is None:
                         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
                         self.assertIn(f"generalist-{family} failed: reviewer report", recorded)
                         self.assertIn("missing valid VERDICT", recorded)
@@ -372,6 +373,38 @@ else:
                     else:
                         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                         self.assertIn("verdict=" + report.split("VERDICT: ")[1].strip(), recorded)
+
+    def test_panel_clears_previous_outputs_before_preparation_or_skip(self):
+        summary, output, env = self.panel_fixture(summary_exists=False)
+        env["REVIEW_BASE"] = "origin/trunk"
+        for family in ("a", "c"):
+            with self.subTest(family=family):
+                panel = output / family
+                panel.mkdir(parents=True)
+                reviewer = "generalist-" + family
+                suffixes = ("md", "jsonl", "json", "err", "prepare.err", "prompt")
+                for suffix in suffixes:
+                    (panel / f"{reviewer}.{suffix}").write_text("previous run\n")
+                (panel / "summary.txt").write_text("previous run verdict=APPROVE\n")
+                # Cleanup must be confined to this reviewer's known outputs.
+                untouched = (panel / f"{reviewer}.notes", panel / "generalist-b.md")
+                for path in untouched:
+                    path.write_text("keep\n")
+                result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), family,
+                                         str(self.repo), str(summary), reviewer],
+                                        capture_output=True, text=True, env=env)
+                recorded = (panel / "summary.txt").read_text()
+                self.assertIn("context preparation" if family == "a" else "skipped", recorded)
+                self.assertEqual(result.returncode, 1 if family == "a" else 0, result.stderr)
+                self.assertNotIn("previous run", recorded)
+                for suffix in suffixes:
+                    path = panel / f"{reviewer}.{suffix}"
+                    if family == "a" and suffix in ("prepare.err", "prompt"):
+                        self.assertNotIn("previous run", path.read_text())
+                    else:
+                        self.assertFalse(path.exists(), path)
+                for path in untouched:
+                    self.assertEqual(path.read_text(), "keep\n")
 
     def test_panel_preparation_failure_returns_nonzero(self):
         summary, output, env = self.panel_fixture(summary_exists=False)
