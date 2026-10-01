@@ -138,7 +138,10 @@ clarification was unnecessarily turned into a durable note.
 Rule provenance: persist lasting task decisions and reusable guidance in their proper
 home. A new universal rule generalized from an incident is drafted and confirmed by the
 operator before it is written, and states its boundary, not just its direction — the
-scope it applies to, the scope it does not, and the source incident.
+scope it applies to, the scope it does not, and the source incident. In a public
+repository (House Rules is one), rule text, provenance lines and commit messages describe
+the incident generically — never internal product or repository names, architecture,
+counts or history.
 
 ## Prime rules
 
@@ -251,6 +254,13 @@ brevity must not remove evidence or content needed to complete the task.
   feature, fix, or review work; P3 is low-impact maintenance. P0/P1 need a design record
   before planned implementation; urgent P0 containment comes first (skill `design-flow`).
 - Continue until finished; scoped asks stay scoped.
+- **Finish the landing.** When a change is approved by all its reviewer families, CI is
+  green and its deploy is a documented routine procedure, carry it through merge (within
+  the delivery authority in §Git), deploy and post-deploy verification, then report what
+  changed; do not hand routine steps to the operator. Destructive steps beyond the deploy
+  itself, credentials and logins still stop for the operator; if a host safety control
+  blocks the launch, report it and do not work around it. Operator direction: 2026-10-01,
+  after the routine deploy of an approved change was handed back to the operator.
 - Cleanup/supersession needs hard cross-checking (the active work record, newer docs/code),
   with a mapping note recorded in the work item (old → new, what verified the supersession).
 
@@ -309,7 +319,10 @@ Canonical paths, naming, and temp-storage classes: `STRUCTURE.md` in the install
 Rules root. Defaults: derived views (indexes, generated docs) are regenerated from
 source, never hand-edited; nothing generated in repo root; large artifacts stay untracked;
 work from repo root (path args over `cd`); in Markdown, diagrams are Mermaid, never ASCII
-art.
+art. The shell working directory can persist between tool calls, so a stray `cd` silently
+redirects later relative paths: never `cd` inside a compound command (use `git -C` and
+absolute arguments), re-anchor before relative-path writes, and after bulk file creation
+verify that nothing landed in a nested duplicate directory.
 
 ## Stack & architecture
 

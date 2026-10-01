@@ -15,7 +15,7 @@ project's CONTEXT.md. New projects: skill `project-bootstrap`.
 | Browser frontend and visual prototype | Static Svelte + TypeScript, Vite, plain CSS | Simple asset deployment. Add SSR or a framework/service when a concrete product need justifies it; keep an existing UI stack. |
 | Data analysis or scientific work | Python or the established domain ecosystem | Libraries and workflow can justify a different language, including Clojure. These can be maintained and shipped; they are not confined to throwaway code. |
 | Mobile application | Native or Flutter | Choose for target platforms and team constraints; a web wrapper is acceptable when it meets the actual product needs. |
-| Service deployment | Portable deployment, with OCI containers when useful | Preserve a practical VPS/cloud path by default; managed or platform-specific services are valid project choices. Static sites and small scripts need no container. |
+| Service deployment | Backends runnable in OCI containers on any compliant runtime (not Docker-specific), on a VPS (Hetzner by default) or a cloud provider | Preserve a practical VPS path by default; managed or platform-specific services are valid project choices. Static sites and small scripts need no container. |
 
 Prefer one language when it meets the requirements. Before adding another, state the
 concrete benefit and build/deployment/maintenance cost. A full Rust + Node + Svelte stack

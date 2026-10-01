@@ -59,4 +59,8 @@ bash -n skills/pr-ready/scripts/review-panel.sh
 
 These tests currently run locally, not in CI. Projects using House Rules keep their own tests.
 
+Approved changes to House Rules land on `main`; never leave one parked on a side branch and
+report it as done. Commit with the maintainer's GitHub noreply identity and UTC timestamps
+(`TZ=UTC git commit`).
+
 Attribution is in [NOTICE.md](NOTICE.md); the license is [MIT](LICENSE).
