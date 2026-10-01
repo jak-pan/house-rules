@@ -81,6 +81,9 @@ load no other rules.
   blocker RESOLVED or NOT. A fixer never approves its own fix.
 - When a fix meets a genuine design choice, the fixer stops and reports the options; the
   lead decides (skill `operator-protocol` §Decisions).
+- **Hosted review bots.** Review threads from bots the host runs on the PR (for example
+  GitHub Copilot) are reviewer input for the next fix round, judged by the same bar. Before
+  merging, the lead replies to each with the fix or the reason it is not one, and resolves it.
 - **Done and mergeable.** A change is mergeable when every reviewer of the latest full
   panel returned no Blocking items (reviewers/common.md) on the final head, or on an earlier
   head whose later commits only resolve those reviewers' own blockers and pass a quick
