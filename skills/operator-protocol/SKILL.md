@@ -36,7 +36,7 @@ choice inside that agreement is different from a change AGENTS.md §Autonomy say
 requires a decision. State that distinction when escalating a decision.
 
 For a decision needing input, explain its consequence, offer the viable options and a
-recommendation, and ask once. Batch independent decisions when that makes answering easier;
+recommendation, and ask once; format: skill `decision-brief`. Batch independent decisions when that makes answering easier;
 continue work that does not depend on the answers; silence is not approval. Do not re-ask
 settled questions.
 

@@ -206,7 +206,10 @@ brevity must not remove evidence or content needed to complete the task.
   in plain language; retain the technical detail needed to assess the cause and fix.
 - Prefer a small before/after example, code or pseudocode, measured result, or linked
   source/test evidence when it makes the explanation more precise. Add a diagram only
-  when the relationships need one. State what the evidence establishes and
+  when the relationships need one; diagrams are Mermaid in every reply, chat included,
+  never ASCII art or indented text trees. Decisions needing operator input, and any
+  request to explain something or for more context, use skill `decision-brief`. State
+  what the evidence establishes and
   what it does not. Distinguish observed causes from hypotheses, running-system
   failures from proposed-change risks, and completed fixes from plans or deployment
   still awaiting verification. IDs, hashes and test counts support the explanation;
@@ -334,7 +337,8 @@ verify that nothing landed in a nested duplicate directory.
 Project and stack defaults: `PREFERENCES.md` in the installed House Rules root; a new
 project's unsettled choices: skill `project-bootstrap`. Rust-specific quality gates: skill
 `rust-canon`. Architecture principles: skill `design-canon`. Feature lifecycle: skill
-`design-flow`. Specs: skill `spec-writing`. Use skill `reasoning-moves` when explicit
+`design-flow`. Specs: skill `spec-writing`. Decision briefs and explanations: skill
+`decision-brief`. Use skill `reasoning-moves` when explicit
 reasoning checkpoints help the work; the evidence and verification requirements apply to
 every model.
 
