@@ -212,7 +212,9 @@ brevity must not remove evidence or content needed to complete the task.
   code block. Orient every diagram vertically: flowcharts top to bottom, and several
   diagrams or groups stacked, never side by side; wide layouts become unreadable when
   scaled down. Mermaid places unconnected subgraphs side by side, so draw them as
-  separate diagrams. Decisions needing operator input, and any
+  separate diagrams. A file the operator should read that lives outside the open
+  workspace (scratch, temp or another repository) is delivered with the client's
+  file-sending tool; a link to it does not open. Decisions needing operator input, and any
   request to explain something or for more context, use skill `decision-brief`. State
   what the evidence establishes and
   what it does not. Distinguish observed causes from hypotheses, running-system
