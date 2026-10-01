@@ -207,7 +207,9 @@ brevity must not remove evidence or content needed to complete the task.
 - Prefer a small before/after example, code or pseudocode, measured result, or linked
   source/test evidence when it makes the explanation more precise. Add a diagram only
   when the relationships need one; diagrams are Mermaid in every reply, chat included,
-  never ASCII art or indented text trees. Decisions needing operator input, and any
+  never ASCII art or indented text trees. Where the chat client shows Mermaid source as
+  plain text, render it with the client's visual or diagram tool instead of pasting a
+  code block. Decisions needing operator input, and any
   request to explain something or for more context, use skill `decision-brief`. State
   what the evidence establishes and
   what it does not. Distinguish observed causes from hypotheses, running-system
