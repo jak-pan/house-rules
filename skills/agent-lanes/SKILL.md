@@ -7,7 +7,7 @@ license: MIT
 # Agent Lanes
 
 Mechanics for the parallel-work invariants in AGENTS.md §Parallel work. The main thread
-stays interactive for the operator; heavy work goes to detached agents/workflows with
+stays interactive for the operator; heavy work goes to attached background agents/workflows with
 explicit goals.
 
 ## Lane rules
