@@ -209,7 +209,10 @@ brevity must not remove evidence or content needed to complete the task.
   when the relationships need one; diagrams are Mermaid in every reply, chat included,
   never ASCII art or indented text trees. Where the chat client shows Mermaid source as
   plain text, render it with the client's visual or diagram tool instead of pasting a
-  code block. Decisions needing operator input, and any
+  code block. Orient every diagram vertically: flowcharts top to bottom, and several
+  diagrams or groups stacked, never side by side; wide layouts become unreadable when
+  scaled down. Mermaid places unconnected subgraphs side by side, so draw them as
+  separate diagrams. Decisions needing operator input, and any
   request to explain something or for more context, use skill `decision-brief`. State
   what the evidence establishes and
   what it does not. Distinguish observed causes from hypotheses, running-system

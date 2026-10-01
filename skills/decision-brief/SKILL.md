@@ -73,6 +73,8 @@ Ground every claim in the current spec or code; say where the spec is silent.
 - Comparisons go in tables; relationships and flows go in Mermaid diagrams, never ASCII
   art or indented text trees. In a chat client that does not render Mermaid, render each
   diagram with the client's visual tool so the reader sees a picture, not source.
+  Orient diagrams vertically and stack comparisons one under another, never side by
+  side (AGENTS.md §Actionable communication).
 - Organize by consequence, not by the order the work happened. No activity logs.
 - After the operator answers, record each choice where it belongs (AGENTS.md prime rule
   11) and stop asking about it.
