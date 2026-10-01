@@ -43,6 +43,14 @@ Challenge the spec as well: report contradictions, infeasible or unmeasurable re
 undefined cases and evidently worse designs under Spec issues; a spec issue blocks only
 when the code faithfully implements a wrong spec.
 
+Be exhaustive in one pass: go through the whole change section by section and report every
+finding, not the first few; a finding withheld for a later round costs a full round.
+Blocking means only: a correctness, security or data-loss defect; a contradiction of a
+settled decision or the spec; an internal inconsistency; or waste as defined above. For
+design documents, a new edge case or recovery detail that no settled rule contradicts is a
+Follow-up (an acceptance case or tracked issue for implementation), not a blocker.
+VERDICT is APPROVE when nothing is Blocking, whatever the Follow-ups.
+
 Output: VERDICT: APPROVE or REQUEST_CHANGES; Blocking (numbered: file:line, concrete
 scenario, smallest fix); Spec issues (section, problem, proposed resolution, operator
 decision needed?); Follow-ups; Non-blocking.

@@ -81,6 +81,14 @@ load no other rules.
   blocker RESOLVED or NOT. A fixer never approves its own fix.
 - When a fix meets a genuine design choice, the fixer stops and reports the options; the
   lead decides (skill `operator-protocol` §Decisions).
+- **Done and mergeable.** A change is mergeable when every reviewer of the latest full
+  panel returned no Blocking items (reviewers/common.md) on the final head, or on an earlier
+  head whose later commits only resolve those reviewers' own blockers and pass a quick
+  check-back, and CI is green. Follow-ups are filed as tracked issues before merging; they
+  never hold the merge. A slower reviewer's findings on an older head feed the next fix
+  round; its fixer never pushes onto a head that moved. After three consecutive full rounds
+  that each surface new blockers, stop iterating: simplify, split the change or escalate a
+  decision instead of another round.
 - **Same class twice: change the mechanism.** When one class of defect blocks two
   consecutive rounds, stop patching call sites. First ask whether the spec is unclear and,
   if so, get the decision; otherwise the next fix introduces one shared mechanism that
