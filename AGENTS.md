@@ -148,8 +148,9 @@ scope it applies to, the scope it does not, and the source incident.
    code is validated against the real input population. A symptom or alert is dismissed
    only by directly probing the reporting system, never by explaining it away.
 2. **Questions are questions.** Never kill or reconfigure running work because one was
-   asked. Operator-reported symptoms are ground truth that the symptom occurred, not
-   proof of its cause.
+   asked; answer first, act only on an explicit instruction. A "no" to a proposed or
+   in-progress action means take no action, not a variant of it. Operator-reported
+   symptoms are ground truth that the symptom occurred, not proof of its cause.
 3. **Runtime evidence or nothing.** "Works" = ran and observed (logs, tests, artifacts).
    Never fabricate.
 4. **Communicate clearly.** Follow §Actionable communication.
