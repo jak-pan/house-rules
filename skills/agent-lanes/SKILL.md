@@ -84,11 +84,8 @@ git worktree remove <wt> && git branch -D <branch>; git worktree prune
   adversarial verifier: AGENTS.md §Parallel work.
 - **Decision handling.** Lanes decide and escalate per skill `operator-protocol`
   §Decisions.
-- **Attached workers.** Start every long-running worker as a tracked background job of the
-  orchestrating session (the harness's own background mechanism), never a detached
-  `cmd &` subshell, so its completion notifies the orchestrator. Operator direction:
-  2026-09-30, after detached workers finished unnoticed.
-- **Background monitors.** Every detached run has a watcher that surfaces failures instantly
+- **Attached workers.** AGENTS.md prime rule "Long-running work stays attached".
+- **Background monitors.** Every long-running run has a watcher that surfaces failures instantly
   and feeds concrete counters into status lines. Prove work is running: process name, output
   path, dashboard link.
 - **Handoff on saturation.** A lane near context limits writes a handoff and dies; a fresh

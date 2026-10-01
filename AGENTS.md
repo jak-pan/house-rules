@@ -181,6 +181,11 @@ counts or history.
     dependencies rather than inventing completion ETAs.
 14. **Surface unknowns** in ambiguous work and after surprising output: skill
     `finding-unknowns`.
+15. **Long-running work stays attached.** Start every long-running worker, loop or watcher
+    as a tracked background job of the orchestrating session (the harness's own background
+    mechanism), so the operator sees it and its completion reports back. Never detach it
+    (`nohup`, `&` in a subshell, `disown`, `setsid`); launch scripts refuse to run detached.
+    Re-read this rule after any context compaction.
 
 ## Actionable communication
 
