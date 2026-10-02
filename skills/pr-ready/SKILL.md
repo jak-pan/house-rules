@@ -106,6 +106,14 @@ load no other rules.
   makes the class impossible (AGENTS.md §Three-occurrence reassessment).
 - **No idle gaps.** A fix run pushes and starts its review in the same job; a review that
   needs a fix starts the fix in the same job. The lead intervenes only for decisions.
+- **Conflicting findings: analyze before fixing.** When reviewers' findings pull against
+  each other (fixing one reopens or contradicts another), stop patching. Dispatch a
+  read-only analyzer with both reports, the code, the spec and the settled decisions. It
+  starts from first principles: what the mechanism is for, what the spec actually
+  requires (quoted), and which findings are requirements versus a reviewer's assumption.
+  Only then does it compare mechanisms and recommend one. The next fix implements that
+  recommendation; a genuine spec gap goes to the operator. Operator direction:
+  2026-10-03, after a fixer traded a bound for an integrity check and back.
 - **One fixer per branch; every review feeds it.** A branch never has two fixers at once
   (parallel fixers duplicate builds and conflict). Every finished review, from any
   reviewer at any speed, joins the branch's fix queue. When the fixer is idle, the
