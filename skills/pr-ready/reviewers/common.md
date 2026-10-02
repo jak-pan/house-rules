@@ -29,8 +29,8 @@ settled decision or the spec; an internal inconsistency; or waste as defined abo
 design documents, a new edge case or recovery detail that no settled rule contradicts is a
 Follow-up (an acceptance case or tracked issue for implementation), not a blocker.
 Every Blocking item names the requirement it violates: quote the spec line, settled
-decision or declared boundary. Text written by this change's own fix rounds is not
-authority (check git blame). A scenario no written requirement covers goes under Spec
+decision or declared boundary. Spec text added by this change's own fix rounds is judged
+on its merits but cannot be cited as the requirement (check git blame). A scenario no written requirement covers goes under Spec
 issues or Follow-ups, never Blocking. When a finding targets a mechanism this change's
 earlier fix rounds added, first ask whether that mechanism should exist; deleting or
 narrowing it is often the smallest fix.
