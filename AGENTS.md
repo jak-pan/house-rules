@@ -344,7 +344,9 @@ work from repo root (path args over `cd`); in Markdown, diagrams are Mermaid, ne
 art. The shell working directory can persist between tool calls, so a stray `cd` silently
 redirects later relative paths: never `cd` inside a compound command (use `git -C` and
 absolute arguments), re-anchor before relative-path writes, and after bulk file creation
-verify that nothing landed in a nested duplicate directory.
+verify that nothing landed in a nested duplicate directory. File-tool calls (read, edit,
+write, search) always use absolute paths, never relative ones: clients resolve relative
+paths against their own folder, so previews and file links break otherwise.
 
 ## Stack & architecture
 
