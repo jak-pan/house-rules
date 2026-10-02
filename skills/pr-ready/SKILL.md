@@ -117,8 +117,10 @@ load no other rules.
 - **One fixer per branch; every review feeds it.** A branch never has two fixers at once
   (parallel fixers duplicate builds and conflict). Every finished review, from any
   reviewer at any speed, joins the branch's fix queue. When the fixer is idle, the
-  queued reports start the next fix round at once (a follow-up trigger); while it is
-  busy they wait for its next round. The fixer verifies each queued finding against the
+  queued reports start the next fix round at once (a follow-up trigger). A report that
+  arrives while the fixer is still early in its round (before its first full build)
+  restarts that round from its working tree with every report; later ones wait for the
+  next round. The fixer verifies each queued finding against the
   current head and reports which no longer hold.
 - **Slow reviewers never block.** The fix round starts as soon as the reports in hand
   need one; a slower reviewer keeps reviewing its snapshot in the background, and its
