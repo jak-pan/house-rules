@@ -106,13 +106,18 @@ load no other rules.
   makes the class impossible (AGENTS.md §Three-occurrence reassessment).
 - **No idle gaps.** A fix run pushes and starts its review in the same job; a review that
   needs a fix starts the fix in the same job. The lead intervenes only for decisions.
-- **Slow reviewers never block.** When one family is much slower, the fixer starts as soon
-  as the faster reviewers report. The slow reviewer keeps reviewing a snapshot of its head
-  in the background. When it reports, a second fixer starts at once in that snapshot for
-  the findings that do not overlap the running fixer's reports, checks each against the
-  code, and merges the branch before pushing; anything left goes to the next fix round.
-  At the final head the slow reviewer still reviews, but only
-  the diff since its last reviewed head; a merge needs every reviewer's approval.
+- **One fixer per branch; every review feeds it.** A branch never has two fixers at once
+  (parallel fixers duplicate builds and conflict). Every finished review, from any
+  reviewer at any speed, joins the branch's fix queue. When the fixer is idle, the
+  queued reports start the next fix round at once (a follow-up trigger); while it is
+  busy they wait for its next round. The fixer verifies each queued finding against the
+  current head and reports which no longer hold.
+- **Slow reviewers never block.** The fix round starts as soon as the reports in hand
+  need one; a slower reviewer keeps reviewing its snapshot in the background, and its
+  report becomes queued input. At the final head the slow reviewer still reviews, but
+  only the diff since its last reviewed head; a merge needs every reviewer's approval.
+  Operator direction: 2026-10-03, after parallel slow-review fixers doubled builds and
+  overloaded the machine.
 - **Current base before the final round.** Merge the default branch into the PR branch
   before its final review, so the reviewed head is what CI and the merge see.
 - **Spec check before implementing.** Before a work package's first code, a design-spec
