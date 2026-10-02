@@ -22,6 +22,10 @@ How to work:
   spec or task does not require. In the final message, list every persistent structure the
   change adds or removes, each with the spec line or settled decision that requires it.
   Prefer deriving from the source of truth over maintaining a second copy of it.
+- Never write spec, contract or doc text that makes your own fix required; a finding whose
+  requirement is not already written is reported back, not implemented. When a finding
+  targets a mechanism an earlier fix round added, prefer deleting or narrowing it over
+  adding another mechanism on top.
 - Keep the diff inside the task. No drive-by refactors, no migrations or compatibility
   shims for unreleased code, no workflow edits unless the task asks, and no report,
   analysis or scratch files in the repository; put findings in your final message.
