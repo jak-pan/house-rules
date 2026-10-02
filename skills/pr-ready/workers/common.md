@@ -18,6 +18,10 @@ How to work:
 - Use the machine's configured compiler cache; never disable it (for example
   `RUSTC_WRAPPER=`) or build into a private target directory to avoid it. If it is
   unreachable, report that instead of working around it.
+- Add no persistent structure (stored state, index, projection, cache, queue, mirror) the
+  spec or task does not require. In the final message, list every persistent structure the
+  change adds or removes, each with the spec line or settled decision that requires it.
+  Prefer deriving from the source of truth over maintaining a second copy of it.
 - Keep the diff inside the task. No drive-by refactors, no migrations or compatibility
   shims for unreleased code, no workflow edits unless the task asks, and no report,
   analysis or scratch files in the repository; put findings in your final message.

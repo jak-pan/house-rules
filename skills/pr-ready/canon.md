@@ -16,6 +16,9 @@ Canon the change must follow:
 - Policies that could vary are versioned config with spec-stated defaults, not constants.
 - Derived indexes and caches are rebuildable from the canonical store and never become a
   second source of truth.
+- New persistent state (stored fields, indexes, projections, caches, mirrors) needs a spec
+  line or settled decision that requires it; state that only duplicates the source of
+  truth is waste. Ask "why does this exist?" before "how do we keep it in sync?".
 - Ordering invariants the code depends on are written down.
 - Structured fields (ids, timestamps, typed values) over parsing meaning from text.
 - Claims such as "measured", "verified" or "bounded" point at the test, benchmark or code
