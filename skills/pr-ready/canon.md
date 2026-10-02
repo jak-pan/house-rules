@@ -1,0 +1,24 @@
+Shared code canon, inlined into every reviewer and worker prompt in place of the {{CANON}} line.
+
+Canon the change must follow:
+- Fail visible: nothing is silently skipped, dropped, capped, truncated or degraded;
+  errors reach the caller; no fail-open paths. Root causes, not suppression: a retry,
+  sleep, catch-all or widened tolerance that hides a symptom is blocking.
+- Never remove or downgrade a security or architecture boundary as a workaround. A
+  boundary is one the spec, threat model or shipped runtime declares; a reviewer concern
+  is not one by label alone. Credentials never appear in code, tests, fixtures or logs.
+- Recorded operator decisions are settled. If the code follows one you think is wrong,
+  report it under Spec issues with "operator decision needed"; do not block on it.
+- Simplicity: one mechanism per concept; duplicates are merged; a shared owner is
+  extended, never forked into a local copy; every structure has a defensible reason.
+- No legacy before release: dead paths are deleted; no shims, migrations or compatibility
+  layers for things that never shipped.
+- Policies that could vary are versioned config with spec-stated defaults, not constants.
+- Derived indexes and caches are rebuildable from the canonical store and never become a
+  second source of truth.
+- Ordering invariants the code depends on are written down.
+- Structured fields (ids, timestamps, typed values) over parsing meaning from text.
+- Claims such as "measured", "verified" or "bounded" point at the test, benchmark or code
+  that shows them.
+- Rust: no `unwrap()` in library code; `thiserror` in libraries, `anyhow` only in binaries
+  and never on hot paths; public items carry `///` docs.

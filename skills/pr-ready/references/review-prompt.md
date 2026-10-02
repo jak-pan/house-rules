@@ -22,6 +22,8 @@ lines.
 
 ## Fix prompt template
 
+Prepend the worker pack (`scripts/worker-pack.py`) to this template.
+
 ```text
 <PR>, branch <branch>, this checkout. Review: <path> — read fully. Fix every blocking item
 with the reviewer's smallest fix and a regression test per scenario: <one line per item>.

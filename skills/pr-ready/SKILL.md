@@ -12,6 +12,11 @@ suite (AGENTS.md §Verification); everything below keeps local work small.
 
 ## 1. Local gate (implementer or fixer)
 
+- Every implementer and fixer prompt starts with the worker pack: `scripts/worker-pack.py`
+  prints [`workers/common.md`](workers/common.md) with the shared [code canon](canon.md)
+  inlined. Workers load no other rules, so the pack carries the test scope, compiler-cache,
+  commit and no-external-write rules; reviewers get the same canon through
+  [`reviewers/common.md`](reviewers/common.md).
 - Run `scripts/prepare.py fix <checkout> --reviews <files...>` before fixing, or
   `scripts/prepare.py pr <checkout>` before preparing a PR (Python 3.9+). It fetches the base and
   checks ownership with `upstream-contribution/scripts/repo-ownership.sh`. For external

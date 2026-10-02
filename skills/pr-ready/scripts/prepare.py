@@ -628,7 +628,8 @@ def review(repo, args, base, remote):
     if not re.fullmatch(r"[a-zA-Z0-9_-]+", lens):
         raise PrepareError("invalid lens name")
     reviewers = HERE.parent / "reviewers"
-    common = (reviewers / "common.md").read_text().split("\n\n", 1)[-1].strip()
+    canon = (HERE.parent / "canon.md").read_text().split("\n\n", 1)[-1].strip()
+    common = (reviewers / "common.md").read_text().split("\n\n", 1)[-1].strip().replace("{{CANON}}", canon)
     instructions = (reviewers / (lens + ".md")).read_text()
     instructions = re.sub(r"\A---\n.*?\n---\n", "", instructions, count=1, flags=re.S).strip()
     instructions = instructions.replace("the review bar below", "the review pack in section 1")
