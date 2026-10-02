@@ -269,6 +269,13 @@ brevity must not remove evidence or content needed to complete the task.
   feature, fix, or review work; P3 is low-impact maintenance. P0/P1 need a design record
   before planned implementation; urgent P0 containment comes first (skill `design-flow`).
 - Continue until finished; scoped asks stay scoped.
+- **Unattended work never parks the primary outcome.** While the operator is away, no
+  approved primary lane waits for them: stalled review loops are resolved by the agent
+  (skill `pr-ready` §Review rounds). Only a change to the approved design, a security
+  boundary, scope or the resource envelope goes to the operator, as a written brief, and
+  every other lane keeps moving. Boundary: approved work only; no new scope, destructive
+  steps or protected-asset actions. Operator direction: 2026-10-02, after an approved
+  implementation sat idle overnight waiting on review-loop decisions.
 - **Finish the landing.** When a change is approved by all its reviewer families, CI is
   green and its deploy is a documented routine procedure, carry it through merge (within
   the delivery authority in §Git), deploy and post-deploy verification, then report what

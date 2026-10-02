@@ -91,7 +91,10 @@ load no other rules.
   never hold the merge. A slower reviewer's findings on an older head feed the next fix
   round; its fixer never pushes onto a head that moved. After three consecutive full rounds
   that each surface new blockers, stop iterating: simplify, split the change or escalate a
-  decision instead of another round.
+  decision instead of another round. Splitting and simplifying are the agent's own moves:
+  land the converged part, move the rest to a narrower PR, file non-defect findings as
+  follow-ups, and continue. Escalate only a design, boundary or scope change, and never
+  leave the lane idle while the operator is away (AGENTS.md §Autonomy).
 - **Same class twice: change the mechanism.** When one class of defect blocks two
   consecutive rounds, stop patching call sites. First ask whether the spec is unclear and,
   if so, get the decision; otherwise the next fix introduces one shared mechanism that
