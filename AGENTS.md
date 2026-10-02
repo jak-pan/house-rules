@@ -306,7 +306,14 @@ brevity must not remove evidence or content needed to complete the task.
   targeted test, only to confirm or refute a specific finding. Run the full suite locally
   only when CI cannot, or to diagnose a CI failure. Operator direction: 2026-09-30, after
   local full-suite runs took most of each review and fix round. Procedure for the whole
-  change loop: skill `pr-ready`.
+  change loop: skill `pr-ready`. Every prompt that dispatches an implementer or fixer
+  states this test scope, because workers do not load these rules on their own.
+- **Keep the machine's compiler cache.** Local builds use the configured shared compiler
+  cache (for Rust the `rustc-wrapper` in the user's Cargo config). Never disable it
+  (`RUSTC_WRAPPER=`) or point a lane at a private target directory just to work around
+  it; when a sandboxed worker cannot reach the cache, grant the sandbox write access to
+  the cache directories instead. Operator direction: 2026-10-02, after parallel lanes
+  rebuilt every dependency from scratch with the cache switched off.
 - Long-running checks fail on no-progress, not wall-clock.
 - **Authorized, bounded, and durable before expensive.** Paid, long-running, or
   non-reproducible external runs (agents, model CLIs, remote jobs, benchmarks, crawls)
