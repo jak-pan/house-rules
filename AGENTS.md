@@ -281,9 +281,10 @@ explaining them and mixed letter schemes.
   before planned implementation; urgent P0 containment comes first (skill `design-flow`).
 - Continue until finished; scoped asks stay scoped.
 - **Every PR serves a recorded goal.** Open a PR only when it advances an approved goal or
-  decision; never for activity's sake. Cut code no current consumer needs instead of
-  hardening it, and send real but out-of-scope findings to tracked issues so the goal's
-  PRs stay small and keep moving.
+  decision; never for activity's sake. Code that no current consumer needs is cut rather
+  than hardened, and real but out-of-scope findings go to tracked issues. Code that is
+  reasoned for and necessary stays: fewer lines mean fewer bugs, but size targets are
+  estimates, never a reason to remove what the goal needs.
 - **Unattended work never parks the primary outcome.** While the operator is away, no
   approved primary lane waits for them: stalled review loops are resolved by the agent
   (skill `pr-ready` §Review rounds). Only a change to the approved design, a security
