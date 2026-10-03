@@ -178,7 +178,10 @@ counts or history.
 12. **Simplicity first.** Prefer deleting code and mechanisms; one way to do things;
     five-whys before adding code; clean code even in experiments.
 13. **No speculative delivery dates.** Size plans by S/M/L/XL, chunk count, risk, and
-    dependencies rather than inventing completion ETAs.
+    dependencies rather than inventing completion ETAs. Never estimate agent work in
+    agent-days, hours or developer time: those numbers are uncalibrated and make agents
+    run longer. State size as files and lines touched; give a duration only when measured
+    from comparable past runs, with the measurement cited.
 14. **Surface unknowns** in ambiguous work and after surprising output: skill
     `finding-unknowns`.
 15. **Long-running work stays attached.** Start every long-running worker, loop or watcher

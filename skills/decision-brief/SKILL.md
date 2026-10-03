@@ -53,7 +53,8 @@ Ground every claim in the current spec or code; say where the spec is silent.
    - what depends on it;
    - the problem;
    - options — each with what changes, a before/after example, side effects including
-     what breaks or gets harder, and effort as an ESTIMATE with its basis;
+     what breaks or gets harder, and size as files and lines touched (prime rule 13: no
+     agent-days or time estimates; a duration only when measured from past runs);
    - recommendation, and why each other option is rejected;
    - next steps if chosen.
 5. **Requests to revisit settled decisions,** kept separate and not adopted by default.
