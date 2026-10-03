@@ -325,6 +325,12 @@ explaining them and mixed letter schemes.
   it; when a sandboxed worker cannot reach the cache, grant the sandbox write access to
   the cache directories instead. Operator direction: 2026-10-02, after parallel lanes
   rebuilt every dependency from scratch with the cache switched off.
+- **Release builds by default.** Every build and test on the operator's machine uses the
+  release profile (Rust: `--release`, or settings that match it); a debug build is only for
+  active debugging, on purpose. Debug builds rebuild native dependencies outside the shared
+  compiler cache and test different code than ships. Every implementer or fixer prompt
+  states this. Operator direction: 2026-10-03, after agent lanes recompiled native
+  dependencies in debug mode.
 - Long-running checks fail on no-progress, not wall-clock.
 - **Authorized, bounded, and durable before expensive.** Paid, long-running, or
   non-reproducible external runs (agents, model CLIs, remote jobs, benchmarks, crawls)
