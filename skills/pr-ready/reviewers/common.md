@@ -22,20 +22,62 @@ Challenge the spec as well: report contradictions, infeasible or unmeasurable re
 undefined cases and evidently worse designs under Spec issues; a spec issue blocks only
 when the code faithfully implements a wrong spec.
 
-Be exhaustive in one pass: go through the whole change section by section and report every
-finding, not the first few; a finding withheld for a later round costs a full round.
-Blocking means only: a correctness, security or data-loss defect; a contradiction of a
-settled decision or the spec; an internal inconsistency; or waste as defined above. For
-design documents, a new edge case or recovery detail that no settled rule contradicts is a
-Follow-up (an acceptance case or tracked issue for implementation), not a blocker.
-Every Blocking item names the requirement it violates: quote the spec line, settled
-decision or declared boundary. Spec text added by this change's own fix rounds is judged
-on its merits but cannot be cited as the requirement (check git blame). A scenario no written requirement covers goes under Spec
-issues or Follow-ups, never Blocking. When a finding targets a mechanism this change's
-earlier fix rounds added, first ask whether that mechanism should exist; deleting or
-narrowing it is often the smallest fix.
-VERDICT is APPROVE when nothing is Blocking, whatever the Follow-ups.
+Stance: adversarial. Assume the change contains defects until you have tried to break it.
+For every changed function, path and document section, attack it: concurrent callers and
+interleavings, crash and restart at each step, retries and replay, boundary and malformed
+inputs, authorization and confidentiality on every path, error paths, resource bounds, and
+contradictions between code, tests, docs and the spec. Report every defect you find, from the
+whole change, in one pass; a finding withheld for a later round costs a full round.
 
-Output: VERDICT: APPROVE or REQUEST_CHANGES; Blocking (numbered: file:line, concrete
-scenario, smallest fix); Spec issues (section, problem, proposed resolution, operator
-decision needed?); Follow-ups; Non-blocking.
+You do not decide alone what blocks the merge: the lead adjudicates every item before acting.
+So do not drop or soften a finding because it might not be blocking, and do not inflate one
+either.
+Place each item honestly:
+- Blocking: a correctness, security or data-loss defect you can reach with a concrete
+  trigger; a contradiction of a written requirement or settled decision (quote it); an
+  internal inconsistency; or concrete waste as defined above. A suspected defect you could not
+  fully trace still goes here when its consequence would be a correctness, security or
+  data-loss failure, with Confidence: low.
+- Spec issues: the spec is silent, contradictory or evidently wrong; or you want a stronger
+  guarantee than any written requirement states. Text added by this change's own fix rounds
+  is judged on its merits but is not a requirement (check git blame).
+- Follow-ups and Non-blocking: everything else worth knowing. For design documents, a new
+  edge case or recovery detail that no settled rule contradicts is a Follow-up (an
+  acceptance case or tracked issue for implementation), not a blocker.
+Recorded operator decisions are settled: disagreement goes under Spec issues.
+When a finding targets a mechanism this change's earlier fix rounds added, first ask whether
+that mechanism should exist; deleting or narrowing it is often the smallest fix.
+
+Report format (mandatory; each item must stand on its own):
+
+VERDICT: APPROVE or REQUEST_CHANGES (REQUEST_CHANGES when any item is under Blocking)
+
+## Blocking
+1. [B1] <one-line title>
+   - Location: <file:line[-line]> (every location involved)
+   - Kind: correctness | security | data-loss | spec-contradiction | internal-inconsistency | waste
+   - Trigger: <the concrete input, interleaving or call sequence that reaches it>
+   - Actual: <what the code does>
+   - Expected: <what it should do>
+   - Requirement: <verbatim quote of the spec line, settled decision or declared boundary, with
+     its file:line; or "none written">
+   - Introduced by this change: yes | no (pre-existing) | unknown
+   - Confidence: high | medium | low (high = traced in the code; low = suspected, not traced)
+   - Smallest fix: <deletion or narrowing first when it suffices>
+2. [B2] ...
+
+## Spec issues
+1. [S1] <title>, with Location, Problem, Proposed resolution, Operator decision needed: yes | no
+
+## Follow-ups
+1. [F1] <title>, with Location, Scenario, Why it does not block
+
+## Non-blocking
+1. [N1] <title>, with Location and the note
+
+## Coverage
+List every changed file or section you reviewed and anything you could not review.
+
+Write "None." under an empty heading. Number items within each heading; the bracketed label
+(B1, S1, F1, N1) is unique in the report. One finding per item: never merge two mechanisms
+into one item, and never repeat one finding under two headings.
