@@ -197,6 +197,13 @@ Apply these writing defaults to every operator-facing response. Explicit output 
 necessary context, required tool announcements, and approval explanations take precedence;
 brevity must not remove evidence or content needed to complete the task.
 
+**Operator writing is mandatory.** Every operator-facing text — chat replies included,
+also status, briefs, reports, PR and issue text — follows skill `operator-writing`:
+controlled English, explanation before any label or option, questions as cards after the
+explanation, and the reader test before sending. The defaults below apply within it.
+Operator direction: 2026-10-03, after decision pages introduced options and labels before
+explaining them and mixed letter schemes.
+
 - Lead with the answer, result, or useful action. Put commands, paths, and snippets before
   optional supporting prose. Skip ceremonial preambles, filler, redundant recaps, and
   closing pleasantries.
@@ -365,7 +372,7 @@ Project and stack defaults: `PREFERENCES.md` in the installed House Rules root; 
 project's unsettled choices: skill `project-bootstrap`. Rust-specific quality gates: skill
 `rust-canon`. Architecture principles: skill `design-canon`. Feature lifecycle: skill
 `design-flow`. Specs: skill `spec-writing`. Decision briefs and explanations: skill
-`decision-brief`. Use skill `reasoning-moves` when explicit
+`decision-brief`. Writing for the operator: skill `operator-writing`. Use skill `reasoning-moves` when explicit
 reasoning checkpoints help the work; the evidence and verification requirements apply to
 every model.
 

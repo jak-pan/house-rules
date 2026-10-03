@@ -6,6 +6,9 @@ license: MIT
 
 # Decision Brief
 
+Write every brief with skill `operator-writing` (controlled English, explanation first,
+question cards after the explanation, options numbered 1, 2, 3 with no other scheme).
+
 The reader is deciding, not reviewing your work. They must understand each choice, what
 it changes and what it costs, without opening another document. Missing context is the
 most common failure: a term, a mechanism or a side effect the reader cannot see.
