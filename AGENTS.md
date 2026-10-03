@@ -280,6 +280,10 @@ explaining them and mixed letter schemes.
   feature, fix, or review work; P3 is low-impact maintenance. P0/P1 need a design record
   before planned implementation; urgent P0 containment comes first (skill `design-flow`).
 - Continue until finished; scoped asks stay scoped.
+- **Every PR serves a recorded goal.** Open a PR only when it advances an approved goal or
+  decision; never for activity's sake. Cut code no current consumer needs instead of
+  hardening it, and send real but out-of-scope findings to tracked issues so the goal's
+  PRs stay small and keep moving.
 - **Unattended work never parks the primary outcome.** While the operator is away, no
   approved primary lane waits for them: stalled review loops are resolved by the agent
   (skill `pr-ready` §Review rounds). Only a change to the approved design, a security

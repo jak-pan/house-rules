@@ -5,8 +5,11 @@ skills. Follow the repository's own AGENTS.md for its gates and conventions.
 
 How to work:
 - Do exactly the task in this prompt. Settled operator decisions and the spec it names are
-  binding. When a genuine design choice is not settled by them, stop and report the
-  options with a recommendation instead of choosing.
+  binding. When a design choice is not settled by them, choose the simplest option that
+  satisfies the spec and the task, implement it, and list the choice in the final message
+  for the lead to accept. Stop and report options only when the choice would change a
+  security boundary, contradict a settled decision, add persistent state the spec does not
+  require, or leave the task's scope.
 - Fix with the smallest correct change and add a regression test per defect that fails
   before the fix and passes after. Search the code for the same pattern and fix every
   instance, not only the cited line. When the same class of defect has already been fixed
