@@ -181,7 +181,8 @@ counts or history.
     dependencies rather than inventing completion ETAs. Never estimate agent work in
     agent-days, hours or developer time: those numbers are uncalibrated and make agents
     run longer. State size as files and lines touched; give a duration only when measured
-    from comparable past runs, with the measurement cited.
+    from comparable past runs, with the measurement cited. Operator direction: 2026-10-03,
+    after agent-day estimates in plans proved far off and stretched agent runs.
 14. **Surface unknowns** in ambiguous work and after surprising output: skill
     `finding-unknowns`.
 15. **Long-running work stays attached.** Start every long-running worker, loop or watcher
