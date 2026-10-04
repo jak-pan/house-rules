@@ -69,7 +69,8 @@ inspectable, deliberately prunable, and inside the project's backup boundary.
 |---|---|---|
 | Evidence — screenshots, debug logs, run reports you will open | `.debug-session/` | retain per the project's retention policy (none recorded: AGENTS.md §Security); issue closure alone does not authorize deletion |
 | Machine scratch — build targets, caches, never opened by a human | `.tmp/` | remove only under AGENTS.md §Security ownership, reproducibility, and active-process checks |
-| Tool-provided session scratchpads (agent-harness temp dirs) | wherever the tool puts them | ephemeral by definition — copy anything worth keeping into the repo before session end |
+| Tool-provided session scratchpads (agent-harness temp dirs) | wherever the tool puts them | ephemeral by definition — copy anything worth keeping into the repo before session end; never host worktrees or lane state |
+| Agent worktrees and lane state — task worktrees, lane scripts, prompts, review results, logs | durable workspace paths: `<workspace>/worktrees/<repo>/<branch>` and a lane folder beside it | never in `/tmp` or a session scratchpad; a worktree is removed when its PR merges |
 
 The two-dir split is a retention policy, not taxonomy — evidence and scratch have different
 deletion rules, so they get different homes. Exception: a shared out-of-repo cache
