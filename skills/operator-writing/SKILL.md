@@ -25,6 +25,15 @@ reader test.
 - No filler, no marketing adjectives, no ceremonial openings or closings.
 - No time or effort estimates for agent work (AGENTS.md prime rule 13).
 
+## Format
+
+- Operator documents (briefs, status, ledgers, reports) are Markdown files. Do not author
+  them as HTML; an HTML rendering, if ever needed, is generated from the Markdown.
+- Never put long text in a table cell. Use a table only when every cell is a few words;
+  give each option or item its own short section instead.
+- Diagrams are Mermaid blocks in the file. When the client shows Mermaid as source, also
+  render the diagram with the client's visual tool (AGENTS.md §Actionable communication).
+
 ## Structure
 
 Lead with the result or the action the reader must take. Then explain in this order, using
