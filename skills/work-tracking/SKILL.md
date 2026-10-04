@@ -13,6 +13,18 @@ they travel with the code, work offline, and can be read by any Git-native orche
 synchronized whenever the host is reachable. Examples use GitHub Issues, a GitHub Project,
 and the `gh` CLI; on another host or orchestrator, map the view and keep the record.
 
+## External reporting
+
+When `custom/INDEX.md` lists an external work-reporting capability, report each lane's
+boundaries there: start, checkpoint, waiting, failure and finish. The product installs and
+updates itself; agents load it as its own Skill and MCP server, not as part of House Rules.
+- Reporting is one-way. It never claims, assigns or controls work.
+- Reporting never blocks. If the service is down, continue and note the gap in the handoff.
+- Send no code, diffs, prompts, transcripts or credentials.
+- Add no reporting scripts or kits to product repositories for this.
+
+Operator direction: 2026-10-04.
+
 ## Work item and owner
 
 - A work item has a work branch and, once the host is reachable, an issue. Branches follow
