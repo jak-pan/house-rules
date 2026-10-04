@@ -63,12 +63,13 @@ even with `--update`; `--no-fetch --base REF` uses an already resolved base and 
 merges on owned repositories or with `--update`. Unknown ownership keeps the
 operator-approval reminder; preparing a brief posts nothing.
 
-- Draft the text in `.tmp/`. One problem per issue or PR. Lead with the observable
-  failure and the smallest reproduction, then root cause, fix, tests, and performance and
-  compatibility impact, with measured numbers where relevant. Write in upstream's own terms
-  for a maintainer with no knowledge of our context: short, complete and
-  polished, with no filler, no speculation, and no unrequested design proposals. Code
-  references use full-SHA permalinks on their own line, so they render as snippets.
+- Draft the text in `.tmp/` in the forms of skill `operator-writing` §GitHub text. One
+  problem per issue or PR. Write in upstream's own terms for a maintainer with no knowledge
+  of our context: short and complete, with measured numbers where relevant, no filler and
+  no speculation. Follow upstream's PR template and title convention when it has one.
+  Propose a design only for the reported defect, never an unrelated redesign, and offer to
+  split the work the maintainer's way. Code references use full-SHA permalinks on their
+  own line, so they render as snippets.
 - Review the draft text itself before showing it: every claim is verified, and every
   sentence either helps the maintainer act or goes.
 - Keep provenance generic: no internal product names, private data, hosts, customers, or

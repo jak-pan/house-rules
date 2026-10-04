@@ -41,6 +41,9 @@ suite (AGENTS.md §Verification); everything below keeps local work small.
 
 ## 2. Push and CI
 
+- Write the PR body, review comments, replies and commit messages in the forms of skill
+  `operator-writing` §GitHub text. A review-round commit states each fixed finding as
+  before → now and cites no file outside the repository.
 - Open PRs as drafts (`gh pr create --draft`) while work is in progress; mark them ready
   (`gh pr ready`) only once the local gate passes. Ready means "review this": a server-side
   review gate reviews each new head of a ready PR and ignores drafts. To push unfinished

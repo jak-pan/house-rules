@@ -59,6 +59,25 @@ Rules:
 - Short chat replies use the same order in compressed form: result → why → what is next.
   Omit empty parts; do not add parts the message does not need.
 
+## GitHub text
+
+Issues, PR bodies, review comments, replies to review and commit messages use the forms in
+[references/github-text.md](references/github-text.md). In short:
+
+- Lead with the observable behavior and its effect; history comes last or not at all.
+- Every claim names the commit or version it was seen on, with a full-SHA permalink, a
+  command, a count or a verbatim log line. Untested claims say "From code reading".
+- Show each regression test as failing on the base and passing on the head.
+- State limits: what was not run, not built or not covered.
+- Titles name the behavior in plain words, never an internal label or code, and never stop
+  mid-phrase. Automatically filed issues follow the issue form too.
+- Commit messages state the old behavior, its consequence, then the change. No gate logs,
+  no internal round labels, no references to files outside the repository.
+
+Operator direction: 2026-10-04, after issue and PR bodies relied on internal labels and
+omitted reproduction and test evidence; an upstream contribution in this form was chosen
+as the model.
+
 ## Questions to the operator
 
 A question the operator must answer is a card, placed after the explanation:

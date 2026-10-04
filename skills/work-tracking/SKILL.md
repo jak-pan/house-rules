@@ -83,7 +83,9 @@ repository requires squash merges, mirror every record before the merge.
 
 ## The host view
 
-- **Issue body** — only the owner edits it. It holds Scope, Acceptance criteria, Decisions
+- **Issue body** — only the owner edits it. It opens with the problem in the issue form of
+  skill `operator-writing` §GitHub text (summary, reproduction or current behavior,
+  evidence, cause), then holds Scope, Acceptance criteria, Decisions
   (settled and rejected, with why), Lane (paths this item owns while active; skill
   `agent-lanes`), Design (link to the design doc; `STRUCTURE.md`), Execution constraints
   (campaigns that use external resources: outcome, acceptance criteria, explicit
