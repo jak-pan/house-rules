@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Install the local Rust build setup. Every replaced file is backed up and recorded in the manifest;
+# `uninstall` restores exactly those files. Usage: install <kit.conf>
+set -Eeuo pipefail
+. "$(dirname "$0")/lib.sh"
+load_conf "${1:-}"
+[ ! -e "$MANIFEST" ] || { echo "already installed (manifest $MANIFEST); run uninstall first" >&2; exit 1; }
+[ -x "$KACHE_BIN" ] || { echo "kache not found at $KACHE_BIN; install kache $KACHE_VERSION there first" >&2; exit 1; }
+got=$("$KACHE_BIN" --version 2>/dev/null | awk '{print $2}')
+[ "$got" = "$KACHE_VERSION" ] || echo "warning: $KACHE_BIN reports kache ${got:-?}, kit expects $KACHE_VERSION" >&2
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
+BACKUPS="$STATE_DIR/kit-backups/$stamp"
+mkdir -p "$STATE_DIR" "$BACKUPS" "$WRAPPER_DIR" "$HELPER_DIR" "$CARGO_HOME" "$(dirname "$KACHE_CONFIG")" "$CACHE_DIR"
+: > "$MANIFEST.new"
+rollback() {
+  echo "install failed; restoring what was replaced" >&2
+  MANIFEST="$MANIFEST.new" "$KIT/uninstall" --manifest-only "${CONF_PATH}" >&2 || true
+}
+CONF_PATH=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
+trap rollback ERR
+render() {
+  sed -e "s#@STATE_DIR@#$STATE_DIR#g" -e "s#@HELPER_DIR@#$HELPER_DIR#g" -e "s#@WRAPPER_DIR@#$WRAPPER_DIR#g" \
+      -e "s#@CACHE_DIR@#$CACHE_DIR#g" -e "s#@KACHE_BIN@#$KACHE_BIN#g" -e "s#@KACHE_VERSION@#$KACHE_VERSION#g" \
+      -e "s#@TOOLCHAIN@#$TOOLCHAIN#g" -e "s#@JOBS@#$JOBS#g" -e "s#@ZTHREADS@#$ZTHREADS#g" "$1"
+}
+place() {   # place <rendered-temp> <destination> <mode>
+  local tmp=$1 dst=$2 mode=$3 backup=NONE
+  if grep -q '@[A-Z_]*@' "$tmp"; then echo "unreplaced placeholder in $dst" >&2; rm -f "$tmp"; return 1; fi
+  chmod "$mode" "$tmp"
+  if [ -e "$dst" ] || [ -L "$dst" ]; then
+    backup="$BACKUPS/$(printf '%s' "$dst" | tr / %)"
+    cp -pP "$dst" "$backup"
+  fi
+  mv -f "$tmp" "$dst"
+  printf '%s\t%s\t%s\n' "$dst" "$backup" "$(sha "$dst")" >> "$MANIFEST.new"
+  echo "installed $dst"
+}
+install_file() { local tmp; tmp=$(mktemp "$2.kit.XXXXXX"); render "$KIT/files/$1" > "$tmp"; place "$tmp" "$2" "$3"; }
+install_file cargo-queue "$WRAPPER_DIR/cargo" 0755
+install_file kache-rustc "$HELPER_DIR/kache-rustc" 0755
+install_file kache-cc "$HELPER_DIR/kache-cc" 0755
+install_file kache-c++ "$HELPER_DIR/kache-c++" 0755
+install_file cargo-config.toml "$CARGO_HOME/config.toml" 0644
+install_file kache-config.toml "$KACHE_CONFIG" 0644
+if [ -n "${BUDGET_OVERRIDE:-}" ]; then
+  tmp=$(mktemp "$STATE_DIR/build-budget-override.kit.XXXXXX"); printf '%s\n' "$BUDGET_OVERRIDE" > "$tmp"
+  place "$tmp" "$STATE_DIR/build-budget-override" 0644
+fi
+trap - ERR
+mv "$MANIFEST.new" "$MANIFEST"
+echo "done; manifest $MANIFEST"
+case ":$PATH:" in *":$WRAPPER_DIR:"*) ;; *) echo "note: add $WRAPPER_DIR to PATH before $CARGO_HOME/bin" ;; esac

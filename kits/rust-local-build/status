@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Show what the kit installed, whether each file is unchanged, and the build budget cargo will use.
+# Usage: status <kit.conf>
+set -uo pipefail
+. "$(dirname "$0")/lib.sh"
+load_conf "${1:-}"
+if [ -f "$MANIFEST" ]; then
+  while IFS=$'\t' read -r dst backup digest; do
+    if [ ! -e "$dst" ]; then s=missing; elif [ "$(sha "$dst")" = "$digest" ]; then s=installed; else s=changed; fi
+    printf '%-9s %s\n' "$s" "$dst"
+  done < "$MANIFEST"
+else echo "not installed (no manifest at $MANIFEST)"; fi
+c=$(command -v cargo || true)
+[ "$c" = "$WRAPPER_DIR/cargo" ] && echo "cargo on PATH: the queue ($c)" || echo "cargo on PATH: ${c:-none} (expected $WRAPPER_DIR/cargo first)"
+echo "budget override: $(cat "$STATE_DIR/build-budget-override" 2>/dev/null || echo none)"
+echo "saved computed budget: $(cat "$STATE_DIR/build-budget" 2>/dev/null || echo none)"
+r="$CARGO_HOME/bin/cargo"; [ -x "$r" ] && echo "cargo build.jobs: $("$r" +"$TOOLCHAIN" -Zunstable-options config get build.jobs 2>/dev/null || echo unknown)"

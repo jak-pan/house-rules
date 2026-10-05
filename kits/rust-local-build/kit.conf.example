@@ -1,0 +1,14 @@
+# Machine values for kits/rust-local-build. Copy to a machine-local file (House Rules: custom/rust-local-build.conf)
+# and pass it to install, uninstall and status. Paths must be absolute.
+WRAPPER_DIR="$HOME/.local/bin"             # the cargo queue is installed here as `cargo`; must come before ~/.cargo/bin in PATH
+HELPER_DIR="$HOME/.local/lib/rust-local-build"   # kache-rustc, kache-cc, kache-c++
+STATE_DIR="$HOME/.cache/rust-local-build"  # queue lock, saved budget, budget override, kache runtime, kit manifest and backups
+CACHE_DIR="$HOME/.cache/kache"             # kache artifact store
+KACHE_BIN="$HOME/.local/lib/rust-local-build/kache"   # must exist before install
+KACHE_VERSION="0.28.1"
+TOOLCHAIN="nightly-2026-10-03"             # the queue forces this toolchain for every local build
+JOBS="6"                                   # fallback cargo jobs when the queue is bypassed
+ZTHREADS="8"                               # rustc parallel front end; shares the job pool, does not add cores
+BUDGET_OVERRIDE=""                         # empty: performance cores - 2; or a number, optionally "<n> <expiry epoch>"
+CARGO_HOME="$HOME/.cargo"
+KACHE_CONFIG="$HOME/.config/kache/config.toml"

@@ -1,0 +1,14 @@
+# The one place for kache settings: every kache process (Cargo builds, the daemon, CLI calls) reads this file.
+# Requires kache @KACHE_VERSION@. Installed by House Rules kits/rust-local-build.
+[cache]
+local_store = "@CACHE_DIR@"
+local_max_size = "100GiB"
+local_only = true
+verify_restores = "always"
+# Workspace crates use the cache too; an edited crate keeps isolated incremental state for up to 15 idle minutes.
+preserve_incremental = false
+adaptive_incremental = true
+cache_executables = true
+clean_incremental = true
+seed_new_targets = true
+auto_clean_orphaned_targets = true
