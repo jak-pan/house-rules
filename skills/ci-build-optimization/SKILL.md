@@ -134,3 +134,24 @@ Deliver the resulting workflow, required-gate evidence, full elapsed comparison,
 cost assumptions, and remaining limitations. Separate prepared, published, validated,
 and adopted states. Do not claim measured savings for another repository merely
 because the same pattern was applied.
+
+## Local Rust builds
+
+A developer machine running several agent lanes builds Rust the same way everywhere:
+
+- **One compiling cargo at a time, machine-wide.** Build, check, clippy, test, run and similar commands
+  wait in a queue; read-only commands (`metadata`, `tree`, `fetch`, `--version`) do not.
+- **A core budget.** The queued cargo gets `CARGO_BUILD_JOBS` and `RUST_TEST_THREADS` = total cores −
+  efficiency cores − 2, unless the operator sets an override. The rest of the machine stays usable.
+  `-Zthreads` shares that job pool and does not add cores; changing it rebuilds every crate once.
+- **Hold limits.** A build with no CPU progress for 5 minutes, or holding the queue for 40, is stopped
+  with exit 124 so one hung test cannot block every lane.
+- **One toolchain and one profile.** A pinned nightly for every local build; release and dev both at
+  opt-level 0, incremental, trim-paths; debug builds only on purpose (`--profile debugging`). CI and
+  shipped binaries keep their own settings.
+- **A shared compiler cache, separate targets.** One kache store for rustc and C/C++ compiles; each
+  worktree or lane keeps its own target directory.
+
+Install, check and remove this setup with the kit in [`kits/rust-local-build/`](../../kits/rust-local-build/README.md).
+Record the machine's values (paths, budget override) in `custom/rust-local-build.conf` and its row in
+`custom/INDEX.md`.

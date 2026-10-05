@@ -1,0 +1,9 @@
+#!/bin/sh
+# Stand-in for cargo: starts children like build and test processes, in the given mode.
+case "$FAKE_MODE" in
+  sleep) sh -c 'exec sleep 3600' & wait ;;
+  spin)  sh -c 'while :; do :; done' & wait ;;
+  exit3) exit 3 ;;
+  # A busy child (like a large rustc) exits, then a light child keeps working for 100 s. Must not be stopped.
+  dropthenwork) perl -e '$t=time; 1 while time-$t<20'; perl -e '$t=time; while(time-$t<100){ for(1..20000){} select(undef,undef,undef,0.5) }' ;;
+esac

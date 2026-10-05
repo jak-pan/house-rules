@@ -1,0 +1,4 @@
+#!/bin/sh
+# C/C++ compiler for Cargo build scripts through the kache store. One executable path, because some build
+# scripts (aws-lc-sys 0.42 feature checks) run only the first word of CC and drop its arguments.
+exec @KACHE_BIN@ cc "$@"
