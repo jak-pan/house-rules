@@ -13,14 +13,8 @@ Report only findings in your lens; every finding cites a concrete scenario.
   failure, crash and replay paths, input handling.
 - Performance: request-path cost against the declared bound; no proportional scans or
   unbounded memory; measured numbers where the change claims a bound.
-- Design: would an expert in the underlying engine or library build it this way? Name
-  the supported native feature or root cause, the counted cost (calls, rows, writes,
-  retained state or layers), and why the proposed mechanism does not earn that cost.
-  Apply Native-first and No fortification from the canon below. Cost defects are FIX-NOW.
-  A design finding stays Blocking and stops for a lead decision; it never becomes a
-  follow-up or starts another fix round. Cost defects and design findings cannot be
-  reclassified to escape review reassessment. Disagreement with a settled operator
-  decision remains a Spec issue.
+- Design: would an expert in the underlying engine or library build it this way? See
+  Cost and design findings below.
 - Code quality: the smallest change that works, in the surrounding style, one way to do
   each thing, names that say what things do.
 - Waste, as a blocking class: tests that guard no real behavior or defect, duplicate or
@@ -60,6 +54,18 @@ Place each item honestly:
 Recorded operator decisions are settled: disagreement goes under Spec issues.
 When a finding targets a mechanism this change's earlier fix rounds added, first ask whether
 that mechanism should exist; deleting or narrowing it is often the smallest fix.
+
+### Cost and design findings
+
+Name the supported native feature or root cause, the counted cost
+(calls, rows, writes, retained state or layers), and why the proposed mechanism does not
+earn that cost. Apply Native-first and No fortification from the canon below. Cost defects
+are FIX-NOW. A design finding stays Blocking and stops for a lead decision; it never becomes
+a follow-up or starts another fix round. Cost defects and design findings cannot be
+reclassified to escape review reassessment. Disagreement with a settled operator decision
+remains a Spec issue.
+
+### Report format
 
 Report format (mandatory; each item must stand on its own):
 
