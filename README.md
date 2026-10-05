@@ -17,9 +17,6 @@ and established project stacks override its defaults.
   contributions, experiments, diagnosis, reporting, decision briefs, and work tracking. Load only the
   relevant procedures. The audit-report skill includes an optional structural linter that
   needs Node.js 22 or later; nothing else needs Node.
-- `kits/`: installable machine setups with `install`, `uninstall` and `status`, each restoring
-  exactly what it replaced. [`kits/rust-local-build`](kits/rust-local-build/README.md) installs
-  the local Rust build queue, core budget and compiler cache (skill `ci-build-optimization`).
 
 ## Install the rules globally
 
@@ -58,7 +55,6 @@ and stub CLIs, with no network or model calls. Run them before committing prepar
 ```sh
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s skills/pr-ready/scripts -p test_prepare.py
 bash -n skills/pr-ready/scripts/review-panel.sh
-bash kits/rust-local-build/tests/run.sh
 ```
 
 These tests currently run locally, not in CI. Projects using House Rules keep their own tests.
