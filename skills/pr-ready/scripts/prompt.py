@@ -25,6 +25,8 @@ def expand(text=None, *, file=None, root=ROOT):
     def visit(name, stack):
         if not name:
             raise PromptError("empty include path at repository root")
+        if "\x00" in name:
+            raise PromptError("NUL byte in include path")
         if "#" in name:
             raise PromptError(f"section references are not allowed: {name}")
         path = (root / name).resolve()

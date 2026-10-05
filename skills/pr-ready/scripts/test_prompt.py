@@ -90,6 +90,15 @@ class PromptTest(unittest.TestCase):
     def test_empty_include_fails(self):
         self.assert_failure(self.run_prompt(text="@rule house-rules:\n"), "root")
 
+    def test_nul_include_fails_without_partial_output(self):
+        for path in ("/outside\x00.md", "child\x00.md"):
+            for args in ((), ("--list",)):
+                with self.subTest(path=path, args=args):
+                    self.assert_failure(
+                        self.run_prompt(*args, text="@rule house-rules:" + path + "\n"),
+                        "NUL",
+                    )
+
     def test_missing_input_file_fails(self):
         self.assert_failure(self.run_prompt("missing.md"), "missing.md")
 
