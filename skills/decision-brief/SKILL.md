@@ -56,8 +56,8 @@ Ground every claim in the current spec or code; say where the spec is silent.
    - what depends on it;
    - the problem;
    - options — each with what changes, a before/after example, side effects including
-     what breaks or gets harder, and size as files and lines touched (prime rule 13: no
-     agent-days or time estimates);
+     what breaks or gets harder, and size per
+     [AGENTS.md prime rule 13](../../AGENTS.md#prime-rules);
    - recommendation, and why each other option is rejected;
    - next steps if chosen.
 5. **Requests to revisit settled decisions,** kept separate and not adopted by default.

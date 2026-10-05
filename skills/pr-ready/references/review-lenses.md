@@ -21,16 +21,12 @@ The lead spawns specialists when the operator asks or a finding warrants one. Th
 mechanisms or layers), storage/read/search/native paths, a design smell flagged by another
 reviewer or the triager, and the daily whole-system audit. It is not required on every PR.
 
-**Every reviewer challenges the spec too**, in a separate section: contradictions,
-infeasible or unmeasurable requirements, undefined cases, evidently worse designs. A spec
-issue blocks only when the code faithfully implements a wrong spec. The lead triages each
-one: a clarification is proposed in the same PR; finding disposition follows the
-[shared review bar](../reviewers/common.md#review-bar).
-A settled operator decision is not reopened by a reviewer.
+Spec challenges and finding disposition follow the
+[shared review bar](../reviewers/common.md#review-bar). The lead triages each one:
+a clarification is proposed in the same PR.
 Requirement removals and spec/code drift follow `design-flow` §Design changes.
 
-**Loop:** follow [pr-ready §3](../SKILL.md#3-review-rounds), including the lead's
-reassessment after two fix rounds. Merge eligibility is in
+**Loop:** follow [pr-ready §3](../SKILL.md#3-review-rounds). Merge eligibility is in
 [pr-ready §4](../SKILL.md#4-merge-and-cleanup). Track confirmed findings per family.
 
 Launch: `scripts/review-panel.sh <name> <checkout> <base-prompt> [reviewer ...]`

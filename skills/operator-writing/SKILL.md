@@ -23,7 +23,7 @@ reader test.
 - Keep the source's uncertainty. Never add a cause, frequency or number the evidence does
   not show. Never remove a hedge the source needs.
 - No filler, no marketing adjectives, no ceremonial openings or closings.
-- No time or effort estimates for agent work (AGENTS.md prime rule 13).
+- Size work per [AGENTS.md prime rule 13](../../AGENTS.md#prime-rules).
 
 ## Format
 

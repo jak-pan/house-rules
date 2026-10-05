@@ -28,7 +28,7 @@ system from first principles, including native capabilities, layers and their co
 fortification, and spec/code drift; include the design lens. A missing scope file is a
 visible failure, never an excuse to skip the audit.
 
-The triager deduplicates findings by fingerprint against tracked findings and decides
-what to file by severity, without a daily cap. Comment on a known finding only when
+Apply [Guard upkeep](#guard-upkeep) for filing policy. The triager deduplicates findings
+by fingerprint against tracked findings. Comment on a known finding only when
 materially new evidence changes it. The audit opens no PRs; it reports findings for the
 lead to adjudicate and assign.

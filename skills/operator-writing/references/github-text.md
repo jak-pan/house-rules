@@ -20,7 +20,8 @@ from a public upstream durability report and its fix; names are shortened.
 - Omit empty sections. Never write "N/A" sections.
 - Table cells hold a few words, such as a test name and PASS or FAIL. Details go in
   bullets below the table.
-- No time estimates. No ceremony. A "found by" line is allowed at the end, with a link to
+- Size work per [AGENTS.md prime rule 13](../../../AGENTS.md#prime-rules).
+- No ceremony. A "found by" line is allowed at the end, with a link to
   the report or review.
 - Issues filed automatically by review or audit tools follow the issue form too. Titles
   never carry internal labels and never stop mid-phrase.

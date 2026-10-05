@@ -62,8 +62,8 @@ External repositories always get local review rounds (skill `upstream-contributi
 **Review bar.** [`reviewers/common.md`](reviewers/common.md) holds the bar and the review
 canon: correctness and security, cost and design, code quality, waste as a blocking class, and
 the House Rules a reviewer enforces. It is inlined into every reviewer prompt, so reviewers
-load no other rules. The lead spawns specialist reviewers when the operator asks or a
-finding warrants one; triggers and lenses: [review panels](references/review-lenses.md).
+load no other rules. Specialist dispatch follows
+[Optional lenses](references/review-lenses.md#optional-lenses).
 
 - Give the reviewer the spec sections, previous review and round task as needed
   ([review template](references/review-prompt.md)). `scripts/review-panel.sh` builds each

@@ -47,6 +47,77 @@ class RuleOwnershipTest(unittest.TestCase):
     def text(self, path):
         return " ".join((self.root / path).read_text().split())
 
+    def test_specialist_dispatch_belongs_to_optional_lenses(self):
+        rules = self.text("skills/pr-ready/SKILL.md")
+        self.assertIn("references/review-lenses.md#optional-lenses", rules)
+        self.assertNotRegex(
+            rules, r"spawns specialist reviewers|operator asks or a finding"
+        )
+        lenses = self.text("skills/pr-ready/references/review-lenses.md")
+        self.assertIn("## Optional lenses", lenses)
+        self.assertIn(
+            "spawns specialists when the operator asks or a finding warrants one", lenses
+        )
+
+    def test_fix_round_threshold_belongs_to_pr_ready(self):
+        lenses = self.text("skills/pr-ready/references/review-lenses.md")
+        self.assertIn("../SKILL.md#3-review-rounds", lenses)
+        self.assertNotRegex(lenses, r"two fix rounds|after \d+ fix rounds")
+        self.assertIn("After two fix rounds", self.text("skills/pr-ready/SKILL.md"))
+
+    def test_spec_challenges_belong_to_shared_review_bar(self):
+        lenses = self.text("skills/pr-ready/references/review-lenses.md")
+        self.assertIn("../reviewers/common.md#review-bar", lenses)
+        for copied in (
+            "Every reviewer challenges the spec",
+            "infeasible or unmeasurable requirements",
+            "issue blocks only",
+            "A settled operator decision is not reopened",
+        ):
+            with self.subTest(copied=copied):
+                self.assertNotIn(copied, lenses)
+        self.assertIn("The lead triages each one", lenses)
+        self.assertIn("a clarification is proposed in the same PR", lenses)
+        self.assertIn("Requirement removals and spec/code drift", lenses)
+        common = self.text("skills/pr-ready/reviewers/common.md")
+        self.assertIn("Challenge the spec as well", common)
+        self.assertIn("a spec issue blocks only", common)
+
+    def test_work_sizing_belongs_to_prime_rule_13(self):
+        for path, target in (
+            ("skills/decision-brief/SKILL.md", "../../AGENTS.md#prime-rules"),
+            ("skills/operator-writing/SKILL.md", "../../AGENTS.md#prime-rules"),
+            (
+                "skills/operator-writing/references/github-text.md",
+                "../../../AGENTS.md#prime-rules",
+            ),
+        ):
+            with self.subTest(path=path):
+                text = self.text(path)
+                self.assertIn(target, text)
+                self.assertIn("prime rule 13", text)
+                self.assertNotRegex(
+                    text, r"[Tt]ime estimates|agent-days|files and lines touched"
+                )
+        self.assertIn("No time estimates for agent work", self.text("AGENTS.md"))
+        self.assertIn("No filler", self.text("skills/operator-writing/SKILL.md"))
+        github = self.text("skills/operator-writing/references/github-text.md")
+        self.assertIn('No ceremony. A "found by" line is allowed', github)
+
+    def test_audit_filing_uses_guard_upkeep_policy(self):
+        guards = self.text("skills/pr-ready/references/guards.md")
+        upkeep, audit = guards.split("## Daily whole-system audit", 1)
+        self.assertIn("There are no fixed caps", upkeep)
+        self.assertIn("severity and deduplication", upkeep)
+        self.assertIn("(#guard-upkeep)", audit)
+        self.assertNotRegex(audit, r"by severity|daily cap|fixed caps")
+        self.assertIn(
+            "deduplicates findings by fingerprint against tracked findings", audit
+        )
+        self.assertIn(
+            "Comment on a known finding only when materially new evidence changes it", audit
+        )
+
     def test_two_fix_rounds_require_simplify_or_split(self):
         rules = self.text("skills/pr-ready/SKILL.md")
         reassessment = rules.split("**Review reassessment.**", 1)[1].split(
