@@ -9,7 +9,7 @@ build settings. Everything it writes is recorded, and `uninstall` puts the machi
 | File | Installed as |
 |---|---|
 | `files/cargo-queue` | `$WRAPPER_DIR/cargo` |
-| `files/cargo-budget` | `$WRAPPER_DIR/cargo-budget`, so `cargo budget` works from any folder |
+| `files/cargo-cores` | `$WRAPPER_DIR/cargo-cores`, so `cargo cores` works from any folder |
 | `files/kache-rustc`, `kache-cc`, `kache-c++` | `$HELPER_DIR/` |
 | `files/cargo-config.toml` | `$CARGO_HOME/config.toml` |
 | `files/kache-config.toml` | `$KACHE_CONFIG` |
@@ -37,13 +37,13 @@ uninstalled; to upgrade, uninstall and install again.
 One number sets both cargo build jobs and test threads. Change it with one command, from any folder:
 
 ```sh
-cargo budget              # show the budget and where it comes from
-cargo budget 6            # 6 cores until changed
-cargo budget 8 --for 2h   # 8 cores for two hours (m, h or d)
-cargo budget --clear      # back to the computed value
+cargo cores              # show the budget and where it comes from
+cargo cores 6            # 6 cores until changed
+cargo cores 8 --for 2h   # 8 cores for two hours (m, h or d)
+cargo cores --clear      # back to the computed value
 ```
 
-`cargo budget` runs `kits/rust-local-build/budget` with the kit.conf used at install; it keeps working
+`cargo cores` runs `kits/rust-local-build/cores` with the kit.conf used at install; it keeps working
 as long as the House Rules checkout stays where it was installed from.
 
 A change applies to the next cargo command; nothing needs a restart, and `jobs` in the cargo config

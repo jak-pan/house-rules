@@ -43,7 +43,7 @@ install_file kache-cc "$HELPER_DIR/kache-cc" 0755
 install_file kache-c++ "$HELPER_DIR/kache-c++" 0755
 install_file cargo-config.toml "$CARGO_HOME/config.toml" 0644
 install_file kache-config.toml "$KACHE_CONFIG" 0644
-install_file cargo-budget "$WRAPPER_DIR/cargo-budget" 0755
+install_file cargo-cores "$WRAPPER_DIR/cargo-cores" 0755
 if [ -n "${BUDGET_OVERRIDE:-}" ]; then
   tmp=$(mktemp "$STATE_DIR/build-budget-override.kit.XXXXXX"); printf '%s\n' "$BUDGET_OVERRIDE" > "$tmp"
   place "$tmp" "$STATE_DIR/build-budget-override" 0644
