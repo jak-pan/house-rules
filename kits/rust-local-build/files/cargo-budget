@@ -1,0 +1,5 @@
+#!/bin/sh
+# `cargo budget [n [--for 2h] | --clear]`: show or change the local Rust build budget from any folder.
+# Installed by House Rules kits/rust-local-build; it runs that kit's budget command with this machine's kit.conf.
+[ "${1:-}" = budget ] && shift   # cargo passes the subcommand name as the first argument
+exec "@KIT_DIR@/budget" "@CONF_PATH@" "$@"

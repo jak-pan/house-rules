@@ -26,14 +26,14 @@ CARGO_HOME="$H/.cargo"
 KACHE_CONFIG="$H/.config/kache/config.toml"
 C
 "$KIT/install" "$T/kit.conf" > "$T/install.log" 2>&1; check "install succeeds" '[ $? -eq 0 ]'
-check "manifest lists 7 files" '[ "$(wc -l < "$H/state/kit-manifest.tsv")" -eq 7 ]'
+check "manifest lists 8 files" '[ "$(wc -l < "$H/state/kit-manifest.tsv")" -eq 8 ]'
 check "no placeholder left" '! grep -l "@[A-Z_]*@" "$H/wrapper/cargo" "$H/helper"/* "$H/.cargo/config.toml" "$H/.config/kache/config.toml"'
 check "cargo config uses the helper wrapper" 'grep -q "rustc-wrapper = \"$H/helper/kache-rustc\"" "$H/.cargo/config.toml"'
 check "jobs and threads rendered" 'grep -q "^jobs = 6$" "$H/.cargo/config.toml" && grep -q "Zthreads=8" "$H/.cargo/config.toml"'
 check "budget override written" '[ "$(cat "$H/state/build-budget-override")" = 6 ]'
 check "second install refused" '! "$KIT/install" "$T/kit.conf" > /dev/null 2>&1'
 "$KIT/status" "$T/kit.conf" > "$T/status.log" 2>&1
-check "status reports installed files" '[ "$(grep -c "^installed" "$T/status.log")" -eq 7 ]'
+check "status reports installed files" '[ "$(grep -c "^installed" "$T/status.log")" -eq 8 ]'
 # Queue: exit code passes through; a stalled build is stopped with 124 (fake cargo, private lock).
 export CARGO_QUEUE_REAL="$KIT/tests/fake-cargo" CARGO_QUEUE_LOCK="$T/queue.lock"
 FAKE_MODE=exit3 "$H/wrapper/cargo" test > /dev/null 2>&1; check "queue passes the exit code through" '[ $? -eq 3 ]'
@@ -61,12 +61,15 @@ check "cleared budget falls back to the computed value" '"$KIT/budget" "$T/kit.c
 "$KIT/status" "$T/kit.conf" > "$T/status-cleared.log" 2>&1
 check "status after clearing reports no missing file and the computed budget" '! grep -q "^missing" "$T/status-cleared.log" && grep -q "^budget: .*computed" "$T/status-cleared.log"'
 "$KIT/budget" "$T/kit.conf" 6 > /dev/null
+(cd / && "$H/wrapper/cargo-budget" budget 5) > /dev/null
+check "cargo budget works from any folder" '(cd / && "$H/wrapper/cargo-budget" budget) | grep "^budget: 5 cores" > /dev/null'
+"$KIT/budget" "$T/kit.conf" 6 > /dev/null
 unset CARGO_QUEUE_REAL CARGO_QUEUE_LOCK
 printf 'changed after install\n' >> "$H/.cargo/config.toml"
 "$KIT/uninstall" "$T/kit.conf" > "$T/uninstall.log" 2>&1; check "uninstall succeeds" '[ $? -eq 0 ]'
 check "cargo config restored byte for byte" 'cmp -s "$T/orig-cargo" "$H/.cargo/config.toml"'
 check "kache config restored byte for byte" 'cmp -s "$T/orig-kache" "$H/.config/kache/config.toml"'
-check "created files removed" '[ ! -e "$H/wrapper/cargo" ] && [ ! -e "$H/helper/kache-rustc" ] && [ ! -e "$H/state/build-budget-override" ]'
+check "created files removed" '[ ! -e "$H/wrapper/cargo" ] && [ ! -e "$H/wrapper/cargo-budget" ] && [ ! -e "$H/helper/kache-rustc" ] && [ ! -e "$H/state/build-budget-override" ]'
 check "changed file kept as a copy" 'ls "$H/state/kit-backups"/modified-*/* 2>/dev/null | grep -q config.toml'
 check "manifest retired" '[ ! -e "$H/state/kit-manifest.tsv" ] && ls "$H/state"/kit-manifest.tsv.uninstalled-* > /dev/null 2>&1'
 # A failed install restores what it replaced: the kache config directory is read-only, so its file fails last.
