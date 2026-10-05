@@ -85,20 +85,18 @@ finding warrants one; triggers and lenses: [review panels](references/review-len
   full panel reviews the first and final heads, and fixes to shared mechanisms or large
   diffs; check-backs in between may be quick reviews. Test scope:
   [`reviewers/common.md`](reviewers/common.md).
-- The fixer closes every blocking item from all reviewers in one run, with the smallest fix
-  and a regression test each, in one commit per round, and searches the code for the same
-  pattern so every instance is fixed, not only the cited line. The next review names that commit and marks each prior
-  blocker RESOLVED or NOT. A fixer never approves its own fix.
-- A design finding stops for a lead decision, never a follow-up or another fix round.
-  Unsettled implementation choices follow `design-flow` §5; only its decision boundaries
-  stop the worker.
+- The fixer closes every blocking item from all reviewers in one run, following the
+  [worker pack](workers/common.md), with one commit per round. The next review names that
+  commit and marks each prior blocker RESOLVED or NOT. A fixer never approves its own fix.
+- Finding disposition follows the [shared review bar](reviewers/common.md#review-bar).
+  Unsettled implementation choices follow the [worker pack](workers/common.md).
 - **Hosted review bots.** Review threads from bots the host runs on the PR (for example
   GitHub Copilot) are reviewer input for the next fix round, judged by the same bar. Before
   merging, the lead replies to each with the fix or the reason it is not one, and resolves it.
-- **Review reassessment.** After two fix rounds on one PR, the lead decides whether to
-  simplify, split or continue and records why. This is a decision checkpoint, not a
-  hardcoded stop. Follow-ups are tracked before merging and never hold the merge;
-  cost defects and design findings cannot be reclassified to escape this rule.
+- **Review reassessment.** After two fix rounds on one PR, stop for a lead decision to
+  simplify or split and record why. Follow-ups are tracked before merging and never hold
+  the merge; finding disposition follows the
+  [shared review bar](reviewers/common.md#review-bar).
   A slower reviewer's findings on an older head feed the next fix round; its fixer
   never pushes onto a head that moved. Merge eligibility has one home: §4.
 - **Repeat defects.** Use the worker pack's mechanism-first reassessment

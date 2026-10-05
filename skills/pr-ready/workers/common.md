@@ -17,7 +17,8 @@ How to work:
   suffices. Then check whether the spec is unclear. Only then introduce one shared
   mechanism that makes the class impossible instead of patching another call site.
 - Local gate only: formatting, lint/compile checks and targeted tests for the code you
-  changed plus your new regressions. Never run the full test suite or workspace-wide tests;
+  changed plus your new regressions. Never run the full test suite or workspace-wide tests,
+  except for the canonical [no-PR-CI merge gate](../SKILL.md#4-merge-and-cleanup).
   CI runs the full suite on every push. Report each command with pass/fail counts.
 - Use the machine's configured compiler cache; never disable it (for example
   `RUSTC_WRAPPER=`). A lane may use its own build target directory while keeping the

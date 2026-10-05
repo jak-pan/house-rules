@@ -266,8 +266,8 @@ use `decision-brief`.
   `pr-ready/workers/common.md` and `pr-ready/reviewers/common.md`; the no-PR-CI exception
   lives in `pr-ready` §4.
 - **Tests earn their cost.** Test duration, hanging-test removal, build-queue hold limits
-  and scale-test replacement have one home: `pr-ready/canon.md` §Tests. Guard and test
-  upkeep, and daily whole-system audits: `pr-ready/references/guards.md`.
+  and scale-test replacement have one home: `pr-ready/canon.md` §Test discipline. Guard
+  and test upkeep, and daily whole-system audits: `pr-ready/references/guards.md`.
 - **Authorized, bounded, and durable before expensive.** Paid, long-running, or
   non-reproducible external runs (agents, model CLIs, remote jobs, benchmarks, crawls)
   must (1) be primary or proportional supporting work inside an approved envelope with an

@@ -24,8 +24,9 @@ reviewer or the triager, and the daily whole-system audit. It is not required on
 **Every reviewer challenges the spec too**, in a separate section: contradictions,
 infeasible or unmeasurable requirements, undefined cases, evidently worse designs. A spec
 issue blocks only when the code faithfully implements a wrong spec. The lead triages each
-one: a clarification is proposed in the same PR; a design finding stops for a lead
-decision, never a follow-up. A settled operator decision is not reopened by a reviewer.
+one: a clarification is proposed in the same PR; finding disposition follows the
+[shared review bar](../reviewers/common.md#review-bar).
+A settled operator decision is not reopened by a reviewer.
 Requirement removals and spec/code drift follow `design-flow` §Design changes.
 
 **Loop:** follow [pr-ready §3](../SKILL.md#3-review-rounds), including the lead's

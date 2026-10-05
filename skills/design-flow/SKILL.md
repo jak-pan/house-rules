@@ -82,11 +82,8 @@ AGENTS.md §Security.
 
 One branch per issue per repository (`STRUCTURE.md`); test-first red→green. Before a work
 package's first code, a design-spec reviewer checks its spec sections against the recorded
-decisions. For choices those sources leave open, choose the simplest option satisfying
-the spec and task, implement it, and list it for the lead to accept. Stop and report
-options only for a security boundary, contradiction of a settled decision, persistent
-state the spec does not require, or a scope change. Questions a reviewer marks as needing
-an operator decision stay open until that decision; never settle them by editing the spec.
+decisions. Implementation choices, escalation boundaries and reviewer-marked operator
+decisions follow the [worker rules](../pr-ready/workers/common.md).
 
 ## Design changes
 
@@ -95,7 +92,8 @@ in the same commit and list it for acceptance; never silently reduce a requireme
 Removing a requirement sentence from a design or spec needs a recorded decision ID.
 Flag a spec edit that changes a mechanism to match existing code: it needs a decision,
 not an editorial justification. Apply this check to rewrites and shortening as well as
-explicit deletions. A design finding stops for the lead to decide before another fix round.
+explicit deletions. Finding disposition follows the
+[shared review bar](../pr-ready/reviewers/common.md#review-bar).
 
 ## 6. Closeout — the PR merge closes the issue
 

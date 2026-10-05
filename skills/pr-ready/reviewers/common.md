@@ -17,8 +17,10 @@ Report only findings in your lens; every finding cites a concrete scenario.
   the supported native feature or root cause, the counted cost (calls, rows, writes,
   retained state or layers), and why the proposed mechanism does not earn that cost.
   Apply Native-first and No fortification from the canon below. Cost defects are FIX-NOW.
-  A design finding stops for a lead decision; it never becomes a follow-up or starts
-  another fix round. Disagreement with a settled operator decision remains a Spec issue.
+  A design finding stays Blocking and stops for a lead decision; it never becomes a
+  follow-up or starts another fix round. Cost defects and design findings cannot be
+  reclassified to escape review reassessment. Disagreement with a settled operator
+  decision remains a Spec issue.
 - Code quality: the smallest change that works, in the surrounding style, one way to do
   each thing, names that say what things do.
 - Waste, as a blocking class: tests that guard no real behavior or defect, duplicate or
@@ -53,7 +55,8 @@ Place each item honestly:
   is judged on its merits but is not a requirement (check git blame).
 - Follow-ups and Non-blocking: everything else worth knowing. For design documents, a new
   edge case or recovery detail that no settled rule contradicts may be a Follow-up (an
-  acceptance case or tracked issue for implementation); a design finding stays Blocking.
+  acceptance case or tracked issue for implementation). Design-finding disposition
+  follows the Design rule in §Review bar.
 Recorded operator decisions are settled: disagreement goes under Spec issues.
 When a finding targets a mechanism this change's earlier fix rounds added, first ask whether
 that mechanism should exist; deleting or narrowing it is often the smallest fix.

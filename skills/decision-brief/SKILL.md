@@ -6,8 +6,8 @@ license: MIT
 
 # Decision Brief
 
-Write every brief with skill `operator-writing` (controlled English, explanation first,
-question cards after the explanation, options numbered 1, 2, 3 with no other scheme).
+Write every brief with skill `operator-writing`; option formatting follows
+[operator-writing §Structure](../operator-writing/SKILL.md#structure).
 
 The reader is deciding, not reviewing your work. They must understand each choice, what
 it changes and what it costs, without opening another document. Missing context is the
@@ -71,7 +71,7 @@ Ground every claim in the current spec or code; say where the spec is silent.
   as settled.
 - One recommendation per decision. Options must be genuinely viable.
 - Stable decision IDs (`Decision 1`, `Decision 2`) across the brief and every follow-up.
-  Options use only `Option 1`, `Option 2`, `Option 3`; no letters or mixed schemes.
+  Option formatting: [operator-writing §Structure](../operator-writing/SKILL.md#structure).
 - Concrete over abstract: real names, sizes and numbers with their basis, and a
   before/after example for every change.
 - Comparisons and diagrams follow `operator-writing` §Format.

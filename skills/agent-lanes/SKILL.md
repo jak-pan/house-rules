@@ -19,8 +19,7 @@ explicit goals.
   its `.tmp/`), so parallel builds never share a lock and removing the worktree removes its
   build output. Only a lane without a worktree uses `.tmp/cargo-target/<lane>` in a shared
   checkout, and it deletes that directory when the lane ends.
-  A lane's target directory must never bypass the configured shared compiler cache
-  (compiler-cache rule: `pr-ready/workers/common.md`).
+  Compiler-cache policy: [worker rules](../pr-ready/workers/common.md).
 - **Git limits.** Lanes push only their own work branches, within the delivery authority
   recorded in the bible (policy: AGENTS.md §Git). Commits follow the repo's canon; lanes
   report exactly which files they touched.
