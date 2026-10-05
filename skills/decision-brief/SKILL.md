@@ -6,8 +6,8 @@ license: MIT
 
 # Decision Brief
 
-Write every brief with skill `operator-writing` (controlled English, explanation first,
-question cards after the explanation, options numbered 1, 2, 3 with no other scheme).
+Write every brief with skill `operator-writing`; option formatting follows
+[operator-writing §Structure](../operator-writing/SKILL.md#structure).
 
 The reader is deciding, not reviewing your work. They must understand each choice, what
 it changes and what it costs, without opening another document. Missing context is the
@@ -26,7 +26,7 @@ most common failure: a term, a mechanism or a side effect the reader cannot see.
 When the operator asks you to explain something, says there is not enough context, or does
 not understand a decision, answer in this shape rather than restating the summary:
 
-1. **One concrete example end to end,** with a Mermaid diagram of what is stored or what
+1. **One concrete example end to end,** with a diagram of what is stored or what
    flows where, using real names and realistic sizes.
 2. **What each thing physically is:** where it lives, what it owns (access, history,
    lifecycle), what it points to, and what it is not.
@@ -43,7 +43,7 @@ Ground every claim in the current spec or code; say where the spec is silent.
 ## Document structure
 
 1. **What you are deciding.** One line per decision with its ID, then how to answer
-   (`1A, 2a yes, 2b no`).
+   (`Decision 1 = Option 2, Decision 2 = Option 1`).
 2. **Glossary.** Each term once, in plain language, with a small example. A small brief
    lists only the terms its decisions use; never skip a term the reader may not know.
 3. **Walkthrough.** One concrete example followed through the system as numbered steps
@@ -56,8 +56,8 @@ Ground every claim in the current spec or code; say where the spec is silent.
    - what depends on it;
    - the problem;
    - options — each with what changes, a before/after example, side effects including
-     what breaks or gets harder, and size as files and lines touched (prime rule 13: no
-     agent-days or time estimates; a duration only when measured from past runs);
+     what breaks or gets harder, and size per
+     [AGENTS.md prime rule 13](../../AGENTS.md#prime-rules);
    - recommendation, and why each other option is rejected;
    - next steps if chosen.
 5. **Requests to revisit settled decisions,** kept separate and not adopted by default.
@@ -70,15 +70,11 @@ Ground every claim in the current spec or code; say where the spec is silent.
   existing decision; never present a settled operator decision as open, or your own choice
   as settled.
 - One recommendation per decision. Options must be genuinely viable.
-- Stable IDs (`1`, `1a`, `2c`) across the brief and every follow-up, so a one-line answer
-  is unambiguous.
+- Stable decision IDs (`Decision 1`, `Decision 2`) across the brief and every follow-up.
+  Option formatting: [operator-writing §Structure](../operator-writing/SKILL.md#structure).
 - Concrete over abstract: real names, sizes and numbers with their basis, and a
   before/after example for every change.
-- Comparisons go in tables; relationships and flows go in Mermaid diagrams, never ASCII
-  art or indented text trees. In a chat client that does not render Mermaid, render each
-  diagram with the client's visual tool so the reader sees a picture, not source.
-  Orient diagrams vertically and stack comparisons one under another, never side by
-  side (AGENTS.md §Actionable communication).
+- Comparisons and diagrams follow `operator-writing` §Format.
 - Organize by consequence, not by the order the work happened. No activity logs.
 - After the operator answers, record each choice where it belongs (AGENTS.md prime rule
   11) and stop asking about it.

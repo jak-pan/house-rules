@@ -27,7 +27,7 @@ from it without asking questions.** The document must explain the product and it
   what's stored. Multiple examples beat prose every time.
 - **Exact signatures, not descriptions**: real type/trait/schema definitions, module
   layout, integration points. Prose describing code is a smell; code is shorter.
-- **Diagrams**: vertical orientation for flows (format: AGENTS.md §Layout; doc tiers:
+- **Diagrams**: format follows `operator-writing` §Format (doc tiers:
   skill `design-canon` §Docs).
 - **Authoritative framing**: decisions are stated as decisions ("X does Y via Z"), with
   a Decisions section recording each choice AND its rejected alternatives with why.
@@ -82,5 +82,6 @@ Review a supplied spec against evidence and the requested outcome; critique per 
 it says scores/metadata/IDs, never substitute a cruder proxy.
 If the specified mechanism seems wrong mid-build, escalate per skill `operator-protocol`
 §Decisions when the change is outside the approved decision boundary; otherwise record
-the deviation per skill `design-flow` §Implement. Never silently implement a reduced
-version.
+the deviation per skill `design-flow` §5. Requirement removals and spec edits that match
+existing code follow `design-flow` §Design changes; critique these rather than ratifying
+the implementation in the spec. Never silently implement a reduced version.

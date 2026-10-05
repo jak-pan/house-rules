@@ -162,12 +162,13 @@ not.
 
 Git record, in the lane's worktree. Set `d` to the default branch's name; queries exclude
 it both local and fetched (omit `"origin/$d"` without a remote) and match the item's
-`Work-Item` (and its slug if it started offline):
+`Work-Item` (and its slug if it started offline). Set `workspace` to the durable workspace
+root and `repo` to the repository name (paths: `STRUCTURE.md`):
 
 ```sh
 d=main
 git branch -a --list '42-*' '*/42-*'                                         # must be empty
-git worktree add -b 42-rerank-stage2 ../repo-42-rerank-stage2 "$d"           # claim
+git worktree add -b 42-rerank-stage2 "$workspace/worktrees/$repo/42-rerank-stage2" "$d" # claim
 git commit --allow-empty --only -F .tmp/record.md \
   --trailer "Work-Item: 42" --trailer "Record: handoff" --trailer "Agent: claude-1" \
   --trailer "Status: In progress"

@@ -51,10 +51,13 @@ communication). How to ask, and to keep unblocked work moving meanwhile: skill
 - **Implementation notes**: every deviation from the plan (edge case forced a different
   approach) gets the what + why in the message of the commit that deviates, as it happens;
   in a squash-merge repository, also in the next handoff record. Design-doc-affecting
-  deviations update the design doc in the same commit (skill `design-flow` §Implement).
+  deviations propose a design-doc update in the same commit (`design-flow` §5).
+  Check `design-flow` §Design changes before removing requirements or changing a spec
+  mechanism to match code; those are decisions, not missing implementation notes.
 - **Output as signal**: when a result surprises you or the operator, treat it as a map gap
   first, a bug second — something wasn't in the prompt/spec that should have been. Fix the
-  task-local spec or bible as appropriate; draft universal skill or rule changes for
+  task-local code first; spec or bible changes follow `design-flow` §Design changes.
+  Draft universal skill or rule changes for
   operator confirmation.
 
 ## After implementation

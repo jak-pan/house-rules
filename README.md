@@ -50,10 +50,11 @@ scope.
 CI checks the report linter's JavaScript syntax. This is a
 smoke check, not proof of the linter's behavior or of any agent's discovery. The source
 repository also has local preparer/panel integration tests using temporary Git repositories
-and stub CLIs, with no network or model calls. Run them before committing preparer changes:
+and stub CLIs, plus verdict, Grok final-output and worker/reviewer-pack unit tests, with no
+network or model calls. Run the tests for changed skill scripts before committing:
 
 ```sh
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s skills/pr-ready/scripts -p test_prepare.py
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s skills/pr-ready/scripts
 bash -n skills/pr-ready/scripts/review-panel.sh
 ```
 

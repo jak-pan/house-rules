@@ -3,7 +3,9 @@
 Repository-local instructions and explicit operator choices override House Rules (this
 file, `PREFERENCES.md`, `STRUCTURE.md`, and the skills), subject to the host instruction
 hierarchy, permissions, access, and approval controls. Each rule has one home: this file
-states invariants; the named skill holds the procedure; nothing is restated.
+states invariants; the named skill holds the procedure; nothing is restated. Prompts
+reference rules; builders resolve them at build time
+(skill `pr-ready`, references/guards.md §Guard upkeep).
 
 ## Applicability and loading
 
@@ -28,7 +30,6 @@ trackers.
    fully, not summaries.
 3. After any context reset, re-read the bible and any active campaign ledger.
 4. Feature reading order: design doc → architecture doc → code.
-5. Remove stale lanes in each repo you work in (skill `agent-lanes` §Lane cleanup).
 
 ## Outcome and resource contract
 
@@ -102,6 +103,8 @@ another repair:
 - Is the abstraction or supporting mechanism itself wrong?
 - Should it be simplified, deleted, deferred, or redesigned?
 - Is continuing inside the approved resource envelope?
+
+Repeat-defect repair order has one home: `pr-ready/workers/common.md`.
 
 The third occurrence does not automatically require operator approval and does not
 prohibit an obvious aligned fix. It prohibits a blind fourth iteration. Escalate only
@@ -177,12 +180,9 @@ counts or history.
     `handoff-continuity` §Filing.
 12. **Simplicity first.** Prefer deleting code and mechanisms; one way to do things;
     five-whys before adding code; clean code even in experiments.
-13. **No speculative delivery dates.** Size plans by S/M/L/XL, chunk count, risk, and
-    dependencies rather than inventing completion ETAs. Never estimate agent work in
-    agent-days, hours or developer time: those numbers are uncalibrated and make agents
-    run longer. State size as files and lines touched; give a duration only when measured
-    from comparable past runs, with the measurement cited. Operator direction: 2026-10-03,
-    after agent-day estimates in plans proved far off and stretched agent runs.
+13. **No time estimates for agent work.** State size only as files and lines touched.
+    Operator direction: 2026-10-03, after time estimates proved uncalibrated and stretched
+    agent runs.
 14. **Surface unknowns** in ambiguous work and after surprising output: skill
     `finding-unknowns`.
 15. **Long-running work stays attached.** Start every long-running worker, loop or watcher
@@ -193,68 +193,15 @@ counts or history.
 
 ## Actionable communication
 
-Apply these writing defaults to every operator-facing response. Explicit output formats,
-necessary context, required tool announcements, and approval explanations take precedence;
-brevity must not remove evidence or content needed to complete the task.
+Every operator-facing text follows skill `operator-writing` for structure, language,
+options, Mermaid diagrams and the reader test. Decisions and explanations additionally
+use `decision-brief`.
 
-**Operator writing is mandatory.** Every operator-facing text — chat replies included,
-also status, briefs, reports, PR and issue text — follows skill `operator-writing`:
-controlled English, explanation before any label or option, questions as cards after the
-explanation, and the reader test before sending. The defaults below apply within it.
-Operator direction: 2026-10-03, after decision pages introduced options and labels before
-explaining them and mixed letter schemes.
-
-- Lead with the answer, result, or useful action. Put commands, paths, and snippets before
-  optional supporting prose. Skip ceremonial preambles, filler, redundant recaps, and
-  closing pleasantries.
-- For all agents, use the same explanation standard in chat, progress reports,
-  handoffs, GitHub issues, PR titles/descriptions, and review or issue comments.
-  Lead with the concrete problem or requested behavior and its practical effect.
-  Explain in this order, including only the parts relevant to the message:
-  **what broke or is missing → why → what changed or is proposed → proof → what remains**.
-  A reader unfamiliar with the investigation must understand the problem before
-  encountering implementation history. Explain technical terms and unfamiliar shorthand
-  in plain language; retain the technical detail needed to assess the cause and fix.
-- Prefer a small before/after example, code or pseudocode, measured result, or linked
-  source/test evidence when it makes the explanation more precise. Add a diagram only
-  when the relationships need one; diagrams are Mermaid in every reply, chat included,
-  never ASCII art or indented text trees. Where the chat client shows Mermaid source as
-  plain text, render it with the client's visual or diagram tool instead of pasting a
-  code block. Orient every diagram vertically: flowcharts top to bottom, and several
-  diagrams or groups stacked, never side by side; wide layouts become unreadable when
-  scaled down. Mermaid places unconnected subgraphs side by side, so draw them as
-  separate diagrams. A file the operator should read that lives outside the open
-  workspace (scratch, temp or another repository) is delivered with the client's
-  file-sending tool; a link to it does not open. Decisions needing operator input, and any
-  request to explain something or for more context, use skill `decision-brief`. State
-  what the evidence establishes and
-  what it does not. Distinguish observed causes from hypotheses, running-system
-  failures from proposed-change risks, and completed fixes from plans or deployment
-  still awaiting verification. IDs, hashes and test counts support the explanation;
-  they never substitute for the problem, mechanism or result.
-- Keep explanations concise and organized by consequence, not execution chronology.
-  Omit empty template sections, long activity logs and repeated caveats. GitHub titles
-  should name the concrete problem or change; the opening must describe the current
-  outcome. When closing or superseding work, explain what was actually delivered,
-  already completed or replaced, and link remaining work. Preserve historical
-  evidence below a clearly labeled current summary so old "unresolved" notes do not
-  contradict the current status. State the next action and owner when work remains.
-  Operator directions: 2026-09-09, after a release-blocker report lacked context;
-  2026-09-11, explicitly extend problem-first explanations with useful technical
-  proof to all agents, chat interactions, and GitHub PRs/comments after an issue thread
-  obscured a contact-list defect behind its investigation history.
-- Number sequential instructions, one bounded action per step. Answer numbered questions
-  in matching order with their original numbers. Prefer lists of five or fewer items;
-  group longer lists only when it helps, preserving sequence, identifiers, and coverage.
-- Make progress visible: state what changed, what is active, and what remains when relevant.
-  Make the next required operator action concrete. Do not invent homework
-  after completion or ask permission to continue already-authorized work.
-- Stay on the requested topic. Keep optional secondary findings separate; surface blockers
-  and material risks promptly. Explain fully when asked. For choices, make the
-  recommendation prominent with concise trade-offs while preserving requested ordering.
-- State errors plainly with the known cause and fix or next diagnostic. Preserve real
-  uncertainty. Use concrete, evidence-grounded durations when useful; otherwise follow
-  prime rule 13 rather than inventing estimates.
+- Claims carry evidence; distinguish observed causes from hypotheses, and completed
+  fixes from plans or deployment awaiting verification.
+- Keep the requested outcome and material blockers visible; state the next action and
+  owner when work remains.
+- Do not invent operator homework or ask permission to continue authorized work.
 
 ## Autonomy
 
@@ -315,28 +262,12 @@ explaining them and mixed letter schemes.
   full-gate evidence; where CI owns the full suite (below), that is CI's run on the pushed
   head. Do not repeatedly run the full matrix after changes that cannot
   affect it.
-- **CI owns the full suite.** Where CI runs the complete gate on every push and merges wait
-  for it, agents do not run the full test suite locally. Implementers and fixers run
-  formatting, lint/compile checks, fast guard tests, and targeted tests for the code they
-  changed plus their new regressions. Reviewers review statically and run at most one
-  targeted test, only to confirm or refute a specific finding. Run the full suite locally
-  only when CI cannot, or to diagnose a CI failure. Operator direction: 2026-09-30, after
-  local full-suite runs took most of each review and fix round. Procedure for the whole
-  change loop: skill `pr-ready`. Every prompt that dispatches an implementer or fixer
-  states this test scope, because workers do not load these rules on their own.
-- **Keep the machine's compiler cache.** Local builds use the configured shared compiler
-  cache (for Rust the `rustc-wrapper` in the user's Cargo config). Never disable it
-  (`RUSTC_WRAPPER=`) or point a lane at a private target directory just to work around
-  it; when a sandboxed worker cannot reach the cache, grant the sandbox write access to
-  the cache directories instead. Operator direction: 2026-10-02, after parallel lanes
-  rebuilt every dependency from scratch with the cache switched off.
-- **Release builds by default.** Every build and test on the operator's machine uses the
-  release profile (Rust: `--release`, or settings that match it); a debug build is only for
-  active debugging, on purpose. Debug builds rebuild native dependencies outside the shared
-  compiler cache and test different code than ships. Every implementer or fixer prompt
-  states this. Operator direction: 2026-10-03, after agent lanes recompiled native
-  dependencies in debug mode.
-- Long-running checks fail on no-progress, not wall-clock.
+- **CI owns the full suite.** Local worker and reviewer scopes live in
+  `pr-ready/workers/common.md` and `pr-ready/reviewers/common.md`; the no-PR-CI exception
+  lives in `pr-ready` §4.
+- **Tests earn their cost.** Test duration, hanging-test removal, build-queue hold limits
+  and scale-test replacement have one home: `pr-ready/canon.md` §Test discipline. Guard
+  and test upkeep, and daily whole-system audits: `pr-ready/references/guards.md`.
 - **Authorized, bounded, and durable before expensive.** Paid, long-running, or
   non-reproducible external runs (agents, model CLIs, remote jobs, benchmarks, crawls)
   must (1) be primary or proportional supporting work inside an approved envelope with an
@@ -369,8 +300,8 @@ explaining them and mixed letter schemes.
 Canonical paths, naming, and temp-storage classes: `STRUCTURE.md` in the installed House
 Rules root. Defaults: derived views (indexes, generated docs) are regenerated from
 source, never hand-edited; nothing generated in repo root; large artifacts stay untracked;
-work from repo root (path args over `cd`); in Markdown, diagrams are Mermaid, never ASCII
-art. The shell working directory can persist between tool calls, so a stray `cd` silently
+work from repo root (path args over `cd`); diagram format: `operator-writing` §Format.
+The shell working directory can persist between tool calls, so a stray `cd` silently
 redirects later relative paths: never `cd` inside a compound command (use `git -C` and
 absolute arguments), re-anchor before relative-path writes, and after bulk file creation
 verify that nothing landed in a nested duplicate directory. File-tool calls (read, edit,
@@ -386,12 +317,6 @@ project's unsettled choices: skill `project-bootstrap`. Rust-specific quality ga
 `decision-brief`. Writing for the operator: skill `operator-writing`. Use skill `reasoning-moves` when explicit
 reasoning checkpoints help the work; the evidence and verification requirements apply to
 every model.
-
-**No migrations before release.** Until a product is released there is no production data:
-every store can be rebuilt from the raw data the project holds. Write only the current
-format and refuse clearly to open anything else. Do not build migrations, legacy-format
-readers or compatibility shims over changing development versions; re-ingesting from raw
-data is authorized when a format changes. Operator direction: 2026-09-29.
 
 ## Experiments
 

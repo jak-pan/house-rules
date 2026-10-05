@@ -19,6 +19,7 @@ explicit goals.
   its `.tmp/`), so parallel builds never share a lock and removing the worktree removes its
   build output. Only a lane without a worktree uses `.tmp/cargo-target/<lane>` in a shared
   checkout, and it deletes that directory when the lane ends.
+  Compiler-cache policy: [worker rules](../pr-ready/workers/common.md).
 - **Git limits.** Lanes push only their own work branches, within the delivery authority
   recorded in the bible (policy: AGENTS.md §Git). Commits follow the repo's canon; lanes
   report exactly which files they touched.
@@ -38,8 +39,8 @@ explicit goals.
   ⚒ Make one lane the budget owner when several hit the same provider.
 - Record the intended concurrency and measurement conditions before launch (bounds and
   isolation: AGENTS.md §Parallel work).
-- Release builds and targeted release tests use the lane's own target dir, never a shared
-  tree where a paused run may depend on the existing binary.
+- Builds and targeted tests follow `rust-canon` §Code rules and use the lane's own target
+  directory, never a shared tree where a paused run may depend on the existing binary.
 
 ## Lane cleanup
 

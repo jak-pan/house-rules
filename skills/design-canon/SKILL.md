@@ -70,8 +70,12 @@ model stack in an unrelated application.
 - **End-state first.** Design load-bearing structure for the agreed final product — no
   "fix in v2" for load-bearing structure — using the simplest tenancy/deployment model
   that meets it. Do not add multi-tenancy solely because a future product might need it.
-- **No legacy pre-launch.** Delete dead paths completely (code, tests, call sites) — no deprecation
-  shims, no backwards compatibility for things that never shipped.
+- **No legacy pre-launch.** Delete dead paths completely (code, tests, call sites); no
+  shims or compatibility layers for things that never shipped. For current live data in
+  pre-release stores and pre-release internal storage formats, rebuild from retained
+  canonical inputs instead of adding migrations or legacy readers. Write only the current
+  internal format and visibly refuse others. This does not forbid schema migrations as a
+  product feature for applications using the product; design those when required.
 - **Configurable, never hard-imposed.** Every policy that could vary is a versioned config
   with sane defaults; a spec defines the defaults and the config surface (Rust layering:
   skill `rust-canon` §Config layering). Best-case defaults are found empirically, then
