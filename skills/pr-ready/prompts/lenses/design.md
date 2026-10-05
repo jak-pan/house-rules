@@ -11,4 +11,4 @@ whole affected path against native capabilities, not only the diff. Name the eng
 feature or root cause and the counted cost of each layer. Apply the shared review bar's
 design class, Native-first and No fortification. Trace requirement removals and spec edits
 that match existing code to a recorded decision. Finding disposition follows the
-[shared review bar](common.md#review-bar).
+[shared review bar](../utils/review-bar.md).

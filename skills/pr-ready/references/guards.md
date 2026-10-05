@@ -12,7 +12,7 @@ real findings or defects caught, false positives or flaky failures, waivers with
 IDs, and runtime. Use existing run/test output and tracker records rather than a second
 source of truth. The lead reviews these records daily at first, then every 3 days, pruning
 or narrowing guards and tests that do not earn their cost. Testing constraints:
-[canon.md §Test discipline](../canon.md#test-discipline). Review-round reassessment:
+[prompts/common/test-discipline.md §Test discipline](../prompts/common/test-discipline.md). Review-round reassessment:
 [pr-ready §3](../SKILL.md#3-review-rounds).
 
 There are no fixed caps on blocking findings or filed issues. The triager decides by

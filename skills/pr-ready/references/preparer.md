@@ -16,7 +16,7 @@ Review task fields: [review template](review-prompt.md). `scripts/review-panel.s
   failure is recorded in the new summary. Cleanup failures also make the panel exit nonzero. Before any output changes, panel names must match
   `[A-Za-z0-9][A-Za-z0-9._-]*` and the panel directory must resolve strictly beneath the
   configured output root, including through symlinks. Reviewer names must match
-  `[a-z0-9-]+` and an existing file stem in `reviewers/`, with no duplicates. All cleanup
+  `[a-z0-9-]+` and an existing file stem in `prompts/lenses/`, with no duplicates. All cleanup
   paths and the summary must resolve beneath the panel directory, including through
   symlinks, or the panel refuses to run. Prompt order: stable rules and lens first, then the
   base-prompt file as summary/task, PR/issue context, requirements and change. Requirements

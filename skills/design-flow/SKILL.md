@@ -83,7 +83,7 @@ AGENTS.md §Security.
 One branch per issue per repository (`STRUCTURE.md`); test-first red→green. Before a work
 package's first code, a design-spec reviewer checks its spec sections against the recorded
 decisions. Implementation choices, escalation boundaries and reviewer-marked operator
-decisions follow the [worker rules](../pr-ready/workers/common.md).
+decisions follow the [worker rules](../pr-ready/prompts/roles/implementer.md).
 
 ## Design changes
 
@@ -93,7 +93,7 @@ Removing a requirement sentence from a design or spec needs a recorded decision 
 Flag a spec edit that changes a mechanism to match existing code: it needs a decision,
 not an editorial justification. Apply this check to rewrites and shortening as well as
 explicit deletions. Finding disposition follows the
-[shared review bar](../pr-ready/reviewers/common.md#review-bar).
+[shared review bar](../pr-ready/prompts/utils/review-bar.md).
 
 ## 6. Closeout — the PR merge closes the issue
 

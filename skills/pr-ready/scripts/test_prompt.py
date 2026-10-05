@@ -1,44 +1,129 @@
-import importlib.util
 from pathlib import Path
+import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 
 
-SCRIPT = Path(__file__).with_name("worker-pack.py")
-spec = importlib.util.spec_from_file_location("worker_pack", SCRIPT)
-worker_pack = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(worker_pack)
+SCRIPT = Path(__file__).with_name("prompt.py")
+ROOT = SCRIPT.parents[3]
 
 
-class WorkerPackTest(unittest.TestCase):
-    def run_pack(self, *args):
+class PromptTest(unittest.TestCase):
+    def run_prompt(self, *args, text="", script=SCRIPT, cwd=None):
         return subprocess.run(
-            [sys.executable, str(SCRIPT), *args], capture_output=True, text=True, timeout=5
+            [sys.executable, str(script), *args], input=text, capture_output=True,
+            text=True, timeout=5, cwd=cwd,
         )
 
-    def test_default_is_worker_pack(self):
-        result = self.run_pack()
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, worker_pack.pack() + "\n")
-        self.assertNotIn("{{CANON}}", result.stdout)
+    def fixture(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        script = root / "skills/pr-ready/scripts/prompt.py"
+        script.parent.mkdir(parents=True)
+        shutil.copyfile(SCRIPT, script)
+        return root, script
 
-    def test_reviewers_mode_prints_reviewer_pack(self):
-        result = self.run_pack("reviewers")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, worker_pack.pack("reviewers") + "\n")
-        self.assertNotIn("{{CANON}}", result.stdout)
-
-    def test_explicit_workers_mode_matches_default(self):
-        result = self.run_pack("workers")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, self.run_pack().stdout)
-
-    def test_unknown_mode_fails_without_printing_a_pack(self):
-        result = self.run_pack("reviewer")
-        self.assertNotEqual(result.returncode, 0)
+    def assert_failure(self, result, message):
+        self.assertEqual(result.returncode, 2)
         self.assertEqual(result.stdout, "")
-        self.assertIn("invalid choice", result.stderr)
+        self.assertEqual(len(result.stderr.splitlines()), 1)
+        self.assertIn(message, result.stderr)
+
+    def test_every_role_expands_with_all_common_rules(self):
+        roles = sorted((ROOT / "skills/pr-ready/prompts/roles").glob("*.md"))
+        self.assertEqual(len(roles), 5)
+        for role in roles:
+            with self.subTest(role=role.name):
+                result = self.run_prompt(str(role.relative_to(ROOT)))
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotRegex(result.stdout, r"(?m)^@rule ")
+                for rule in (ROOT / "skills/pr-ready/prompts/common").glob("*.md"):
+                    self.assertEqual(result.stdout.count(rule.read_text()), 1)
+
+    def test_stdin_preserves_whole_files_titles_and_newlines(self):
+        root, script = self.fixture()
+        (root / "child.md").write_bytes(b"Title\r\n\r\nBody")
+        result = subprocess.run(
+            [sys.executable, str(script)], input=b"Before\r\n@rule house-rules:child.md\r\nAfter\n",
+            capture_output=True, timeout=5,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, b"Before\r\nTitle\r\n\r\nBodyAfter\n")
+
+    def test_file_argument_is_repo_relative_and_independent_of_cwd(self):
+        root, script = self.fixture()
+        (root / "entry.md").write_text("Heading\n\n@rule house-rules:child.md\n")
+        (root / "child.md").write_text("Body\n")
+        result = self.run_prompt("entry.md", script=script, cwd="/")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "Heading\n\nBody\n")
+
+    def test_list_is_depth_first_include_order_with_repeated_visits(self):
+        root, script = self.fixture()
+        (root / "entry.md").write_text("@rule house-rules:a.md\n@rule house-rules:b.md\n")
+        (root / "a.md").write_text("@rule house-rules:b.md\n")
+        (root / "b.md").write_text("Body\n")
+        result = self.run_prompt("--list", "entry.md", script=script)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "entry.md\na.md\nb.md\nb.md\n")
+        stdin = self.run_prompt("--list", text="@rule house-rules:a.md\n", script=script)
+        self.assertEqual(stdin.stdout, "a.md\nb.md\n")
+
+    def test_missing_include_fails_without_partial_output(self):
+        self.assert_failure(self.run_prompt(text="Before\n@rule house-rules:missing.md\n"),
+                            "missing.md")
+
+    def test_empty_include_fails(self):
+        self.assert_failure(self.run_prompt(text="@rule house-rules:\n"), "root")
+
+    def test_missing_input_file_fails(self):
+        self.assert_failure(self.run_prompt("missing.md"), "missing.md")
+
+    def test_section_reference_fails(self):
+        for path in ("AGENTS.md#prime-rules", "missing.md#section"):
+            with self.subTest(path=path):
+                self.assert_failure(self.run_prompt(text="@rule house-rules:" + path + "\n"),
+                                    "section")
+
+    def test_outside_root_fails(self):
+        for path in ("../outside.md", "/etc/passwd"):
+            with self.subTest(path=path):
+                self.assert_failure(self.run_prompt(text="@rule house-rules:" + path + "\n"),
+                                    "root")
+
+    def test_symlink_outside_root_fails(self):
+        root, script = self.fixture()
+        (root / "escape.md").symlink_to(root.parent / "outside.md")
+        self.assert_failure(self.run_prompt(text="@rule house-rules:escape.md\n", script=script),
+                            "root")
+
+    def test_cycle_fails_without_partial_output(self):
+        root, script = self.fixture()
+        (root / "a.md").write_text("Before\n@rule house-rules:b.md\n")
+        (root / "b.md").write_text("@rule house-rules:a.md\n")
+        self.assert_failure(self.run_prompt("a.md", script=script), "cycle")
+        self.assert_failure(self.run_prompt("--list", "a.md", script=script), "cycle")
+
+    def test_only_exact_include_lines_expand(self):
+        original = " @rule house-rules:missing.md\nText @rule house-rules:missing.md\n"
+        result = self.run_prompt(text=original)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, original)
+
+    def test_same_input_is_byte_identical(self):
+        text = "@rule house-rules:AGENTS.md\n"
+        first = self.run_prompt(text=text)
+        second = self.run_prompt(text=text)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(first.stdout, second.stdout)
+
+    def test_common_and_utils_are_leaf_files(self):
+        for folder in ("common", "utils"):
+            for path in (ROOT / "skills/pr-ready/prompts" / folder).glob("*.md"):
+                self.assertNotRegex(path.read_text(), r"(?m)^@rule ")
 
 
 class RuleOwnershipTest(unittest.TestCase):
@@ -67,7 +152,7 @@ class RuleOwnershipTest(unittest.TestCase):
 
     def test_spec_challenges_belong_to_shared_review_bar(self):
         lenses = self.text("skills/pr-ready/references/review-lenses.md")
-        self.assertIn("../reviewers/common.md#review-bar", lenses)
+        self.assertIn("../prompts/utils/review-bar.md", lenses)
         for copied in (
             "Every reviewer challenges the spec",
             "infeasible or unmeasurable requirements",
@@ -79,7 +164,7 @@ class RuleOwnershipTest(unittest.TestCase):
         self.assertIn("The lead triages each one", lenses)
         self.assertIn("a clarification is proposed in the same PR", lenses)
         self.assertIn("Requirement removals and spec/code drift", lenses)
-        common = self.text("skills/pr-ready/reviewers/common.md")
+        common = self.text("skills/pr-ready/prompts/utils/review-bar.md")
         self.assertIn("Challenge the spec as well", common)
         self.assertIn("a spec issue blocks only", common)
 
@@ -129,14 +214,15 @@ class RuleOwnershipTest(unittest.TestCase):
         self.assertNotIn("not a hardcoded stop", reassessment)
 
     def test_design_disposition_has_one_owner(self):
-        common = self.text("skills/pr-ready/reviewers/common.md")
-        bar, remainder = common.split("{{CANON}}", 1)
+        common = self.text("skills/pr-ready/prompts/utils/review-bar.md")
+        bar = self.text("skills/pr-ready/prompts/utils/cost-and-design.md")
+        remainder = self.text("skills/pr-ready/prompts/utils/review-report.md")
         self.assertRegex(bar, r"design finding.*stops for a lead decision")
         self.assertIn("never becomes a follow-up or starts another fix round", bar)
         self.assertNotRegex(remainder, r"design finding (?:stays|stops)")
-        self.assertIn("§Review bar", remainder)
+        self.assertIn("§Review bar", common)
         for path in (
-            "skills/pr-ready/reviewers/design.md",
+            "skills/pr-ready/prompts/lenses/design.md",
             "skills/pr-ready/SKILL.md",
             "skills/pr-ready/references/review-lenses.md",
             "skills/design-flow/SKILL.md",
@@ -144,7 +230,7 @@ class RuleOwnershipTest(unittest.TestCase):
             with self.subTest(path=path):
                 text = self.text(path)
                 self.assertNotRegex(text, r"design finding stops|design findings cannot")
-                self.assertIn("common.md#review-bar", text)
+                self.assertIn("review-bar.md", text)
 
     def test_feature_implementation_uses_worker_choice_boundaries(self):
         rules = self.text("skills/design-flow/SKILL.md")
@@ -152,13 +238,13 @@ class RuleOwnershipTest(unittest.TestCase):
             "## Design changes", 1
         )[0]
         self.assertIn("design-spec reviewer checks its spec sections", implementation)
-        self.assertIn("workers/common.md", implementation)
+        self.assertIn("prompts/roles/implementer.md", implementation)
         self.assertNotIn("choose the simplest option", implementation)
         self.assertNotIn("Stop and report options", implementation)
         self.assertNotIn("never settle them by editing the spec", implementation)
 
     def test_test_logging_and_pruning_belong_to_guard_upkeep(self):
-        canon = self.text("skills/pr-ready/canon.md")
+        canon = self.text("skills/pr-ready/prompts/common/test-discipline.md")
         self.assertIn("references/guards.md#guard-upkeep", canon)
         self.assertNotIn("log runtime", canon)
         self.assertNotRegex(canon, r"prune or bound slow")
@@ -169,11 +255,11 @@ class RuleOwnershipTest(unittest.TestCase):
 
     def test_lane_cache_policy_references_worker_owner(self):
         lanes = self.text("skills/agent-lanes/SKILL.md")
-        self.assertIn("workers/common.md", lanes)
+        self.assertIn("prompts/roles/implementer.md", lanes)
         self.assertNotRegex(lanes, r"target directory must never bypass")
         self.assertIn("Build output lives inside the lane's own worktree", lanes)
         self.assertIn(".tmp/cargo-target/<lane>", lanes)
-        worker = self.text("skills/pr-ready/workers/common.md")
+        worker = self.text("skills/pr-ready/prompts/roles/implementer.md")
         self.assertIn("configured compiler cache; never disable it", worker)
 
     def test_decision_ids_keep_option_formatting_in_operator_writing(self):
@@ -202,7 +288,7 @@ class RuleOwnershipTest(unittest.TestCase):
         ):
             with self.subTest(path=path):
                 text = self.text(path)
-                self.assertRegex(text, r"worker pack|workers/common\.md")
+                self.assertRegex(text, r"worker pack|prompts/roles/implementer\.md")
                 for copied in (
                     "with the smallest fix",
                     "reviewer's smallest fix",
@@ -217,7 +303,7 @@ class RuleOwnershipTest(unittest.TestCase):
         )
 
     def test_worker_full_suite_prohibition_preserves_no_pr_ci_exception(self):
-        worker = self.text("skills/pr-ready/workers/common.md")
+        worker = self.text("skills/pr-ready/prompts/roles/implementer.md")
         gate = worker.split("- Local gate only:", 1)[1].split(
             "- Use the machine's", 1
         )[0]
@@ -227,13 +313,13 @@ class RuleOwnershipTest(unittest.TestCase):
         self.assertIn("SKILL.md#4-merge-and-cleanup", gate)
 
     def test_test_discipline_heading_and_references_do_not_collide(self):
-        canon = (self.root / "skills/pr-ready/canon.md").read_text()
+        canon = (self.root / "skills/pr-ready/prompts/common/test-discipline.md").read_text()
         self.assertIn("## Test discipline\n", canon)
         self.assertNotIn("## Tests\n", canon)
         self.assertIn("§Test discipline", self.text("AGENTS.md"))
         guards = self.text("skills/pr-ready/references/guards.md")
-        self.assertIn("canon.md#test-discipline", guards)
-        self.assertNotIn("canon.md#tests", guards)
+        self.assertIn("prompts/common/test-discipline.md", guards)
+        self.assertNotIn("prompts/common/test-discipline.md#tests", guards)
 
 
 if __name__ == "__main__":

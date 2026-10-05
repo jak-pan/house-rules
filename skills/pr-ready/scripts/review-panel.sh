@@ -2,7 +2,7 @@
 # Run a read-only review panel in parallel.
 # Usage: review-panel.sh <name> <checkout> <base-prompt> [reviewer ...]
 #   name: [A-Za-z0-9][A-Za-z0-9._-]*, a single directory name
-#   reviewer: a file stem in ../reviewers/ (default: generalist-<family> for each configured family)
+#   reviewer: a file stem in ../prompts/lenses/ (default: generalist-<family> for each configured family)
 # Config: ${REVIEW_PANEL_CONF:-<house-rules>/custom/review-panel.conf}, lines "<family> = <cli> <model> [tier] [effort]",
 #   cli one of codex | grok | kimi. Unconfigured families are omitted from the default selection.
 # Prompt order: common rules, lens, summary/task, spec, change (prepare.py review).
@@ -11,7 +11,7 @@
 #   raw logs, and summary.txt (verdict and wall time per reviewer).
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
-reviewers_dir=$here/../reviewers
+reviewers_dir=$here/../prompts/lenses
 conf=${REVIEW_PANEL_CONF:-$here/../../../custom/review-panel.conf}
 name=$1
 dir=$(cd "$2" && pwd) || exit 2

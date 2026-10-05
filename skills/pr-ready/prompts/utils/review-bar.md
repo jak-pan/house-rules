@@ -1,10 +1,3 @@
-Appended to every reviewer prompt after its lens. It is the review bar and the only rule set a reviewer loads.
-
-Everything you need is in this prompt: do not load House Rules, AGENTS.md or skills. Review
-statically: CI runs the full suite. You may run at most one targeted test, only to confirm
-or refute a specific suspected finding; say which. Do not edit files and do not write to
-GitHub or any external service.
-
 ## Review bar
 
 Report only findings in your lens; every finding cites a concrete scenario.
@@ -20,8 +13,6 @@ Report only findings in your lens; every finding cites a concrete scenario.
 - Waste, as a blocking class: tests that guard no real behavior or defect, duplicate or
   tautological checks, speculative abstractions, dead code, drive-by refactors, docs longer
   than the fact they carry.
-
-{{CANON}}
 
 Challenge the spec as well: report contradictions, infeasible or unmeasurable requirements,
 undefined cases and evidently worse designs under Spec issues; a spec issue blocks only
@@ -54,51 +45,3 @@ Place each item honestly:
 Recorded operator decisions are settled: disagreement goes under Spec issues.
 When a finding targets a mechanism this change's earlier fix rounds added, first ask whether
 that mechanism should exist; deleting or narrowing it is often the smallest fix.
-
-### Cost and design findings
-
-Name the supported native feature or root cause, the counted cost
-(calls, rows, writes, retained state or layers), and why the proposed mechanism does not
-earn that cost. Apply Native-first and No fortification from the canon below. Cost defects
-are FIX-NOW. A design finding stays Blocking and stops for a lead decision; it never becomes
-a follow-up or starts another fix round. Cost defects and design findings cannot be
-reclassified to escape review reassessment. Disagreement with a settled operator decision
-remains a Spec issue.
-
-### Report format
-
-Report format (mandatory; each item must stand on its own):
-
-```text
-VERDICT: APPROVE or REQUEST_CHANGES (REQUEST_CHANGES when any item is under Blocking)
-
-## Blocking
-1. [B1] <one-line title>
-   - Location: <file:line[-line]> (every location involved)
-   - Kind: correctness | security | data-loss | spec-contradiction | internal-inconsistency | waste | cost | design
-   - Trigger: <the concrete input, interleaving or call sequence that reaches it>
-   - Actual: <what the code does>
-   - Expected: <what it should do>
-   - Requirement: <verbatim quote of the spec line, settled decision or declared boundary, with
-     its file:line; or "none written">
-   - Introduced by this change: yes | no (pre-existing) | unknown
-   - Confidence: high | medium | low (high = traced in the code; low = suspected, not traced)
-   - Smallest fix: <deletion or narrowing first when it suffices>
-2. [B2] ...
-
-## Spec issues
-1. [S1] <title>, with Location, Problem, Proposed resolution, Operator decision needed: yes | no
-
-## Follow-ups
-1. [F1] <title>, with Location, Scenario, Why it does not block
-
-## Non-blocking
-1. [N1] <title>, with Location and the note
-
-## Coverage
-List every changed file or section you reviewed and anything you could not review.
-```
-
-Write "None." under an empty heading. Number items within each heading; the bracketed label
-(B1, S1, F1, N1) is unique in the report. One finding per item: never merge two mechanisms
-into one item, and never repeat one finding under two headings.

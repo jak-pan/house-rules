@@ -11,6 +11,8 @@ import tempfile
 from pathlib import Path
 from urllib.parse import quote, quote_from_bytes, unquote, urlsplit
 
+from prompt import expand, PromptError
+
 HERE = Path(__file__).resolve().parent
 CODEX_LIMIT = 800_000
 SPEC_LIMIT = 2_000_000
@@ -627,12 +629,12 @@ def review(repo, args, base, remote):
     lens = args.lens or {"codex": "generalist-a", "grok": "generalist-b", "kimi": "generalist-c"}[args.cli]
     if not re.fullmatch(r"[a-zA-Z0-9_-]+", lens):
         raise PrepareError("invalid lens name")
-    reviewers = HERE.parent / "reviewers"
-    canon = (HERE.parent / "canon.md").read_text().split("\n\n", 1)[-1].strip()
-    common = (reviewers / "common.md").read_text().split("\n\n", 1)[-1].strip().replace("{{CANON}}", canon)
-    instructions = (reviewers / (lens + ".md")).read_text()
-    instructions = re.sub(r"\A---\n.*?\n---\n", "", instructions, count=1, flags=re.S).strip()
-    instructions = instructions.replace("the review bar below", "the review pack in section 1")
+    prefix = "skills/pr-ready/prompts/"
+    try:
+        common, _ = expand(file=prefix + "roles/reviewer.md")
+        instructions, _ = expand(file=prefix + "lenses/" + lens + ".md")
+    except PromptError as exc:
+        raise PrepareError(str(exc)) from exc
     mode = args.format or ("structured" if args.cli == "codex" else "pack")
     parts = ["# 1. Review pack\n" + common, "# 2. Instructions\n" + instructions,
              "\n".join(["# 3. Pull request and issue", f"Pull request: {pr_link}",

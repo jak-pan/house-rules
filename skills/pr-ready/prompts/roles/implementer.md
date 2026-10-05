@@ -1,5 +1,3 @@
-Prepended to every implementer and fixer prompt. It is the only rule set a worker loads.
-
 Everything you need is in this prompt and the files it names: do not load House Rules or
 skills. Follow the repository's own AGENTS.md for its gates and conventions.
 
@@ -18,7 +16,7 @@ How to work:
   mechanism that makes the class impossible instead of patching another call site.
 - Local gate only: formatting, lint/compile checks and targeted tests for the code you
   changed plus your new regressions. Never run the full test suite or workspace-wide tests,
-  except for the canonical [no-PR-CI merge gate](../SKILL.md#4-merge-and-cleanup).
+  except for the canonical [no-PR-CI merge gate](../../SKILL.md#4-merge-and-cleanup).
   CI runs the full suite on every push. Report each command with pass/fail counts.
 - Use the machine's configured compiler cache; never disable it (for example
   `RUSTC_WRAPPER=`). A lane may use its own build target directory while keeping the
@@ -40,7 +38,10 @@ How to work:
   task gives. Do not push, open or edit PRs, comment, or write to GitHub or any other
   external service; the lead does all external writes. Report what you would post.
 
-{{CANON}}
+@rule house-rules:skills/pr-ready/prompts/common/code-canon.md
+@rule house-rules:skills/pr-ready/prompts/common/native-first.md
+@rule house-rules:skills/pr-ready/prompts/common/no-fortification.md
+@rule house-rules:skills/pr-ready/prompts/common/test-discipline.md
 
 Final message: what changed per task item (fixed, already fixed, or does not hold, with
 evidence), files touched, the gate commands with counts, and anything left undone.

@@ -160,7 +160,9 @@ print(json.dumps(value))
                 prompt = self.review(issue=["2"])
                 self.assertIn("Change title", prompt)
                 self.assertIn("Requirement 2", prompt)
-                self.assertNotIn("None", prompt)
+                # Inspect PR/issue context, not the review instructions ("None.").
+                context = prompt.split("# 3. Pull request and issue", 1)[1]
+                self.assertNotIn("None", context)
 
     def test_credentials_are_redacted_from_git_warnings_errors_and_prompts(self):
         url = "https://test-user:fake-password@github.com/example/project.git?access_token=fake-token&x=1&author=ada&authkey=fake-authkey&api_key=fake-prefix)fake-secret-tail"
@@ -958,6 +960,24 @@ else:
         self.write(self.repo, "Cargo.lock", "LOCK_ONLY_MARKER\n")
         self.write(self.repo, "odd name.py", "pass\n")
         self.commit(self.repo, "Implement behavior")
+
+    def test_review_preserves_whole_role_and_lens_files(self):
+        prompt = self.review()
+        role, _ = prepare.expand(file="skills/pr-ready/prompts/roles/reviewer.md")
+        lens = (SCRIPT.parent.parent / "prompts/lenses/generalist-a.md").read_text()
+        self.assertIn("# 1. Review pack\n" + role, prompt)
+        self.assertIn("# 2. Instructions\n" + lens, prompt)
+        self.assertNotRegex(prompt, r"(?m)^@rule ")
+        for rule in (SCRIPT.parent.parent / "prompts/common").glob("*.md"):
+            self.assertEqual(prompt.count(rule.read_text()), 1)
+
+    def test_missing_prompt_include_fails_without_emitting_review(self):
+        with mock.patch.object(prepare, "expand", side_effect=prepare.PromptError("missing rule")):
+            code, out, err = self.invoke("review", str(self.repo), "--base", "origin/trunk",
+                                         "--no-fetch")
+        self.assertEqual(code, 1)
+        self.assertEqual(out, "")
+        self.assertIn("missing rule", err)
 
     def test_section_order_spec_numbers_acceptance_ids_sort_and_lockfiles(self):
         self.add_review_change()
