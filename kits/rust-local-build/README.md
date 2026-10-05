@@ -12,7 +12,7 @@ build settings. Everything it writes is recorded, and `uninstall` puts the machi
 | `files/kache-rustc`, `kache-cc`, `kache-c++` | `$HELPER_DIR/` |
 | `files/cargo-config.toml` | `$CARGO_HOME/config.toml` |
 | `files/kache-config.toml` | `$KACHE_CONFIG` |
-| `BUDGET_OVERRIDE` (if set) | `$STATE_DIR/build-budget-override` |
+| `BUDGET_OVERRIDE` (if set) | `$STATE_DIR/build-budget-override` (later changed with `budget`) |
 
 Prerequisites, not installed by the kit: rustup with the toolchain named in `TOOLCHAIN`, and the kache
 binary (version `KACHE_VERSION`) at `KACHE_BIN`.
@@ -33,11 +33,23 @@ uninstalled; to upgrade, uninstall and install again.
 
 ## The core budget
 
-The queue runs one compiling cargo command at a time on the whole machine and sets `CARGO_BUILD_JOBS`
-and `RUST_TEST_THREADS` to the budget: total cores − efficiency cores − 2 (`BUILD_RESERVE`), saved in
+One number sets both cargo build jobs and test threads. Change it with one command:
+
+```sh
+kits/rust-local-build/budget custom/rust-local-build.conf            # show the budget and where it comes from
+kits/rust-local-build/budget custom/rust-local-build.conf 6          # 6 cores until changed
+kits/rust-local-build/budget custom/rust-local-build.conf 8 --for 2h # 8 cores for two hours (m, h or d)
+kits/rust-local-build/budget custom/rust-local-build.conf --clear    # back to the computed value
+```
+
+A change applies to the next cargo command; nothing needs a restart, and `jobs` in the cargo config
+needs no edit: it is only the fallback for a cargo that bypasses the queue. A test command that asks
+for fewer test threads (`RUST_TEST_THREADS=1`) keeps its lower value. `status` shows the budget too.
+
+How the number is chosen: the queue runs one compiling cargo command at a time on the whole machine and
+sets `CARGO_BUILD_JOBS` and `RUST_TEST_THREADS` to the budget, which is total cores − efficiency cores − 2 (`BUILD_RESERVE`), saved in
 `$STATE_DIR/build-budget` for sandboxes that cannot read core counts. An operator override in
-`$STATE_DIR/build-budget-override` wins: one number, or `<number> <expiry epoch seconds>`. Delete the
-file to return to the computed budget.
+`$STATE_DIR/build-budget-override` wins (written by `budget`: one number, or `<number> <expiry epoch seconds>`).
 
 `-Zthreads` (`ZTHREADS`) does not raise the core count: the compiler's extra front-end threads come from
 the same job pool. Changing its value changes every crate's fingerprint, so every target rebuilds once.
