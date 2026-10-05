@@ -63,6 +63,7 @@ that mechanism should exist; deleting or narrowing it is often the smallest fix.
 
 Report format (mandatory; each item must stand on its own):
 
+```text
 VERDICT: APPROVE or REQUEST_CHANGES (REQUEST_CHANGES when any item is under Blocking)
 
 ## Blocking
@@ -90,6 +91,7 @@ VERDICT: APPROVE or REQUEST_CHANGES (REQUEST_CHANGES when any item is under Bloc
 
 ## Coverage
 List every changed file or section you reviewed and anything you could not review.
+```
 
 Write "None." under an empty heading. Number items within each heading; the bracketed label
 (B1, S1, F1, N1) is unique in the report. One finding per item: never merge two mechanisms
