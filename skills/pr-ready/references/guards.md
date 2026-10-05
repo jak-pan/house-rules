@@ -7,11 +7,7 @@ fails the run visibly. Product targets stay in the repository's spec; private ex
 stay in `custom/`.
 
 Use deterministic checks first for facts code can establish. Agent reviewers judge design
-fit, root causes and spec intent. Every guard and every test logs its triggers and outcomes:
-real findings or defects caught, false positives or flaky failures, waivers with decision
-IDs, and runtime. Use existing run/test output and tracker records rather than a second
-source of truth. The lead reviews these records daily at first, then every 3 days, pruning
-or narrowing guards and tests that do not earn their cost. Testing constraints:
+fit, root causes and spec intent. Test logging, pruning and testing constraints:
 [prompts/skills/test-discipline.md §Test discipline](../../../prompts/skills/test-discipline.md). Review-round reassessment:
 [pr-ready §3](../SKILL.md#3-review-rounds).
 

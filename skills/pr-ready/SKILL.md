@@ -136,11 +136,9 @@ load no other rules. Specialist dispatch follows
 
 - Merge only when the required reviews approve the exact head with no Blocking items,
   CI is green on that head, and the closeout checklist holds (`design-flow` §6).
-  In a repository without PR CI, the full declared local gate on the pinned toolchain
-  stands in for CI; every failure must be shown to fail on the base under the same
-  conditions. Required reviews still approve the exact head. When a required reviewer
-  model family is unavailable, the operator decides how to proceed; the missed review
-  runs after that family returns. Pin the head
+  The no-PR-CI exception follows the [worker pack](../../prompts/roles/implementer.md).
+  When a required reviewer model family is unavailable, the operator decides how to
+  proceed; the missed review runs after that family returns. Pin the head
   (`gh pr merge <n> --match-head-commit <sha>`) in the repository's merge style. No
   auto-merge unless the operator asked.
 - Then update the tracking item, delete the branch, and remove the lane (skill

@@ -6,7 +6,8 @@ Adversarial reviewers over-report by design. Your job is to keep the PR moving w
 4. For every FIX-NOW, give the smallest fix (see the complexity rule below).
 Output: first line "VERDICT: APPROVE" if there is no FIX-NOW item, else "VERDICT: REQUEST_CHANGES". Then these sections:
 - "## Accepted" — the FIX-NOW items, numbered; each with title, location, trigger, expected, severity, smallest fix, and which reviewer(s) reported it.
-- "## Issues to file" — one per ISSUE item, as "### <title>" then the body. The title names the behavior in plain words (no internal labels, codes or round names, never cut mid-phrase). The body follows skill operator-writing references/github-text.md section 2 (issue): what happens and its effect first; current behavior with file:line at the commit SHA you reviewed; evidence (a command, test or quoted line; say "From code reading" when untested); cause; acceptance criteria. Short sentences.
+- "## Issues to file" —
+@rule house-rules:prompts/util/issue-report.md
 - "## Rejected" — NITPICK and FALSE items, one line each with the class and the reason.
 
 @rule house-rules:prompts/util/triage-classes.md

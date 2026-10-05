@@ -185,27 +185,46 @@ class CollectionAcceptanceTest(unittest.TestCase):
 
     def test_roles_receive_verbatim_gate_and_guard_instructions(self):
         worker = (ROOT / "prompts/roles/implementer.md").read_text()
-        skill = (ROOT / "skills/pr-ready/SKILL.md").read_text()
-        start = skill.index("In a repository without PR CI,")
-        end = skill.index(" When a required reviewer", start)
-        self.assertIn(" ".join(skill[start:end].split()), " ".join(worker.split()))
-        guards = (ROOT / "skills/pr-ready/references/guards.md").read_text()
-        start = guards.index("Every guard and every test logs")
-        end = guards.index(" Testing constraints:", start)
+        start = worker.index("In a repository without PR CI,")
+        end = worker.index("  CI runs", start)
+        gate = " ".join(worker[start:end].split())
+        for role in ("implementer", "fixer"):
+            prompt = PromptTest().run_prompt(f"prompts/roles/{role}.md")
+            self.assertEqual(prompt.returncode, 0, prompt.stderr)
+            self.assertEqual(" ".join(prompt.stdout.split()).count(gate), 1)
         rules = (ROOT / "prompts/skills/test-discipline.md").read_text()
-        self.assertIn(" ".join(guards[start:end].split()), " ".join(rules.split()))
+        start = rules.index("Every guard and every test logs")
+        end = rules.index("Scale tests move", start)
+        logging = " ".join(rules[start:end].split())
         for role in (ROOT / "prompts/roles").glob("*.md"):
             prompt = PromptTest().run_prompt(str(role.relative_to(ROOT)))
             self.assertEqual(prompt.returncode, 0, prompt.stderr)
+            self.assertEqual(" ".join(prompt.stdout.split()).count(logging), 1)
             self.assertNotIn("SKILL.md#4-merge-and-cleanup", prompt.stdout)
             self.assertNotIn("guards.md#guard-upkeep", prompt.stdout)
 
-    def test_checker_uses_triager_issue_body_wording(self):
-        triager = (ROOT / "prompts/roles/triager.md").read_text()
-        wording = triager.split('- "## Issues to file" — ', 1)[1].split("\n", 1)[0]
-        checker = (ROOT / "prompts/roles/checker.md").read_text()
-        self.assertIn(wording, checker)
-        self.assertNotIn("3–6 line body", checker)
+    def test_issue_report_contract_has_one_owner_and_expands_verbatim(self):
+        contract_path = ROOT / "prompts/util/issue-report.md"
+        self.assertTrue(contract_path.is_file())
+        contract = contract_path.read_text()
+        self.assertEqual(contract, (
+            'one per ISSUE item, as "### <title>" then the body. '
+            'The title names the behavior in plain words (no internal labels, codes or round names, never cut mid-phrase). '
+            'The body follows skill operator-writing references/github-text.md section 2 (issue): '
+            'what happens and its effect first; current behavior with file:line at the commit SHA you reviewed; '
+            'evidence (a command, test or quoted line; say "From code reading" when untested); '
+            'cause; acceptance criteria. Short sentences.\n'
+        ))
+        marker = "The title names the behavior in plain words"
+        owners = [p for p in ROOT.rglob("*.md") if marker in p.read_text()]
+        self.assertEqual(owners, [contract_path])
+        for role in ("checker", "triager"):
+            with self.subTest(role=role):
+                prompt = PromptTest().run_prompt(f"prompts/roles/{role}.md")
+                self.assertEqual(prompt.returncode, 0, prompt.stderr)
+                self.assertEqual(prompt.stdout.count(contract), 1)
+                self.assertIn('"## Issues to file"', prompt.stdout)
+                self.assertNotIn("3–6 line body", prompt.stdout)
 
     def test_triage_preserves_requirements_without_a_decision(self):
         text = (ROOT / "prompts/util/triage-classes.md").read_text()
@@ -333,15 +352,28 @@ class RuleOwnershipTest(unittest.TestCase):
         self.assertNotIn("Stop and report options", implementation)
         self.assertNotIn("never settle them by editing the spec", implementation)
 
-    def test_test_logging_and_pruning_belong_to_guard_upkeep(self):
+    def test_test_logging_and_pruning_have_one_collection_owner(self):
         canon = self.text("prompts/skills/test-discipline.md")
         self.assertIn("Every guard and every test logs", canon)
+        self.assertIn("pruning or narrowing guards and tests", canon)
         self.assertNotIn("log runtime", canon)
         self.assertNotRegex(canon, r"prune or bound slow")
         self.assertIn("Scale tests move, never vanish", canon)
         guards = self.text("skills/pr-ready/references/guards.md")
-        self.assertIn("Every guard and every test logs", guards)
-        self.assertIn("pruning or narrowing guards and tests", guards)
+        self.assertIn("../../../prompts/skills/test-discipline.md", guards)
+        for phrase in ("Every guard and every test logs", "pruning or narrowing guards and tests"):
+            with self.subTest(phrase=phrase):
+                owners = [p.relative_to(ROOT).as_posix() for p in ROOT.rglob("*.md")
+                          if phrase in " ".join(p.read_text().split())]
+                self.assertEqual(owners, ["prompts/skills/test-discipline.md"])
+
+    def test_no_pr_ci_exception_has_one_collection_owner(self):
+        skill = self.text("skills/pr-ready/SKILL.md")
+        self.assertIn("../../prompts/roles/implementer.md", skill)
+        marker = "In a repository without PR CI,"
+        owners = [p.relative_to(ROOT).as_posix() for p in ROOT.rglob("*.md")
+                  if marker in p.read_text()]
+        self.assertEqual(owners, ["prompts/roles/implementer.md"])
 
     def test_lane_cache_policy_references_worker_owner(self):
         lanes = self.text("skills/agent-lanes/SKILL.md")
