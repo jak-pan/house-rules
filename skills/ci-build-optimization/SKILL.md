@@ -143,8 +143,8 @@ A developer machine running several agent lanes builds Rust the same way everywh
   wait in a queue; read-only commands (`metadata`, `tree`, `fetch`, `--version`) do not.
 - **A core budget.** The queued cargo gets `CARGO_BUILD_JOBS` and `RUST_TEST_THREADS` = total cores −
   efficiency cores − 2, unless the operator sets an override. The rest of the machine stays usable.
-  One number controls both; change it only with the kit's `budget` command (`budget <conf> 6`,
-  `budget <conf> 8 --for 2h`, `budget <conf> --clear`), never by editing several files.
+  One number controls both; change it only with `cargo cores` (`cargo cores 6`, `cargo cores 8 --for 2h`,
+  `cargo cores --clear`), never by editing several files.
   `-Zthreads` shares that job pool and does not add cores; changing it rebuilds every crate once.
 - **Hold limits.** A build with no CPU progress for 5 minutes, or holding the queue for 40, is stopped
   with exit 124 so one hung test cannot block every lane.

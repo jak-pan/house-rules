@@ -13,7 +13,7 @@ if [ -f "$MANIFEST" ]; then
 else echo "not installed (no manifest at $MANIFEST)"; fi
 c=$(command -v cargo || true)
 [ "$c" = "$WRAPPER_DIR/cargo" ] && echo "cargo on PATH: the queue ($c)" || echo "cargo on PATH: ${c:-none} (expected $WRAPPER_DIR/cargo first)"
-"$KIT/budget" "$CONF_FILE"
+"$KIT/cores" "$CONF_FILE"
 r="$CARGO_HOME/bin/cargo"
 if [ -x "$r" ]; then echo "cargo config: $("$r" +"$TOOLCHAIN" -Zunstable-options config get build.jobs 2>/dev/null || echo unknown)"; fi
 exit 0

@@ -2,10 +2,10 @@
 # Show or change the core budget of local Rust builds. One number sets both cargo build jobs
 # (CARGO_BUILD_JOBS) and test threads (RUST_TEST_THREADS) for every queued cargo command.
 # Usage:
-#   budget <kit.conf>                 show the effective budget and where it comes from
-#   budget <kit.conf> <n>             set it to n cores until changed
-#   budget <kit.conf> <n> --for 2h    set it for a while (m, h or d); the computed value returns afterwards
-#   budget <kit.conf> --clear         return to the computed value (performance cores - 2)
+#   cores <kit.conf>                 show the effective budget and where it comes from
+#   cores <kit.conf> <n>             set it to n cores until changed
+#   cores <kit.conf> <n> --for 2h    set it for a while (m, h or d); the computed value returns afterwards
+#   cores <kit.conf> --clear         return to the computed value (performance cores - 2)
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 load_conf "${1:-}"; shift
@@ -31,14 +31,14 @@ record() {   # keep the kit manifest in step, so status and uninstall treat the 
 case "${1:-}" in
   "") ;;
   --clear) rm -f "$override"; record ""; echo "override cleared" ;;
-  *[!0-9]*) echo "budget: expected a whole number of cores, got '$1'" >&2; exit 2 ;;
+  *[!0-9]*) echo "cores: expected a whole number of cores, got '$1'" >&2; exit 2 ;;
   *)
     n=$1; shift
-    [ "$n" -ge 1 ] && { [ "$cores" -eq 0 ] || [ "$n" -le "$cores" ]; } || { echo "budget: $n is outside 1..$cores" >&2; exit 2; }
+    [ "$n" -ge 1 ] && { [ "$cores" -eq 0 ] || [ "$n" -le "$cores" ]; } || { echo "cores: $n is outside 1..$cores" >&2; exit 2; }
     line=$n
     if [ "${1:-}" = --for ]; then
-      d=${2:?budget: --for needs a duration such as 90m, 2h or 1d}
-      case $d in *m) s=$(( ${d%m} * 60 ));; *h) s=$(( ${d%h} * 3600 ));; *d) s=$(( ${d%d} * 86400 ));; *) echo "budget: duration must end in m, h or d" >&2; exit 2;; esac
+      d=${2:?cores: --for needs a duration such as 90m, 2h or 1d}
+      case $d in *m) s=$(( ${d%m} * 60 ));; *h) s=$(( ${d%h} * 3600 ));; *d) s=$(( ${d%d} * 86400 ));; *) echo "cores: duration must end in m, h or d" >&2; exit 2;; esac
       line="$n $(( $(date +%s) + s ))"
     fi
     mkdir -p "$STATE_DIR"; tmp=$(mktemp "$override.XXXXXX"); printf '%s\n' "$line" > "$tmp"; chmod 0644 "$tmp"; mv "$tmp" "$override"
@@ -56,7 +56,7 @@ if [ -f "$override" ]; then
   else source="$source (override expired or invalid, ignored)"; fi
 fi
 [ "$effective" -ge 1 ] || effective=1   # the queue raises a budget below 1 to 1
-echo "budget: $effective cores ($source)"
-echo "  cargo build jobs:  $effective (CARGO_BUILD_JOBS, set by the queue)"
-echo "  test threads:      $effective (RUST_TEST_THREADS, unless a command sets a lower value)"
-echo "  fallback jobs:     $(sed -n 's/^jobs = //p' "$CARGO_HOME/config.toml" 2>/dev/null || echo unset) in $CARGO_HOME/config.toml, used only by a cargo that bypasses the queue"
+echo "cores: $effective ($source)"
+echo "  build jobs:   $effective (CARGO_BUILD_JOBS, set by the queue)"
+echo "  test threads: $effective (RUST_TEST_THREADS, unless a command sets a lower value)"
+echo "  if cargo runs without the queue: $(sed -n 's/^jobs = //p' "$CARGO_HOME/config.toml" 2>/dev/null || echo unset) jobs (jobs in $CARGO_HOME/config.toml)"

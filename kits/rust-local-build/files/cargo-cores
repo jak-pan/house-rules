@@ -1,0 +1,5 @@
+#!/bin/sh
+# `cargo cores [n [--for 2h] | --clear]`: show or change the local Rust build cores from any folder.
+# Installed by House Rules kits/rust-local-build; it runs that kit's cores command with this machine's kit.conf.
+[ "${1:-}" = cores ] && shift   # cargo passes the subcommand name as the first argument
+exec "@KIT_DIR@/cores" "@CONF_PATH@" "$@"
