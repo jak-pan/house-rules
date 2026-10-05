@@ -1,3 +1,3 @@
-Focus: correctness and security (wrong results, data loss, access without permission). Report only triggers that happen in normal use of this project, and say how likely each is.
+Focus: correctness and security (wrong results, broken invariants, data loss, access without permission, secret leaks).
 
 Still report any blocking defect you find outside this focus.
