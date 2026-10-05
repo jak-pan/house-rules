@@ -17,8 +17,6 @@ HERE = Path(__file__).resolve().parent
 CODEX_LIMIT = 800_000
 SPEC_LIMIT = 2_000_000
 COMMENT_LIMIT = 4_000
-SECTION = r"\d+[A-Za-z]?(?:\.\d+[A-Za-z]?)*"
-SECTION_REF = re.compile(r"§\s*(" + SECTION + r")(?:\s*[–-]\s*§?\s*(" + SECTION + r"))?")
 LOCK = re.compile(r"(^|/)([^/]*\.lock|package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|go\.sum)$")
 TEST = re.compile(r"(^|/)(tests?(/|\.)|test_[^/]*|[^/]*[_\-.](tests?|spec)\.[^/]+$)", re.I)
 
@@ -288,116 +286,11 @@ def pr_context(repo, args, url):
     return pr, issues, comments, pr_link, texts, missing, notices
 
 
-def markdown_headings(doc):
-    headings, fence = [], None
-    for index, line in enumerate(doc.splitlines()):
-        marker = re.match(r"^\s{0,3}(`{3,}|~{3,})", line)
-        if marker:
-            token = marker[1]
-            if fence is None:
-                fence = token
-            elif token[0] == fence[0] and len(token) >= len(fence):
-                fence = None
-            continue
-        heading = re.match(r"^(#{1,6})\s+(.+?)\s*#*\s*$", line)
-        if heading and fence is None:
-            headings.append((index, len(heading[1]), heading[2]))
-    return headings
-
-
-def heading_matches(title, want):
-    title = title.lstrip("§ ")
-    return title == want or bool(re.match(re.escape(want) + r"(?:[.)]?(?:\s|$))", title))
-
-
-def section_requests(text):
-    return [(m[1], m[2]) for m in SECTION_REF.finditer(text)]
-
-
-def section_titles(text):
-    """Collect title candidates; only parentheses make the title explicit."""
-    titles = {}
-    for match in SECTION_REF.finditer(text):
-        tail = text[match.end():]
-        parenthesized = re.match(r"[ \t]+\(([^)\n]+)\)", tail)
-        bare = re.match(r"[ \t]+([^\n§,;:()\[\]]+)", tail)
-        title = parenthesized[1] if parenthesized else bare[1] if bare else ""
-        if not parenthesized:
-            title = re.split(r"\.(?:\s|$)|\s+[–—]\s+", title)[0].strip()
-            # Conjunctions introduce the next reference, not a section title.
-            title = re.sub(r"\s+(?:and|or)$", "", title)
-            if re.match(r"^(?:and|or|to)\b", title):
-                title = ""
-        if title.strip():
-            titles.setdefault(match[2] or match[1], set()).add((title.strip(), bool(parenthesized)))
-    return titles
-
-
-def normalized_title(title):
-    return " ".join(title.strip("`*_ ").casefold().split())
-
-
-def spec_sections(doc, wanted, missing, titles, notices, path):
-    lines, headings = doc.splitlines(), markdown_headings(doc)
-    if not wanted:
-        return [("Full document", 1, doc, False)]
-    # Bare prose is only a title when it shares the heading's leading words.
-    # Parentheses explicitly declare a title, so a mismatch is actionable.
-    verified = set()
-    def prefix(left, right):
-        return left == right or right.startswith(left + " ")
-    for token, expected in titles.items():
-        for n, (_, _, heading) in enumerate(headings):
-            if not heading_matches(heading, token):
-                continue
-            actual = re.sub(r"^§?\s*" + re.escape(token) + r"[.)]?\s*", "", heading)
-            leading = re.split(r"\s+[–—]\s+|\s*\(", actual)[0]
-            matches, mismatches = [], []
-            for title, explicit in sorted(expected):
-                want, found = normalized_title(title), normalized_title(leading)
-                if prefix(want, found) or (not explicit and prefix(found, want)):
-                    matches.append(title)
-                elif explicit:
-                    mismatches.append(title)
-            if matches and not mismatches:
-                verified.add(n)
-            for title in mismatches:
-                notices.append(f"{path} §{token}: title mismatch; expected {title!r}, found {actual!r}; section included; verify.")
-    selected = []
-    for start, stop in wanted:
-        bounds = []
-        for token in (start, stop) if stop else (start,):
-            matches = [n for n, (_, _, title) in enumerate(headings) if heading_matches(title, token)]
-            if len(matches) != 1:
-                missing.append("§" + token)
-                bounds.append(None)
-            else:
-                bounds.append(matches[0])
-        if stop and all(n is not None for n in bounds):
-            if bounds[0] > bounds[1]:
-                missing.append(f"§{start}–§{stop} (reversed range)")
-            else:
-                selected.extend(range(bounds[0], bounds[1] + 1))
-        else:
-            selected.extend(n for n in bounds if n is not None)
-    result = []
-    def section_end(n):
-        return next((i for i, depth, _ in headings[n + 1:] if depth <= headings[n][1]), len(lines))
-    selected = list(dict.fromkeys(selected))
-    for n in selected:
-        start, _, title = headings[n]
-        # A selected ancestor already includes this entire section, even if the
-        # child reference appeared first in the source text.
-        if any(headings[parent][0] < start < section_end(parent) for parent in selected):
-            continue
-        body = "\n".join(lines[start + 1:section_end(n)]).strip()
-        result.append((title, start + 1, body, n not in verified))
-    return result
-
-
 def discover_spec(repo, head, explicit, texts, files, missing=None):
     if explicit:
-        path = explicit.partition("#")[0]
+        if "#" in explicit:
+            raise PrepareError("spec section selectors are not supported; select a whole document with --spec PATH")
+        path = explicit
         return path if run(repo, "git", "cat-file", "-e", f"{head}:{path}").returncode == 0 else None
     paths = git(repo, "ls-tree", "-r", "--name-only", "-z", head).split("\0")
     refs = None
@@ -459,31 +352,17 @@ def discover_spec(repo, head, explicit, texts, files, missing=None):
     return min(edited) if edited else None
 
 
-def demote(doc):
-    lines = doc.splitlines()
-    for i, level, title in markdown_headings(doc):
-        lines[i] = "#" * min(6, level + 2) + " " + title
-    return "\n".join(lines)
-
-
 def requirement_entries(repo, args, pr, issues, comments, texts, commits, files, url, head, missing, notices):
     entries = []
     def add(category, source, source_link, body):
         entries.append(dict(category=category, source=source, link=source_link, body=body))
     reference_text = "\n".join([*texts, *(body for _, body in commits)])
-    wanted = []
-    titles = section_titles(reference_text)
-    if args.spec and "#" in args.spec:
-        for selector in args.spec.partition("#")[2].split(","):
-            selector = selector.strip()
-            wanted.extend(section_requests("§" + selector.lstrip("§")) or [(selector, None)])
-    wanted = list(dict.fromkeys([*wanted, *section_requests(reference_text)]))
     tests = list(dict.fromkeys([*[t.strip() for t in (args.tests or "").split(",") if t.strip()],
                               *re.findall(r"(?<![A-Za-z0-9_-])" + re.escape(args.test_prefix) + r"\d+(?![A-Za-z0-9_-])", reference_text)]))
     path = discover_spec(repo, head, args.spec, [*texts, *(body for _, body in commits)], files, missing)
     doc = None
     if args.spec and not path:
-        missing.append(args.spec.partition("#")[0])
+        missing.append(args.spec)
     if path:
         object_name = f"{head}:{path}"
         size = int(git(repo, "cat-file", "-s", object_name).strip())
@@ -495,26 +374,15 @@ def requirement_entries(repo, args, pr, issues, comments, texts, commits, files,
         else:
             doc = result.stdout
     if doc is None:
-        missing.extend("§" + token for pair in wanted for token in pair if token)
         missing.extend(tests)
     else:
-        def source_link(line):
-            return link(url, head, path, line) if url else f"[{path}:{line}]({quote_from_bytes(os.fsencode(path), safe='/')}#L{line})"
-        # With only test references, include just those rows, not the entire document.
-        sections = spec_sections(doc, wanted, missing, titles, notices, path) if wanted or not tests else []
-        for title, line, body, number_only in sections:
-            source = f"Design/spec {path} — {title}"
-            if number_only:
-                source += " (matched by number only; verify)"
-                notices.append(f"{source} — {source_link(line)}")
-            add("spec", source, source_link(line), demote(body))
+        source_link = link(url, head, path) if url else f"[{path}:1]({quote_from_bytes(os.fsencode(path), safe='/')}#L1)"
+        add("spec", f"Design/spec {path} — Full document", source_link, doc)
         for test in tests:
-            rows = [(n, row) for n, row in enumerate(doc.splitlines(), 1)
-                    if row.lstrip().startswith("|") and re.search(r"(?<![A-Za-z0-9_-])" + re.escape(test) + r"(?![A-Za-z0-9_-])", row.split("|")[1])]
-            if not rows:
+            if not any(row.lstrip().startswith("|") and re.search(
+                r"(?<![A-Za-z0-9_-])" + re.escape(test) + r"(?![A-Za-z0-9_-])", row.split("|")[1]
+            ) for row in doc.splitlines()):
                 missing.append(test)
-            for line, row in rows:
-                add("spec", f"Acceptance test {test} — {path}", source_link(line), row)
     for issue in issues:
         labels = ", ".join(label["name"] for label in issue.get("labels", [])) or "(none)"
         add("issue", f"Issue #{issue['number']}: {issue['title']} (labels: {labels})",

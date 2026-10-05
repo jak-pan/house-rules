@@ -43,6 +43,17 @@ class PromptTest(unittest.TestCase):
                 for rule in (ROOT / "skills/pr-ready/prompts/common").glob("*.md"):
                     self.assertEqual(result.stdout.count(rule.read_text()), 1)
 
+    def test_checker_uses_shared_classes_with_cost_exception_once(self):
+        role = ROOT / "skills/pr-ready/prompts/roles/checker.md"
+        result = self.run_prompt(str(role.relative_to(ROOT)))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        classes = (ROOT / "skills/pr-ready/prompts/utils/triage-classes.md").read_text()
+        self.assertEqual(result.stdout.count(classes), 1)
+        self.assertIn("FIX-NOW even if the fix adds an index", result.stdout)
+        self.assertIn("Apply the same classes as round 1.", role.read_text())
+        for duplicate in ("only FIX-NOW items block", "new mechanism", "nitpicks are dropped"):
+            self.assertNotIn(duplicate, role.read_text())
+
     def test_stdin_preserves_whole_files_titles_and_newlines(self):
         root, script = self.fixture()
         (root / "child.md").write_bytes(b"Title\r\n\r\nBody")

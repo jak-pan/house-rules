@@ -233,14 +233,14 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
         path = self.repo / "spec.md"
         path.write_bytes(b"## 1 Behavior\n" + b"\xff" * 300_000)
         self.commit(self.repo, "Add spec")
-        code, out, err = self.invoke("review", str(self.repo), "--base", "origin/trunk", "--no-fetch", "--spec", "spec.md#1")
+        code, out, err = self.invoke("review", str(self.repo), "--base", "origin/trunk", "--no-fetch", "--spec", "spec.md")
         self.assertEqual(code, 0, err)
         self.assertLessEqual(len(out), prepare.CODEX_LIMIT)
         self.assertIn("trimmed R1 (spec)", out)
         self.assertIn(r"\xff", out)
         # The final newline is part of the measured emitted representation too.
         with mock.patch.object(prepare, "CODEX_LIMIT", len(out) - 1):
-            code, smaller, err = self.invoke("review", str(self.repo), "--base", "origin/trunk", "--no-fetch", "--spec", "spec.md#1")
+            code, smaller, err = self.invoke("review", str(self.repo), "--base", "origin/trunk", "--no-fetch", "--spec", "spec.md")
         self.assertEqual(code, 0, err)
         self.assertLessEqual(len(smaller), len(out) - 1)
 
@@ -253,7 +253,7 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
                 self.fail("oversized spec blob was read")
             return real_run(repo, *args)
         with mock.patch.object(prepare, "run", side_effect=no_blob_read) as calls:
-            for selector in ([], ["--spec", "docs/spec.md#2"]):
+            for selector in ([], ["--spec", "docs/spec.md"]):
                 code, prompt, err = self.invoke("review", str(self.repo), "--base", "origin/trunk",
                                                 "--no-fetch", "--tests", "PT1", *selector)
                 self.assertEqual(code, 1, err)
@@ -467,8 +467,13 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
         prompt = self.review(tests="AT1", test_prefix="AT")
         requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
         self.assertIn("| AT1 | Exact ID |", requirements)
-        self.assertNotIn("| AT1-case |", requirements)
-        self.assertNotIn("| AT10 |", requirements)
+        self.assertIn("| AT1-case |", requirements)
+        self.assertIn("| AT10 |", requirements)
+        self.assertNotIn("not found:", prompt)
+        self.write(self.repo, "docs/spec.md", "## Tests\n| AT1-case | Extended ID |\n| AT10 | Other ID |\n")
+        self.commit(self.repo, "Remove exact acceptance ID")
+        prompt = self.review(tests="AT1", test_prefix="AT")
+        self.assertIn("not found: AT1", prompt.split("# 1. Review pack")[0])
         prompt = self.review(test_prefix="AT", spec="absent.md")
         self.assertNotIn("AT1", prompt.split("# 1. Review pack")[0])
 
@@ -570,23 +575,6 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
         self.git(self.origin, "branch", "-M", "trunk")
         base = prepare.resolve_base(self.repo)[0]
         self.assertEqual(self.git(self.repo, "rev-parse", base), self.git(self.origin, "rev-parse", "HEAD"))
-
-    def test_bare_reference_prose_and_leading_titles_preserve_requirements(self):
-        doc = "## 10.2 Actions — details\nRequired action\n"
-        for reference in ("Implements §10.2 for signed requests.",
-                          "Implements §10.2 Actions for signed requests.", "§10.2 (Actions)"):
-            with self.subTest(reference=reference):
-                notices = []
-                entries = prepare.spec_sections(doc, [("10.2", None)], [], prepare.section_titles(reference), notices, "spec.md")
-                self.assertEqual(len(entries), 1)
-                self.assertIn("Required action", entries[0][2])
-                self.assertFalse(any("mismatch" in n for n in notices), notices)
-
-    def test_nested_ranges_do_not_repeat_parent_content(self):
-        doc = "## 2 Parent\nParent body\n### 2.1 Child\nChild body\n## 3 Next\nNext body\n"
-        for requests in ([("2", "2.1")], [("2.1", None), ("2", None)]):
-            entries = prepare.spec_sections(doc, requests, [], {}, [], "spec.md")
-            self.assertEqual(sum(body.count("Child body") for _, _, body, _ in entries), 1)
 
     def test_nonexistent_named_specs_do_not_hide_real_tree_paths(self):
         self.add_review_change()
@@ -971,6 +959,53 @@ else:
         for rule in (SCRIPT.parent.parent / "prompts/common").glob("*.md"):
             self.assertEqual(prompt.count(rule.read_text()), 1)
 
+    def test_spec_is_preserved_whole_despite_section_and_test_references(self):
+        doc = b"# Design\r\n\r\n## 1 Scope ##\r\nOutside content\r\n## 2 Behavior\r\nRequired behavior\r\n### 2.1 Detail\r\n```python\r\n# Not a heading\r\n```\r\n## Tests\r\n| PT1 | One |\r\n| PT10 | Ten |\r\nTail without newline"
+        path = "docs/spec.md"
+        self.write(self.repo, path, "")
+        (self.repo / path).write_bytes(doc)
+        self.commit(self.repo, "Implement §2\n\n§2.1 (Old title) and PT1")
+        head = self.git(self.repo, "rev-parse", "HEAD")
+        files = prepare.changed_files(self.repo, "origin/trunk...HEAD")
+        for spec, tests, reference, commit_text in (
+            (path, None, "", ""),
+            (None, None, "Design: docs/spec.md [§1–§2.1]\n§2 (Stale title)", ""),
+            (path, "PT1", "PT1", ""),
+            (None, None, "PT1", ""),
+            (None, None, "", "Implement §2.1 (Old title) and PT1"),
+        ):
+            with self.subTest(spec=spec, tests=tests, reference=reference, commit=commit_text):
+                args = argparse.Namespace(spec=spec, tests=tests, test_prefix="PT")
+                missing, notices = [], []
+                entries = prepare.requirement_entries(
+                    self.repo, args, {}, [], [], [reference],
+                    [(head, commit_text)] if commit_text else [], files,
+                    None, head, missing, notices,
+                )
+                specs = [entry for entry in entries if entry["category"] == "spec"]
+                self.assertEqual(len(specs), 1)
+                self.assertEqual(specs[0]["body"], doc.decode())
+                self.assertIn("docs/spec.md:1", specs[0]["link"])
+                self.assertEqual(missing, [])
+                self.assertEqual(notices, [])
+                self.github(self.pr(reference))
+                self.assertIn(doc.decode(), self.review(spec=spec, tests=tests))
+
+    def test_explicit_spec_section_selectors_fail_without_prompt(self):
+        self.add_review_change()
+        for selector in ("2", "2,20", "Verification", ""):
+            with self.subTest(selector=selector):
+                spec = "docs/design.md#" + selector
+                with self.assertRaisesRegex(prepare.PrepareError, "section selectors"):
+                    prepare.discover_spec(self.repo, "HEAD", spec, [], [])
+                code, out, err = self.invoke(
+                    "review", str(self.repo), "--base", "origin/trunk", "--no-fetch",
+                    "--spec", spec,
+                )
+                self.assertEqual(code, 1, err)
+                self.assertEqual(out, "")
+                self.assertIn("section selectors", err)
+
     def test_missing_prompt_include_fails_without_emitting_review(self):
         with mock.patch.object(prepare, "expand", side_effect=prepare.PromptError("missing rule")):
             code, out, err = self.invoke("review", str(self.repo), "--base", "origin/trunk",
@@ -979,20 +1014,20 @@ else:
         self.assertEqual(out, "")
         self.assertIn("missing rule", err)
 
-    def test_section_order_spec_numbers_acceptance_ids_sort_and_lockfiles(self):
+    def test_requirements_order_whole_spec_acceptance_ids_sort_and_lockfiles(self):
         self.add_review_change()
-        prompt = self.review(spec="docs/design.md#2", tests="AT1")
+        prompt = self.review(spec="docs/design.md", tests="AT1")
         positions = [prompt.index(f"# {n}. {title}") for n, title in enumerate(
             ["Review pack", "Instructions", "Pull request and issue", "Requirements", "Change"], 1)]
         self.assertEqual(positions, sorted(positions))
         spec = prompt[positions[3]:positions[4]]
-        self.assertIn("R1. Design/spec docs/design.md — 2 Behavior (matched by number only; verify) — [docs/design.md:4]", spec)
-        self.assertIn("##### 2.1 Detail", spec)
+        self.assertIn("R1. Design/spec docs/design.md — Full document — [docs/design.md:1]", spec)
+        self.assertIn("### 2.1 Detail", spec)
         self.assertIn("# Not a heading", spec)
-        self.assertNotIn("| AT1-case | Included row |", spec)
+        self.assertIn("| AT1-case | Included row |", spec)
         self.assertIn("not found: AT1", prompt)
-        self.assertNotIn("Excluded row", spec)
-        self.assertNotIn("Unselected section", spec)
+        self.assertIn("Excluded row", spec)
+        self.assertIn("Unselected section", spec)
         files = prepare.changed_files(self.repo, "origin/trunk...HEAD")
         self.assertEqual([prepare.kind(f[2]) for f in files], ["source", "source", "source", "test", "docs"])
         change = prompt[positions[4]:]
@@ -1004,9 +1039,9 @@ else:
 
     def test_diff_has_only_spec_index_pack_has_hunks_and_cli_defaults(self):
         self.add_review_change()
-        diff = self.review(spec="docs/design.md#2", format="diff")
+        diff = self.review(spec="docs/design.md", format="diff")
         spec = diff.split("# 4. Requirements", 1)[1].split("# 5. Change", 1)[0]
-        self.assertIn("R1. Design/spec docs/design.md — 2 Behavior", spec)
+        self.assertIn("R1. Design/spec docs/design.md — Full document", spec)
         self.assertNotIn("Required behavior", spec)
         self.assertIn("```diff", diff)
         pack = self.review(cli="grok")
@@ -1024,7 +1059,8 @@ else:
         self.github(pr)
         prompt = self.review(pr="1", summary=str(summary), tests="AT1")
         self.assertIn("Round task override", prompt)
-        self.assertIn("R2. Design/spec docs/design.md — 20 Other", prompt)
+        self.assertIn("R1. Design/spec docs/design.md — Full document", prompt)
+        self.assertIn("## 20 Other\nUnselected section", prompt)
         self.assertIn("Title: Change title", prompt)
         with mock.patch.object(prepare.shutil, "which", return_value=None):
             with self.assertRaisesRegex(prepare.PrepareError, "explicitly requested PR/issue"):
@@ -1032,94 +1068,15 @@ else:
             prompt = self.review()
         self.assertIn("Implement behavior", prompt)
 
-    def test_missing_spec_sections_or_tests_report_at_top(self):
+    def test_missing_specs_or_tests_report_at_top(self):
         self.add_review_change()
-        prompt = self.review(spec="docs/design.md#99", tests="MISSING")
-        self.assertTrue(prompt.startswith("not found: §99, MISSING"))
-        self.assertIn("# 5. Change", prompt)
+        for spec, expected in (("docs/design.md", "MISSING"), ("absent.md", "absent.md, MISSING")):
+            with self.subTest(spec=spec):
+                prompt = self.review(spec=spec, tests="MISSING")
+                self.assertTrue(prompt.startswith("not found: " + expected))
+                self.assertIn("# 5. Change", prompt)
 
-    def test_titled_section_references_flag_and_include_stale_numbers(self):
-        self.write(self.repo, "docs/spec.md", "## 10.2 Notifications\nUnrelated requirement\n## 10.3 Actions\nMoved requirement\n")
-        self.commit(self.repo, "Renumber spec")
-        for reference in ("§10.2 (Actions)",):
-            with self.subTest(reference=reference):
-                self.github(self.pr("Design: docs/spec.md\n" + reference))
-                prompt = self.review()
-                top = prompt.split("# 1. Review pack")[0]
-                self.assertIn("title mismatch", top)
-                for text in ("docs/spec.md", "§10.2", "Actions", "Notifications"):
-                    self.assertIn(text, top)
-                requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
-                self.assertIn("Unrelated requirement", requirements)
-                self.assertNotIn("Moved requirement", requirements)
-
-    def test_matching_titles_and_number_only_ranges_are_distinguished(self):
-        self.write(self.repo, "docs/spec.md", "## 10.2 Actions\nAction requirement\n## 10.3 Events\nEvent requirement\n## 10.4 Results\nResult requirement\n")
-        self.commit(self.repo, "Spec")
-        for reference in ("§10.2 Actions", "§10.2 (Actions)"):
-            with self.subTest(reference=reference):
-                self.github(self.pr("Design: docs/spec.md\n" + reference))
-                prompt = self.review()
-                self.assertIn("Action requirement", prompt)
-                self.assertNotIn("matched by number only", prompt)
-                self.assertNotIn("title mismatch", prompt)
-        self.github(self.pr("Design: docs/spec.md [§10.2–§10.4]"))
-        prompt = self.review()
-        top = prompt.split("# 1. Review pack")[0]
-        index = prompt.split("# 4. Requirements")[1].split("\n## R1.")[0]
-        for title in ("10.2 Actions", "10.3 Events", "10.4 Results"):
-            for part in (top, index):
-                row = next(line for line in part.splitlines() if title in line)
-                self.assertIn("matched by number only; verify", row)
-
-    def test_renumbered_spec_is_flagged_for_untitled_commit_reference(self):
-        self.write(self.repo, "docs/spec.md", "## 10.2 Actions\nOld action requirement\n")
-        self.commit(self.repo, "Base spec")
-        self.git(self.repo, "update-ref", "refs/remotes/origin/trunk", "HEAD")
-        self.write(self.repo, "src/core.py", "pass\n")
-        self.commit(self.repo, "Implement §10.2")
-        self.write(self.repo, "docs/spec.md", "## 10.2 Notifications\nNew unrelated requirement\n## 10.3 Actions\nAction requirement\n")
-        self.commit(self.repo, "Renumber sections")
-        prompt = self.review()
-        top = prompt.split("# 1. Review pack")[0]
-        self.assertIn("10.2 Notifications", top)
-        self.assertIn("matched by number only; verify", top)
-        requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
-        self.assertIn("New unrelated requirement", requirements)
-
-    def test_stale_title_in_issue_is_not_bypassed_by_bare_selector_or_range(self):
-        self.write(self.repo, "docs/spec.md", "## 10.1 Start\nStart requirement\n## 10.2 Notifications\nUnrelated requirement\n## 10.3 End\nEnd requirement\n")
-        self.commit(self.repo, "Implement §10.1–§10.3")
-        self.github(self.pr("Refs #2"), [self.issue(2, "Design: docs/spec.md\n§10.2 (Actions)")])
-        prompt = self.review(spec="docs/spec.md#10.2")
-        self.assertIn("title mismatch", prompt.split("# 1. Review pack")[0])
-        requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
-        self.assertIn("Unrelated requirement", requirements)
-        self.assertIn("Start requirement", requirements)
-        self.assertIn("End requirement", requirements)
-
-    def test_stale_nested_section_is_flagged_and_included_once_through_parent(self):
-        self.write(self.repo, "docs/spec.md", "## 10 Behavior\nParent requirement\n### 10.2 Notifications\nUnrelated requirement\n### 10.3 Events\nEvent requirement\n")
-        self.commit(self.repo, "Implement §10\n\n§10.2 (Actions)")
-        prompt = self.review()
-        top = prompt.split("# 1. Review pack")[0]
-        self.assertIn("title mismatch", top)
-        requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
-        self.assertIn("Parent requirement", requirements)
-        self.assertIn("Event requirement", requirements)
-        self.assertIn("Unrelated requirement", requirements)
-
-    def test_diff_format_keeps_number_only_warning_in_index_and_notice(self):
-        self.write(self.repo, "docs/spec.md", "## 10.2 Actions\nAction requirement\n")
-        self.commit(self.repo, "Implement §10.2")
-        prompt = self.review(format="diff")
-        top = prompt.split("# 1. Review pack")[0]
-        requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
-        for part in (top, requirements):
-            self.assertIn("10.2 Actions (matched by number only; verify)", part)
-        self.assertNotIn("Action requirement", requirements)
-
-    def test_ranges_expand_in_document_order_and_collect_all_reference_sources(self):
+    def test_references_from_all_sources_include_one_whole_spec(self):
         self.write(self.repo, "docs/spec.md", "# Design\n## 3A.2.5 First\nFirst requirement\n## 3A.2.5a Middle\nMiddle requirement\n## 3A.2.6 Last\nLast requirement\n## 3A.5 Other\nOther requirement\n## 9 Outside\nExcluded requirement\n## Tests\n| PT1 | One |\n| PT10 | Ten |\n| PT2 | Two |\n")
         self.commit(self.repo, "Implement §3A.5\n\nAcceptance PT2")
         for dash in ("–", "-"):
@@ -1128,14 +1085,12 @@ else:
                             [self.issue(2, "Also §3A.5 and PT2")])
                 prompt = self.review()
                 requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
-                titles = [f"R{n}. Design/spec docs/spec.md — {title}" for n, title in enumerate(
-                    ["3A.2.5 First", "3A.2.5a Middle", "3A.2.6 Last", "3A.5 Other"], 1)]
-                positions = [requirements.index(title) for title in titles]
-                self.assertEqual(positions, sorted(positions))
+                self.assertIn("R1. Design/spec docs/spec.md — Full document", requirements)
+                self.assertEqual(requirements.count((self.repo / "docs/spec.md").read_text()), 1)
                 self.assertIn("| PT1 | One |", requirements)
                 self.assertIn("| PT2 | Two |", requirements)
-                self.assertNotIn("| PT10 | Ten |", requirements)
-                self.assertNotIn("Excluded requirement", requirements)
+                self.assertIn("| PT10 | Ten |", requirements)
+                self.assertIn("Excluded requirement", requirements)
                 self.assertNotIn("not found:", prompt)
 
     def test_document_discovery_uses_only_named_or_edited_documents(self):
@@ -1156,7 +1111,7 @@ else:
         self.assertIn("Design/spec docs/named.md", self.review())
         self.github(self.pr("See [design](https://github.com/example/project/blob/main/docs/named.md): §3A.5"))
         self.assertIn("Design/spec docs/named.md", self.review())
-        self.assertIn("Design/spec docs/other.md", self.review(spec="docs/other.md#3A.5"))
+        self.assertIn("Design/spec docs/other.md", self.review(spec="docs/other.md"))
         self.write(self.repo, "docs/design/wrong.md", "## 3A.5 Shared\nEdited design\n")
         self.commit(self.repo, "Update design")
         self.github()
@@ -1195,7 +1150,7 @@ else:
         self.fixtures.write_text(json.dumps(fixtures))
         prompt = self.review()
         top = prompt.split("# 1. Review pack")[0]
-        for ref in ("§3A.9", "PT40", "#77"):
+        for ref in ("PT40", "#77"):
             self.assertIn(ref, top)
         self.assertIn("Known requirement", prompt)
         self.assertIn("| PT4 | Known test |", prompt)
@@ -1232,7 +1187,7 @@ else:
         self.fixtures.write_text(json.dumps(fixtures))
         prompt = self.review()
         top = prompt.split("# 1. Review pack")[0]
-        for token in ("§9", "PT40", "network unavailable", "issues/2/comments"):
+        for token in ("PT40", "network unavailable", "issues/2/comments"):
             self.assertIn(token, top)
         self.assertIn("Local requirement", prompt)
         requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
@@ -1249,7 +1204,7 @@ else:
         self.assertEqual(code, 0, err)
         requirements = prompt.split("# 4. Requirements")[1].split("# 5. Change")[0]
         self.assertIn("| AT2 | Custom test |", requirements)
-        self.assertNotIn("| PT3 | Default test |", requirements)
+        self.assertIn("| PT3 | Default test |", requirements)
         self.assertIn("Issue #2", requirements)
         self.assertNotIn("Commit message", requirements)
 
@@ -1271,8 +1226,7 @@ else:
                 self.assertEqual(trimmed, expected)
                 self.assertLessEqual(len(prompt), len(full) - reduction)
                 if "spec" in expected:
-                    self.assertIn("trimmed R2 (spec)", top)
-                    self.assertNotIn("trimmed R1 (spec)", top)
+                    self.assertIn("trimmed R1 (spec)", top)
                 self.assertIn("PR description (author claims)", prompt)
                 self.assertIn("s" * 1000, prompt)
 
