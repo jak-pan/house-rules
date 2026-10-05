@@ -39,6 +39,28 @@ export CARGO_QUEUE_REAL="$KIT/tests/fake-cargo" CARGO_QUEUE_LOCK="$T/queue.lock"
 FAKE_MODE=exit3 "$H/wrapper/cargo" test > /dev/null 2>&1; check "queue passes the exit code through" '[ $? -eq 3 ]'
 start=$(date +%s); FAKE_MODE=sleep CARGO_QUEUE_STALL_MIN=0.15 "$H/wrapper/cargo" test > "$T/stall.log" 2>&1; rc=$?
 check "queue stops a stalled build with 124" '[ $rc -eq 124 ] && [ $(( $(date +%s) - start )) -lt 60 ]'
+# One number drives build jobs and test threads.
+check "budget shows the installed override" '"$KIT/budget" "$T/kit.conf" | grep "^budget: 6 cores (override"'
+"$KIT/budget" "$T/kit.conf" 4 > /dev/null
+check "budget 4 reaches cargo as jobs and test threads" '[ "$(FAKE_MODE=env "$H/wrapper/cargo" test)" = "jobs=4 tests=4" ]'
+check "status still reports the override as the kit file" '"$KIT/status" "$T/kit.conf" | grep "^installed .*build-budget-override"'
+"$KIT/budget" "$T/kit.conf" 3 --for 1h > /dev/null
+check "a timed budget records its expiry" 'read -r n e < "$H/state/build-budget-override"; [ "$n" = 3 ] && [ "$e" -gt "$(date +%s)" ]'
+check "a timed budget reaches cargo" '[ "$(FAKE_MODE=env "$H/wrapper/cargo" test)" = "jobs=3 tests=3" ]'
+printf '5 1\n' > "$H/state/build-budget-override"
+check "an expired budget is ignored" '"$KIT/budget" "$T/kit.conf" | grep "expired or invalid, ignored"'
+check "a lower test-thread request is kept" '[ "$(RUST_TEST_THREADS=1 FAKE_MODE=env "$H/wrapper/cargo" test)" = "jobs=$(cat "$H/state/build-budget") tests=1" ]'
+check "budget refuses a non-number" '! "$KIT/budget" "$T/kit.conf" six > /dev/null 2>&1'
+for line in "0" "8 abc" "8 $(( $(date +%s) + 3600 )) 5"; do printf '%s\n' "$line" > "$H/state/build-budget-override"
+  "$KIT/budget" "$T/kit.conf" > "$T/odd.out" 2> "$T/odd.err"
+  case $line in 0) want="^budget: 1 cores";; *) want="ignored";; esac
+  check "override '$line' read like the queue, without errors" 'grep "$want" "$T/odd.out" > /dev/null && [ ! -s "$T/odd.err" ]'
+done
+"$KIT/budget" "$T/kit.conf" --clear > /dev/null
+check "cleared budget falls back to the computed value" '"$KIT/budget" "$T/kit.conf" | grep "^budget: .*computed"'
+"$KIT/status" "$T/kit.conf" > "$T/status-cleared.log" 2>&1
+check "status after clearing reports no missing file and the computed budget" '! grep -q "^missing" "$T/status-cleared.log" && grep -q "^budget: .*computed" "$T/status-cleared.log"'
+"$KIT/budget" "$T/kit.conf" 6 > /dev/null
 unset CARGO_QUEUE_REAL CARGO_QUEUE_LOCK
 printf 'changed after install\n' >> "$H/.cargo/config.toml"
 "$KIT/uninstall" "$T/kit.conf" > "$T/uninstall.log" 2>&1; check "uninstall succeeds" '[ $? -eq 0 ]'

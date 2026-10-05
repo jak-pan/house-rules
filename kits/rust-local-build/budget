@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Show or change the core budget of local Rust builds. One number sets both cargo build jobs
+# (CARGO_BUILD_JOBS) and test threads (RUST_TEST_THREADS) for every queued cargo command.
+# Usage:
+#   budget <kit.conf>                 show the effective budget and where it comes from
+#   budget <kit.conf> <n>             set it to n cores until changed
+#   budget <kit.conf> <n> --for 2h    set it for a while (m, h or d); the computed value returns afterwards
+#   budget <kit.conf> --clear         return to the computed value (performance cores - 2)
+set -euo pipefail
+. "$(dirname "$0")/lib.sh"
+load_conf "${1:-}"; shift
+override="$STATE_DIR/build-budget-override"
+# Same rules as the cargo queue (files/cargo-queue), so this output never disagrees with what cargo gets.
+cores=$(/usr/sbin/sysctl -n hw.ncpu 2>/dev/null || true)
+efficiency=$(/usr/sbin/sysctl -n hw.perflevel1.logicalcpu 2>/dev/null || true)
+if [[ $cores =~ ^[0-9]+$ && $efficiency =~ ^[0-9]+$ ]]; then
+  computed=$(( cores - efficiency - ${BUILD_RESERVE:-2} ))
+  basis="computed: $cores cores - $efficiency efficiency - ${BUILD_RESERVE:-2} reserve"
+else   # core counts unreadable (Codex sandbox): the last saved value, else 6
+  saved=$(head -n1 "$STATE_DIR/build-budget" 2>/dev/null || true)
+  if [[ $saved =~ ^[0-9]+$ ]]; then computed=$saved; basis="saved budget (core counts unreadable here)"
+  else computed=6; basis="default 6 (core counts unreadable here, no saved budget)"; fi
+  cores=0
+fi
+record() {   # keep the kit manifest in step, so status and uninstall treat the override as the kit's file
+  [ -f "$MANIFEST" ] || return 0
+  local tmp; tmp=$(mktemp "$MANIFEST.XXXXXX")
+  awk -F'\t' -v p="$override" -v d="${1:-}" 'BEGIN{OFS="\t"} $1==p {found=1; if (d=="") { if ($2!="NONE") print; next } $3=d} {print} END{if(!found && d!="") print p, "NONE", d}' "$MANIFEST" > "$tmp"
+  mv "$tmp" "$MANIFEST"
+}
+case "${1:-}" in
+  "") ;;
+  --clear) rm -f "$override"; record ""; echo "override cleared" ;;
+  *[!0-9]*) echo "budget: expected a whole number of cores, got '$1'" >&2; exit 2 ;;
+  *)
+    n=$1; shift
+    [ "$n" -ge 1 ] && { [ "$cores" -eq 0 ] || [ "$n" -le "$cores" ]; } || { echo "budget: $n is outside 1..$cores" >&2; exit 2; }
+    line=$n
+    if [ "${1:-}" = --for ]; then
+      d=${2:?budget: --for needs a duration such as 90m, 2h or 1d}
+      case $d in *m) s=$(( ${d%m} * 60 ));; *h) s=$(( ${d%h} * 3600 ));; *d) s=$(( ${d%d} * 86400 ));; *) echo "budget: duration must end in m, h or d" >&2; exit 2;; esac
+      line="$n $(( $(date +%s) + s ))"
+    fi
+    mkdir -p "$STATE_DIR"; tmp=$(mktemp "$override.XXXXXX"); printf '%s\n' "$line" > "$tmp"; chmod 0644 "$tmp"; mv "$tmp" "$override"
+    record "$(sha "$override")"; echo "override set: $line" ;;
+esac
+# Same rule as the cargo queue: a valid, unexpired override wins over the computed budget.
+effective=$computed; source=$basis
+if [ -f "$override" ]; then
+  line=$(head -n1 "$override")
+  # The queue's pattern: one number, optionally followed by an expiry; anything else is ignored.
+  if [[ $line =~ ^[[:space:]]*([0-9]+)([[:space:]]+([0-9]+))?[[:space:]]*$ ]] \
+     && { [ -z "${BASH_REMATCH[3]}" ] || [ "$(date +%s)" -lt "${BASH_REMATCH[3]}" ]; }; then
+    effective=${BASH_REMATCH[1]}; exp=${BASH_REMATCH[3]}
+    source="override $override"; [ -n "$exp" ] && source="$source, until $(date -r "$exp" '+%Y-%m-%d %H:%M')"
+  else source="$source (override expired or invalid, ignored)"; fi
+fi
+[ "$effective" -ge 1 ] || effective=1   # the queue raises a budget below 1 to 1
+echo "budget: $effective cores ($source)"
+echo "  cargo build jobs:  $effective (CARGO_BUILD_JOBS, set by the queue)"
+echo "  test threads:      $effective (RUST_TEST_THREADS, unless a command sets a lower value)"
+echo "  fallback jobs:     $(sed -n 's/^jobs = //p' "$CARGO_HOME/config.toml" 2>/dev/null || echo unset) in $CARGO_HOME/config.toml, used only by a cargo that bypasses the queue"
