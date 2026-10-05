@@ -3,8 +3,10 @@
 **Default panel:** one generalist reviewer per model family, in parallel: family A and
 family B, plus family C when available. Different families miss different defects, so a
 second family finds more than another round from the same one. Reviewer definitions live in
-[`../reviewers/`](../reviewers/); the machine-local config maps each family to a CLI, model
-and effort (House Rules keeps model choice out of the repository).
+[`prompts/lenses/`](../../../prompts/lenses/); the machine-local config maps each family to a CLI, model
+and effort (House Rules keeps model choice out of the repository). Lens family and sandbox
+defaults live in `scripts/review-panel.lenses`, one `name family sandbox` per line;
+lens files contain only prompt text.
 
 ## Optional lenses
 
@@ -17,12 +19,12 @@ for user-interface code, and `ux` for user flows (with screenshots or a preview 
 available).
 
 The lead spawns specialists when the operator asks or a finding warrants one. The
-[`design`](../reviewers/design.md) lens is required for design changes (specs, new
+[`design`](../../../prompts/lenses/design.md) lens is required for design changes (specs, new
 mechanisms or layers), storage/read/search/native paths, a design smell flagged by another
 reviewer or the triager, and the daily whole-system audit. It is not required on every PR.
 
 Spec challenges and finding disposition follow the
-[shared review bar](../reviewers/common.md#review-bar). The lead triages each one:
+[shared review bar](../../../prompts/util/review-bar.md). The lead triages each one:
 a clarification is proposed in the same PR.
 Requirement removals and spec/code drift follow `design-flow` §Design changes.
 

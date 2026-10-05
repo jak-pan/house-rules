@@ -1,18 +1,14 @@
 ## Guard upkeep
 
 Each rule has one home. Prompts reference it with
-`@rule house-rules:<path>#<heading-anchor>`; the prompt builder resolves and includes the
-section at build time. Prompts never keep copied rule text. A missing file or heading
+`@rule house-rules:<path>`; the prompt builder resolves and includes the
+whole file at build time. Prompts never keep copied rule text. A missing file
 fails the run visibly. Product targets stay in the repository's spec; private extensions
 stay in `custom/`.
 
 Use deterministic checks first for facts code can establish. Agent reviewers judge design
-fit, root causes and spec intent. Every guard and every test logs its triggers and outcomes:
-real findings or defects caught, false positives or flaky failures, waivers with decision
-IDs, and runtime. Use existing run/test output and tracker records rather than a second
-source of truth. The lead reviews these records daily at first, then every 3 days, pruning
-or narrowing guards and tests that do not earn their cost. Testing constraints:
-[canon.md §Test discipline](../canon.md#test-discipline). Review-round reassessment:
+fit, root causes and spec intent. Test logging, pruning and testing constraints:
+[prompts/skills/test-discipline.md §Test discipline](../../../prompts/skills/test-discipline.md). Review-round reassessment:
 [pr-ready §3](../SKILL.md#3-review-rounds).
 
 There are no fixed caps on blocking findings or filed issues. The triager decides by

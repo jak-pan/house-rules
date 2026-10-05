@@ -16,27 +16,21 @@ Review task fields: [review template](review-prompt.md). `scripts/review-panel.s
   failure is recorded in the new summary. Cleanup failures also make the panel exit nonzero. Before any output changes, panel names must match
   `[A-Za-z0-9][A-Za-z0-9._-]*` and the panel directory must resolve strictly beneath the
   configured output root, including through symlinks. Reviewer names must match
-  `[a-z0-9-]+` and an existing file stem in `reviewers/`, with no duplicates. All cleanup
+  `[a-z0-9-]+` and an existing file stem in `prompts/lenses/`, with no duplicates. All cleanup
   paths and the summary must resolve beneath the panel directory, including through
   symlinks, or the panel refuses to run. Prompt order: stable rules and lens first, then the
   base-prompt file as summary/task, PR/issue context, requirements and change. Requirements
   are indexed as R1, R2, … with source links, most authoritative first: design/spec
-  sections and acceptance-test rows, linked issues (title, labels, body), non-bot
+  documents, linked issues (title, labels, body), non-bot
   OWNER/MEMBER/COLLABORATOR comments oldest first, then the PR description (author claims).
   Without a PR or issue, range commit messages supply the task. Standalone use accepts
-  `--pr`, repeatable `--issue`, `--spec PATH[#SEC,SEC]`, `--tests ID,ID`,
+  `--pr`, repeatable `--issue`, `--spec PATH`, `--tests ID,ID`,
   `--test-prefix PREFIX` (default `PT`, the acceptance-test ID prefix, e.g. `PT1`)
   and `--summary FILE`. Use the repository's prefix, such as `--test-prefix AT` for `AT1`.
-  Section references, ranges
-  such as `§3A.2.5–§3A.2.6` (also `-`), and test IDs are collected from PR/issue bodies
-  and range commit messages; ranges expand in document order. Inline reference titles
-  (`§10.2 Actions` when the words match the heading's leading words, or an explicit
-  parenthesized title `§10.2 (Actions)`) are compared with the heading. Trailing prose
-  on a bare reference need not match. Title mismatches are reported at the top; the
-  section is still included and flagged for verification. Nested ranges include each
-  section body only once. Sections selected without a title, including
-  range members, are marked in the index and individually at the top as
-  "matched by number only; verify" to expose potentially stale numbering. Spec selection is
+  The selected spec document is included whole, preserving headings and content;
+  explicit section selectors are rejected. Test IDs are collected from PR/issue bodies
+  and range commit messages and checked within the selected document; they do not
+  narrow its content. Spec selection is
   limited to `--spec`, then an existing path in a `Design: <path> [§...]` line, then a
   Markdown path named in PR/issue/commit text, then a Markdown design/spec file edited
   by the change. Design lines outrank ordinary mentions across those sources; otherwise
@@ -49,8 +43,8 @@ Review task fields: [review template](review-prompt.md). `scripts/review-panel.s
   mentions may start with `./` or `/`. Before reading the selected
   document, `git cat-file -s` checks its size against a 2,000,000-byte limit. Oversized
   documents fail preparation without emitting a prompt; the error names the path,
-  byte size and limit. Unsearched sections and tests are not reported as missing.
-  Section tokens and test IDs resolve within the selected document. There is no document scoring or content scan. Hyphens are part of
+  byte size and limit. Unsearched tests are not reported as missing.
+  There is no document scoring or content scan. Hyphens are part of
   acceptance IDs: `AT1` does not match `AT1-case`. Linked issues come from PR-body
   `Refs/Closes/Fixes/Resolves #N`, `owner/repo#N`, issue URLs and `--issue`.
   GitHub reads use optional `gh`; unavailable automatic sources and unresolved references
@@ -66,7 +60,7 @@ Review task fields: [review template](review-prompt.md). `scripts/review-panel.s
   decoding, then literal Git pathspecs. Non-UTF-8 bytes are displayed as escapes and
   percent-encoded in links; NUL bytes are displayed as escapes. Size checks measure the
   final displayed prompt, including its terminating newline. Codex prompts over 800,000 characters fall back to pack for the change, then trim comments,
-  issue bodies and spec sections in that order (largest first within each source type).
+  issue bodies and spec documents in that order (largest first within each source type).
   Notices identify every trim. If the prompt still exceeds the limit after all trim
   steps, preparation exits nonzero without emitting a prompt; the error names the limit,
   final size and completed trims. The panel reports this as a preparation failure.
