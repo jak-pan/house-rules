@@ -6,7 +6,9 @@ second family finds more than another round from the same one. Reviewer definiti
 [`../reviewers/`](../reviewers/); the machine-local config maps each family to a CLI, model
 and effort (House Rules keeps model choice out of the repository).
 
-**Optional lenses** add focused reviewers for changes that warrant them, for example
+## Optional lenses
+
+Add focused reviewers for changes that warrant them, for example
 security on access-control code or durability on storage code: `security`, `durability`,
 `performance`, `spec` (a requirement-by-requirement traceability pass) and `waste`. Each
 reports only findings in its lens. Non-backend changes add their own reviewers, chosen by the
@@ -14,16 +16,21 @@ paths a change touches: `design-spec` for design documents and specifications, `
 for user-interface code, and `ux` for user flows (with screenshots or a preview link when
 available).
 
+The lead spawns specialists when the operator asks or a finding warrants one. The
+[`design`](../reviewers/design.md) lens is required for design changes (specs, new
+mechanisms or layers), storage/read/search/native paths, a design smell flagged by another
+reviewer or the triager, and the daily whole-system audit. It is not required on every PR.
+
 **Every reviewer challenges the spec too**, in a separate section: contradictions,
 infeasible or unmeasurable requirements, undefined cases, evidently worse designs. A spec
 issue blocks only when the code faithfully implements a wrong spec. The lead triages each
-one: a clarification goes into the spec in the same PR; a genuine design choice goes to
-the operator as a decision.
+one: a clarification is proposed in the same PR; a design finding stops for a lead
+decision, never a follow-up. A settled operator decision is not reopened by a reviewer.
+Requirement removals and spec/code drift follow `design-flow` §Design changes.
 
-**Loop:** panel round → fixer confirms each finding (rejecting false ones with a reason) and
-fixes the real ones → each flagging reviewer checks its own findings, and another family
-reviews the fix diff → next full panel round. Stop when a full panel round finds no
-blockers. Track per family how many findings were confirmed.
+**Loop:** follow [pr-ready §3](../SKILL.md#3-review-rounds), including the lead's
+reassessment after two fix rounds. Merge eligibility is in
+[pr-ready §4](../SKILL.md#4-merge-and-cleanup). Track confirmed findings per family.
 
 Launch: `scripts/review-panel.sh <name> <checkout> <base-prompt> [reviewer ...]`
 (default reviewers: the generalists of the configured families).

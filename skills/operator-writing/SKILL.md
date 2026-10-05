@@ -31,8 +31,10 @@ reader test.
   them as HTML; an HTML rendering, if ever needed, is generated from the Markdown.
 - Never put long text in a table cell. Use a table only when every cell is a few words;
   give each option or item its own short section instead.
-- Diagrams are Mermaid blocks in the file. When the client shows Mermaid as source, also
-  render the diagram with the client's visual tool (AGENTS.md §Actionable communication).
+- Diagrams are Mermaid in files and chat, never ASCII art or indented text trees.
+  Orient them vertically, with groups and comparisons stacked rather than side by side.
+  Unconnected subgraphs render side by side, so use separate diagrams with text between
+  them. When the client shows Mermaid as source, render it with the client's visual tool.
 
 ## Structure
 
@@ -55,7 +57,7 @@ Rules:
 - Number options with one scheme only (Option 1, 2, 3), with no gaps, and define every
   option where options are listed.
 - One diagram at most per topic. Never place two diagrams without text between them.
-  Diagrams are vertical (AGENTS.md §Actionable communication).
+  Diagram format follows §Format.
 - Short chat replies use the same order in compressed form: result → why → what is next.
   Omit empty parts; do not add parts the message does not need.
 

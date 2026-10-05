@@ -80,9 +80,22 @@ AGENTS.md §Security.
 
 ## 5. Implement
 
-One branch per issue per repository (`STRUCTURE.md`); test-first red→green; design doc is the spec — implement it
-literally, and when reality forces a deviation, update the design doc in the same commit
-(the doc never silently diverges from what's being built).
+One branch per issue per repository (`STRUCTURE.md`); test-first red→green. Before a work
+package's first code, a design-spec reviewer checks its spec sections against the recorded
+decisions. For choices those sources leave open, choose the simplest option satisfying
+the spec and task, implement it, and list it for the lead to accept. Stop and report
+options only for a security boundary, contradiction of a settled decision, persistent
+state the spec does not require, or a scope change. Questions a reviewer marks as needing
+an operator decision stay open until that decision; never settle them by editing the spec.
+
+## Design changes
+
+Implement the spec literally. When reality requires a deviation, propose the doc change
+in the same commit and list it for acceptance; never silently reduce a requirement.
+Removing a requirement sentence from a design or spec needs a recorded decision ID.
+Flag a spec edit that changes a mechanism to match existing code: it needs a decision,
+not an editorial justification. Apply this check to rewrites and shortening as well as
+explicit deletions. A design finding stops for the lead to decide before another fix round.
 
 ## 6. Closeout — the PR merge closes the issue
 

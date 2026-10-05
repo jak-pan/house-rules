@@ -36,7 +36,7 @@ repo/
 ├── scripts/                       # ci guards, smoke gates, build/test helpers
 ├── RUNBOOK.md                     # operational knowledge: run, recover, rotate — not architecture
 ├── .debug-session/                # gitignored: logs, screenshots, debug reports
-└── .tmp/                          # gitignored: scratch, per-lane cargo targets
+└── .tmp/                          # gitignored: scratch; lane targets only without a worktree
 ```
 
 ## Naming rules

@@ -3,8 +3,7 @@
 Details of `scripts/prepare.py` and `scripts/review-panel.sh`, moved out of the skill so the
 loop stays readable. The skill states what to do; this file states exactly how the tools behave.
 
-Give the reviewer the spec sections, previous review and round task as needed
-  ([review template](references/review-prompt.md)). `scripts/review-panel.sh` runs
+Review task fields: [review template](review-prompt.md). `scripts/review-panel.sh` runs
   the base resolver once, then `scripts/prepare.py review --base REF --no-fetch` per
   lens and CLI. Preparation failures, reviewer CLI failures, and reports without a
   `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES` token anywhere in the report

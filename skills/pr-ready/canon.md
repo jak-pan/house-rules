@@ -11,8 +11,7 @@ Canon the change must follow:
   report it under Spec issues with "operator decision needed"; do not block on it.
 - Simplicity: one mechanism per concept; duplicates are merged; a shared owner is
   extended, never forked into a local copy; every structure has a defensible reason.
-- No legacy before release: dead paths are deleted; no shims, migrations or compatibility
-  layers for things that never shipped.
+- Delete unreleased dead paths; rebuild pre-release internal formats and current live data, without migrations or legacy readers; product schema migrations may be a feature (design-canon §Decisions).
 - Policies that could vary are versioned config with spec-stated defaults, not constants.
 - Derived indexes and caches are rebuildable from the canonical store and never become a
   second source of truth.
@@ -25,3 +24,29 @@ Canon the change must follow:
   that shows them.
 - Rust: no `unwrap()` in library code; `thiserror` in libraries, `anyhow` only in binaries
   and never on hot paths; public items carry `///` docs.
+
+## Native-first
+
+Storage, read and search changes state the bare-engine cost of the same operation and
+what each added layer earns. Use the underlying engine or library's supported features
+first; a layer that does not earn its counted cost blocks review.
+
+## No fortification
+
+A cache, budget, retry, index-like row, indirection or reduced test that works around
+cost or complexity elsewhere must name the root cause. Fix that cause or cite a recorded
+decision accepting the workaround. First ask whether the mechanism should exist; delete
+or narrow it before adding another mechanism. A workaround without that evidence blocks
+review.
+
+## Tests
+
+Single tests finish in seconds and never run long. Remove a known looping or hanging
+test at once, keep its defect tracked, and replace it with a small, explicitly bounded
+test. Stop a command holding the shared build queue after a few minutes without CPU
+progress and after a fixed overall hold limit; configure those limits in the build runner.
+
+Tests earn their cost: log runtime, real defects caught and flaky failures; prune or
+bound slow, flaky or never-useful tests at the guard and test review
+(pr-ready references/guards.md §Guard upkeep). Scale tests move, never vanish: record
+the replacement test and where it runs, preserving the scale and behavior it proves.

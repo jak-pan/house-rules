@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Print the worker pack: workers/common.md with the shared canon inlined.
+"""Print a worker or reviewer pack with the shared canon inlined.
 
-Dispatchers prepend this to every implementer and fixer prompt (skill `pr-ready` §1).
+Dispatchers prepend the selected pack to worker or reviewer prompts (skill `pr-ready` §1).
 """
+import argparse
 from pathlib import Path
 
 SKILL = Path(__file__).resolve().parent.parent
@@ -18,4 +19,8 @@ def pack(kind: str = "workers") -> str:
 
 
 if __name__ == "__main__":
-    print(pack())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "kind", nargs="?", choices=("workers", "reviewers"), default="workers"
+    )
+    print(pack(parser.parse_args().kind))

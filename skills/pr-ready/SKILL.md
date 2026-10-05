@@ -7,16 +7,17 @@ license: MIT
 # PR Ready
 
 One loop per change: local gate → push → CI → review round → fix → … → merge → cleanup.
-Where CI runs the complete gate on every push and merges wait for it, CI owns the full
-suite (AGENTS.md §Verification); everything below keeps local work small.
+Verification invariant: AGENTS.md §Verification. Local work follows
+[`workers/common.md`](workers/common.md); reviewer test scope is in
+[`reviewers/common.md`](reviewers/common.md).
 
 ## 1. Local gate (implementer or fixer)
 
 - Every implementer and fixer prompt starts with the worker pack: `scripts/worker-pack.py`
   prints [`workers/common.md`](workers/common.md) with the shared [code canon](canon.md)
-  inlined. Workers load no other rules, so the pack carries the test scope, compiler-cache,
-  commit and no-external-write rules; reviewers get the same canon through
-  [`reviewers/common.md`](reviewers/common.md).
+  inlined. `scripts/worker-pack.py reviewers` prints the reviewer pack from
+  [`reviewers/common.md`](reviewers/common.md). Dispatchers generate both from their
+  source files; never maintain local copies.
 - Run `scripts/prepare.py fix <checkout> --reviews <files...>` before fixing, or
   `scripts/prepare.py pr <checkout>` before preparing a PR (Python 3.9+). It fetches the base and
   checks ownership with `upstream-contribution/scripts/repo-ownership.sh`. For external
@@ -33,10 +34,9 @@ suite (AGENTS.md §Verification); everything below keeps local work small.
   on owned repositories or with `--update`. Git and gh run non-interactively.
 - Use the repository's declared gates (its `AGENTS.md`, or the CI workflow when none are
   declared) in CI's build profile. Rust: skill `rust-canon` §Gates.
-- Run formatting, lint/compile checks, fast guard tests, and **targeted** tests: the
-  modules or packages the diff touches, their direct tests, and every new regression.
-  Widen the target to dependents when a shared type, trait, schema or public contract
-  changes. When toolchains, lockfiles or build scripts change, leave the matrix to CI.
+- Apply the local test scope in [`workers/common.md`](workers/common.md).
+  Widen targeted checks to dependents when a shared type, trait, schema or public contract
+  changes; toolchain, lockfile and build-script matrices belong to CI.
 - Report the exact commands, filters and pass/fail counts.
 
 ## 2. Push and CI
@@ -60,9 +60,10 @@ local panel is optional pre-push feedback. Otherwise the agent runs the panel lo
 External repositories always get local review rounds (skill `upstream-contribution`).
 
 **Review bar.** [`reviewers/common.md`](reviewers/common.md) holds the bar and the review
-canon: correctness and security, performance, code quality, waste as a blocking class, and
+canon: correctness and security, cost and design, code quality, waste as a blocking class, and
 the House Rules a reviewer enforces. It is inlined into every reviewer prompt, so reviewers
-load no other rules.
+load no other rules. The lead spawns specialist reviewers when the operator asks or a
+finding warrants one; triggers and lenses: [review panels](references/review-lenses.md).
 
 - Give the reviewer the spec sections, previous review and round task as needed
   ([review template](references/review-prompt.md)). `scripts/review-panel.sh` builds each
@@ -77,36 +78,32 @@ load no other rules.
   control, confidentiality, durability, storage, security-sensitive paths or new mechanisms.
   It refuses changes above 300 changed lines by default; a blocker or spec issue it raises
   sends the change back to the full panel after the fix. For an eligible change its approval
-  completes review; for a check-back it completes the round the full panel opened.
+  completes review under §4; check-backs verify fixes without replacing the required
+  final-head reviews.
 - Run a panel of one generalist per model family, adding focused lenses where warranted
-  ([review panels](references/review-lenses.md)), and loop until a full panel round finds
-  no blockers. The full panel reviews the first head and the final head, and any fix that
-  touches a shared mechanism or a large diff; check-backs in between may be quick reviews. The reviewer reviews statically and runs at most one targeted test, only
-  to confirm or refute a specific finding.
+  ([review panels](references/review-lenses.md)). Except for eligible quick reviews, the
+  full panel reviews the first and final heads, and fixes to shared mechanisms or large
+  diffs; check-backs in between may be quick reviews. Test scope:
+  [`reviewers/common.md`](reviewers/common.md).
 - The fixer closes every blocking item from all reviewers in one run, with the smallest fix
   and a regression test each, in one commit per round, and searches the code for the same
   pattern so every instance is fixed, not only the cited line. The next review names that commit and marks each prior
   blocker RESOLVED or NOT. A fixer never approves its own fix.
-- When a fix meets a genuine design choice, the fixer stops and reports the options; the
-  lead decides (skill `operator-protocol` §Decisions).
+- A design finding stops for a lead decision, never a follow-up or another fix round.
+  Unsettled implementation choices follow `design-flow` §5; only its decision boundaries
+  stop the worker.
 - **Hosted review bots.** Review threads from bots the host runs on the PR (for example
   GitHub Copilot) are reviewer input for the next fix round, judged by the same bar. Before
   merging, the lead replies to each with the fix or the reason it is not one, and resolves it.
-- **Done and mergeable.** A change is mergeable when every reviewer of the latest full
-  panel returned no Blocking items (reviewers/common.md) on the final head, or on an earlier
-  head whose later commits only resolve those reviewers' own blockers and pass a quick
-  check-back, and CI is green. Follow-ups are filed as tracked issues before merging; they
-  never hold the merge. A slower reviewer's findings on an older head feed the next fix
-  round; its fixer never pushes onto a head that moved. After three consecutive full rounds
-  that each surface new blockers, stop iterating: simplify, split the change or escalate a
-  decision instead of another round. Splitting and simplifying are the agent's own moves:
-  land the converged part, move the rest to a narrower PR, file non-defect findings as
-  follow-ups, and continue. Escalate only a design, boundary or scope change, and never
-  leave the lane idle while the operator is away (AGENTS.md §Autonomy).
-- **Same class twice: change the mechanism.** When one class of defect blocks two
-  consecutive rounds, stop patching call sites. First ask whether the spec is unclear and,
-  if so, get the decision; otherwise the next fix introduces one shared mechanism that
-  makes the class impossible (AGENTS.md §Three-occurrence reassessment).
+- **Review reassessment.** After two fix rounds on one PR, the lead decides whether to
+  simplify, split or continue and records why. This is a decision checkpoint, not a
+  hardcoded stop. Follow-ups are tracked before merging and never hold the merge;
+  cost defects and design findings cannot be reclassified to escape this rule.
+  A slower reviewer's findings on an older head feed the next fix round; its fixer
+  never pushes onto a head that moved. Merge eligibility has one home: §4.
+- **Repeat defects.** Use the worker pack's mechanism-first reassessment
+  ([workers/common.md](workers/common.md)); the general third-occurrence checkpoint
+  remains AGENTS.md §Three-occurrence reassessment.
 - **No idle gaps.** A fix run pushes and starts its review in the same job; a review that
   needs a fix starts the fix in the same job. The lead intervenes only for decisions.
 - **Conflicting findings: analyze before fixing.** When reviewers' findings pull against
@@ -128,20 +125,21 @@ load no other rules.
 - **Slow reviewers never block.** The fix round starts as soon as the reports in hand
   need one; a slower reviewer keeps reviewing its snapshot in the background, and its
   report becomes queued input. At the final head the slow reviewer still reviews, but
-  only the diff since its last reviewed head; a merge needs every reviewer's approval.
+  only the diff since its last reviewed head. Merge eligibility: §4.
   Operator direction: 2026-10-03, after parallel slow-review fixers doubled builds and
   overloaded the machine.
 - **Current base before the final round.** Merge the default branch into the PR branch
   before its final review, so the reviewed head is what CI and the merge see.
-- **Spec check before implementing.** Before a work package's first code, a design-spec
-  reviewer reads the spec sections it implements, with the recorded decisions attached,
-  and every open question goes to the operator first; implementation starts on settled
-  text.
 
 ## 4. Merge and cleanup
 
-- Merge only when the reviewer approves the exact head, CI is green on that head, and the
-  closeout checklist holds (skill `design-flow` §6). Pin the head
+- Merge only when the required reviews approve the exact head with no Blocking items,
+  CI is green on that head, and the closeout checklist holds (`design-flow` §6).
+  In a repository without PR CI, the full declared local gate on the pinned toolchain
+  stands in for CI; every failure must be shown to fail on the base under the same
+  conditions. Required reviews still approve the exact head. When a required reviewer
+  model family is unavailable, the operator decides how to proceed; the missed review
+  runs after that family returns. Pin the head
   (`gh pr merge <n> --match-head-commit <sha>`) in the repository's merge style. No
   auto-merge unless the operator asked.
 - Then update the tracking item, delete the branch, and remove the lane (skill

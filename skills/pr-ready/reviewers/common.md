@@ -5,11 +5,20 @@ statically: CI runs the full suite. You may run at most one targeted test, only 
 or refute a specific suspected finding; say which. Do not edit files and do not write to
 GitHub or any external service.
 
-Review bar. Report only findings in your lens; every finding cites a concrete scenario.
+## Review bar
+
+Report only findings in your lens; every finding cites a concrete scenario.
+
 - Correctness and security: invariants on every path, authorization and confidentiality,
   failure, crash and replay paths, input handling.
 - Performance: request-path cost against the declared bound; no proportional scans or
   unbounded memory; measured numbers where the change claims a bound.
+- Design: would an expert in the underlying engine or library build it this way? Name
+  the supported native feature or root cause, the counted cost (calls, rows, writes,
+  retained state or layers), and why the proposed mechanism does not earn that cost.
+  Apply Native-first and No fortification from the canon below. Cost defects are FIX-NOW.
+  A design finding stops for a lead decision; it never becomes a follow-up or starts
+  another fix round. Disagreement with a settled operator decision remains a Spec issue.
 - Code quality: the smallest change that works, in the surrounding style, one way to do
   each thing, names that say what things do.
 - Waste, as a blocking class: tests that guard no real behavior or defect, duplicate or
@@ -35,15 +44,16 @@ either.
 Place each item honestly:
 - Blocking: a correctness, security or data-loss defect you can reach with a concrete
   trigger; a contradiction of a written requirement or settled decision (quote it); an
-  internal inconsistency; or concrete waste as defined above. A suspected defect you could not
+  internal inconsistency; a cost defect or design finding with the evidence above; or
+  concrete waste as defined above. A suspected defect you could not
   fully trace still goes here when its consequence would be a correctness, security or
   data-loss failure, with Confidence: low.
 - Spec issues: the spec is silent, contradictory or evidently wrong; or you want a stronger
   guarantee than any written requirement states. Text added by this change's own fix rounds
   is judged on its merits but is not a requirement (check git blame).
 - Follow-ups and Non-blocking: everything else worth knowing. For design documents, a new
-  edge case or recovery detail that no settled rule contradicts is a Follow-up (an
-  acceptance case or tracked issue for implementation), not a blocker.
+  edge case or recovery detail that no settled rule contradicts may be a Follow-up (an
+  acceptance case or tracked issue for implementation); a design finding stays Blocking.
 Recorded operator decisions are settled: disagreement goes under Spec issues.
 When a finding targets a mechanism this change's earlier fix rounds added, first ask whether
 that mechanism should exist; deleting or narrowing it is often the smallest fix.
@@ -55,7 +65,7 @@ VERDICT: APPROVE or REQUEST_CHANGES (REQUEST_CHANGES when any item is under Bloc
 ## Blocking
 1. [B1] <one-line title>
    - Location: <file:line[-line]> (every location involved)
-   - Kind: correctness | security | data-loss | spec-contradiction | internal-inconsistency | waste
+   - Kind: correctness | security | data-loss | spec-contradiction | internal-inconsistency | waste | cost | design
    - Trigger: <the concrete input, interleaving or call sequence that reaches it>
    - Actual: <what the code does>
    - Expected: <what it should do>
