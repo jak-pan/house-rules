@@ -51,6 +51,11 @@ printf '5 1\n' > "$H/state/build-budget-override"
 check "an expired budget is ignored" '"$KIT/budget" "$T/kit.conf" | grep "expired or invalid, ignored"'
 check "a lower test-thread request is kept" '[ "$(RUST_TEST_THREADS=1 FAKE_MODE=env "$H/wrapper/cargo" test)" = "jobs=$(cat "$H/state/build-budget") tests=1" ]'
 check "budget refuses a non-number" '! "$KIT/budget" "$T/kit.conf" six > /dev/null 2>&1'
+for line in "0" "8 abc" "8 $(( $(date +%s) + 3600 )) 5"; do printf '%s\n' "$line" > "$H/state/build-budget-override"
+  "$KIT/budget" "$T/kit.conf" > "$T/odd.out" 2> "$T/odd.err"
+  case $line in 0) want="^budget: 1 cores";; *) want="ignored";; esac
+  check "override '$line' read like the queue, without errors" 'grep "$want" "$T/odd.out" > /dev/null && [ ! -s "$T/odd.err" ]'
+done
 "$KIT/budget" "$T/kit.conf" --clear > /dev/null
 check "cleared budget falls back to the computed value" '"$KIT/budget" "$T/kit.conf" | grep "^budget: .*computed"'
 "$KIT/status" "$T/kit.conf" > "$T/status-cleared.log" 2>&1

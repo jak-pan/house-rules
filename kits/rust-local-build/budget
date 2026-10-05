@@ -10,9 +10,18 @@ set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 load_conf "${1:-}"; shift
 override="$STATE_DIR/build-budget-override"
-cores=$(/usr/sbin/sysctl -n hw.ncpu 2>/dev/null || echo 0)
-efficiency=$(/usr/sbin/sysctl -n hw.perflevel1.logicalcpu 2>/dev/null || echo 0)
-computed=$(( cores - efficiency - ${BUILD_RESERVE:-2} )); [ "$computed" -ge 1 ] || computed=1
+# Same rules as the cargo queue (files/cargo-queue), so this output never disagrees with what cargo gets.
+cores=$(/usr/sbin/sysctl -n hw.ncpu 2>/dev/null || true)
+efficiency=$(/usr/sbin/sysctl -n hw.perflevel1.logicalcpu 2>/dev/null || true)
+if [[ $cores =~ ^[0-9]+$ && $efficiency =~ ^[0-9]+$ ]]; then
+  computed=$(( cores - efficiency - ${BUILD_RESERVE:-2} ))
+  basis="computed: $cores cores - $efficiency efficiency - ${BUILD_RESERVE:-2} reserve"
+else   # core counts unreadable (Codex sandbox): the last saved value, else 6
+  saved=$(head -n1 "$STATE_DIR/build-budget" 2>/dev/null || true)
+  if [[ $saved =~ ^[0-9]+$ ]]; then computed=$saved; basis="saved budget (core counts unreadable here)"
+  else computed=6; basis="default 6 (core counts unreadable here, no saved budget)"; fi
+  cores=0
+fi
 record() {   # keep the kit manifest in step, so status and uninstall treat the override as the kit's file
   [ -f "$MANIFEST" ] || return 0
   local tmp; tmp=$(mktemp "$MANIFEST.XXXXXX")
@@ -36,13 +45,17 @@ case "${1:-}" in
     record "$(sha "$override")"; echo "override set: $line" ;;
 esac
 # Same rule as the cargo queue: a valid, unexpired override wins over the computed budget.
-effective=$computed; source="computed: $cores cores - $efficiency efficiency - ${BUILD_RESERVE:-2} reserve"
+effective=$computed; source=$basis
 if [ -f "$override" ]; then
-  read -r n exp < "$override" || true
-  if [[ ${n:-} =~ ^[0-9]+$ ]] && { [ -z "${exp:-}" ] || [ "$(date +%s)" -lt "$exp" ]; }; then
-    effective=$n; source="override $override"; [ -n "${exp:-}" ] && source="$source, until $(date -r "$exp" '+%Y-%m-%d %H:%M')"
+  line=$(head -n1 "$override")
+  # The queue's pattern: one number, optionally followed by an expiry; anything else is ignored.
+  if [[ $line =~ ^[[:space:]]*([0-9]+)([[:space:]]+([0-9]+))?[[:space:]]*$ ]] \
+     && { [ -z "${BASH_REMATCH[3]}" ] || [ "$(date +%s)" -lt "${BASH_REMATCH[3]}" ]; }; then
+    effective=${BASH_REMATCH[1]}; exp=${BASH_REMATCH[3]}
+    source="override $override"; [ -n "$exp" ] && source="$source, until $(date -r "$exp" '+%Y-%m-%d %H:%M')"
   else source="$source (override expired or invalid, ignored)"; fi
 fi
+[ "$effective" -ge 1 ] || effective=1   # the queue raises a budget below 1 to 1
 echo "budget: $effective cores ($source)"
 echo "  cargo build jobs:  $effective (CARGO_BUILD_JOBS, set by the queue)"
 echo "  test threads:      $effective (RUST_TEST_THREADS, unless a command sets a lower value)"
