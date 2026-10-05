@@ -16,7 +16,10 @@ How to work:
   mechanism that makes the class impossible instead of patching another call site.
 - Local gate only: formatting, lint/compile checks and targeted tests for the code you
   changed plus your new regressions. Never run the full test suite or workspace-wide tests,
-  except for the canonical [no-PR-CI merge gate](../../SKILL.md#4-merge-and-cleanup).
+  except for the no-PR-CI merge gate.
+  In a repository without PR CI, the full declared local gate on the pinned toolchain
+  stands in for CI; every failure must be shown to fail on the base under the same
+  conditions. Required reviews still approve the exact head.
   CI runs the full suite on every push. Report each command with pass/fail counts.
 - Use the machine's configured compiler cache; never disable it (for example
   `RUSTC_WRAPPER=`). A lane may use its own build target directory while keeping the
@@ -38,10 +41,10 @@ How to work:
   task gives. Do not push, open or edit PRs, comment, or write to GitHub or any other
   external service; the lead does all external writes. Report what you would post.
 
-@rule house-rules:skills/pr-ready/prompts/common/code-canon.md
-@rule house-rules:skills/pr-ready/prompts/common/native-first.md
-@rule house-rules:skills/pr-ready/prompts/common/no-fortification.md
-@rule house-rules:skills/pr-ready/prompts/common/test-discipline.md
+@rule house-rules:prompts/skills/code-canon.md
+@rule house-rules:prompts/skills/native-first.md
+@rule house-rules:prompts/skills/no-fortification.md
+@rule house-rules:prompts/skills/test-discipline.md
 
 Final message: what changed per task item (fixed, already fixed, or does not hold, with
 evidence), files touched, the gate commands with counts, and anything left undone.

@@ -8,14 +8,14 @@ license: MIT
 
 One loop per change: local gate → push → CI → review round → fix → … → merge → cleanup.
 Verification invariant: AGENTS.md §Verification. Local work follows
-[`prompts/roles/implementer.md`](prompts/roles/implementer.md); reviewer test scope is in
-[`prompts/roles/reviewer.md`](prompts/roles/reviewer.md).
+[`prompts/roles/implementer.md`](../../prompts/roles/implementer.md); reviewer test scope is in
+[`prompts/roles/reviewer.md`](../../prompts/roles/reviewer.md).
 
 ## 1. Local gate (implementer or fixer)
 
-- Prompts are lists of whole files from the [prompt collection](prompts/README.md).
+- Prompts are lists of whole files from the [prompt collection](../../prompts/README.md).
   Expand an implementer, fixer, reviewer, triager or checker role with
-  `/usr/bin/python3 skills/pr-ready/scripts/prompt.py skills/pr-ready/prompts/roles/<role>.md`
+  `/usr/bin/python3 skills/pr-ready/scripts/prompt.py prompts/roles/<role>.md`
   from a pinned checkout, or pass a list of `@rule house-rules:<path>` lines on stdin.
   Includes are recursive whole files; missing files, paths outside the checkout,
   section references and cycles fail the build. `--list` prints included paths.
@@ -36,7 +36,7 @@ Verification invariant: AGENTS.md §Verification. Local work follows
   on owned repositories or with `--update`. Git and gh run non-interactively.
 - Use the repository's declared gates (its `AGENTS.md`, or the CI workflow when none are
   declared) in CI's build profile. Rust: skill `rust-canon` §Gates.
-- Apply the local test scope in [`prompts/roles/implementer.md`](prompts/roles/implementer.md).
+- Apply the local test scope in [`prompts/roles/implementer.md`](../../prompts/roles/implementer.md).
   Widen targeted checks to dependents when a shared type, trait, schema or public contract
   changes; toolchain, lockfile and build-script matrices belong to CI.
 - Report the exact commands, filters and pass/fail counts.
@@ -61,8 +61,8 @@ running in CI), pushing triggers the review and only its result counts for mergi
 local panel is optional pre-push feedback. Otherwise the agent runs the panel locally.
 External repositories always get local review rounds (skill `upstream-contribution`).
 
-**Review bar.** [`prompts/utils/review-bar.md`](prompts/utils/review-bar.md) holds the bar;
-the [reviewer role](prompts/roles/reviewer.md) includes the review
+**Review bar.** [`prompts/util/review-bar.md`](../../prompts/util/review-bar.md) holds the bar;
+the [reviewer role](../../prompts/roles/reviewer.md) includes the review
 canon: correctness and security, cost and design, code quality, waste as a blocking class, and
 the House Rules a reviewer enforces. It is inlined into every reviewer prompt, so reviewers
 load no other rules. Specialist dispatch follows
@@ -87,23 +87,23 @@ load no other rules. Specialist dispatch follows
   ([review panels](references/review-lenses.md)). Except for eligible quick reviews, the
   full panel reviews the first and final heads, and fixes to shared mechanisms or large
   diffs; check-backs in between may be quick reviews. Test scope:
-  [`prompts/roles/reviewer.md`](prompts/roles/reviewer.md).
+  [`prompts/roles/reviewer.md`](../../prompts/roles/reviewer.md).
 - The fixer closes every blocking item from all reviewers in one run, following the
-  [worker pack](prompts/roles/implementer.md), with one commit per round. The next review names that
+  [worker pack](../../prompts/roles/implementer.md), with one commit per round. The next review names that
   commit and marks each prior blocker RESOLVED or NOT. A fixer never approves its own fix.
-- Finding disposition follows the [shared review bar](prompts/utils/review-bar.md).
-  Unsettled implementation choices follow the [worker pack](prompts/roles/implementer.md).
+- Finding disposition follows the [shared review bar](../../prompts/util/review-bar.md).
+  Unsettled implementation choices follow the [worker pack](../../prompts/roles/implementer.md).
 - **Hosted review bots.** Review threads from bots the host runs on the PR (for example
   GitHub Copilot) are reviewer input for the next fix round, judged by the same bar. Before
   merging, the lead replies to each with the fix or the reason it is not one, and resolves it.
 - **Review reassessment.** After two fix rounds on one PR, stop for a lead decision to
   simplify or split and record why. Follow-ups are tracked before merging and never hold
   the merge; finding disposition follows the
-  [shared review bar](prompts/utils/review-bar.md).
+  [shared review bar](../../prompts/util/review-bar.md).
   A slower reviewer's findings on an older head feed the next fix round; its fixer
   never pushes onto a head that moved. Merge eligibility has one home: §4.
 - **Repeat defects.** Use the worker pack's mechanism-first reassessment
-  ([prompts/roles/implementer.md](prompts/roles/implementer.md)); the general third-occurrence checkpoint
+  ([prompts/roles/implementer.md](../../prompts/roles/implementer.md)); the general third-occurrence checkpoint
   remains AGENTS.md §Three-occurrence reassessment.
 - **No idle gaps.** A fix run pushes and starts its review in the same job; a review that
   needs a fix starts the fix in the same job. The lead intervenes only for decisions.

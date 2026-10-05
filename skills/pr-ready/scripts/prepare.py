@@ -487,6 +487,28 @@ def change_part(repo, rng, files, url, head, mode, budget=None):
     return "\n".join(out)
 
 
+def lens_settings(name, config=None):
+    """Read a lens's family and read-only sandbox from the panel's plain config."""
+    config = Path(config) if config is not None else HERE / "review-panel.lenses"
+    settings = {}
+    try:
+        for number, line in enumerate(config.read_text().splitlines(), 1):
+            if not line.strip():
+                continue
+            match = re.fullmatch(r"([a-z0-9-]+)\s+([abc])\s+(read-only)", line.strip())
+            if not match:
+                raise PrepareError(f"invalid lens config: {config}:{number}; expected name family read-only")
+            lens, family, sandbox = match.groups()
+            if lens in settings:
+                raise PrepareError(f"duplicate lens config: {config}:{number}: {lens}")
+            settings[lens] = (family, sandbox)
+    except (OSError, UnicodeError) as exc:
+        raise PrepareError(f"cannot read lens config {config}: {exc}") from exc
+    if name not in settings:
+        raise PrepareError(f"lens not configured: {name} in {config}")
+    return settings[name]
+
+
 def review(repo, args, base, remote):
     rng, head = f"{base}...HEAD", git(repo, "rev-parse", "HEAD").strip()
     url = web_remote(repo, remote)
@@ -497,7 +519,8 @@ def review(repo, args, base, remote):
     lens = args.lens or {"codex": "generalist-a", "grok": "generalist-b", "kimi": "generalist-c"}[args.cli]
     if not re.fullmatch(r"[a-zA-Z0-9_-]+", lens):
         raise PrepareError("invalid lens name")
-    prefix = "skills/pr-ready/prompts/"
+    lens_settings(lens)
+    prefix = "prompts/"
     try:
         common, _ = expand(file=prefix + "roles/reviewer.md")
         instructions, _ = expand(file=prefix + "lenses/" + lens + ".md")
@@ -613,8 +636,13 @@ def main(argv=None):
             p.add_argument("--reviews", nargs="+", default=[])
         if command in ("fix", "pr"):
             p.add_argument("--update", action="store_true", help="merge the base even on external or unknown-ownership repositories")
+    p = sub.add_parser("lens", help="print configured lens family and sandbox")
+    p.add_argument("name")
     args = parser.parse_args(argv)
     try:
+        if args.command == "lens":
+            print(" ".join(lens_settings(args.name)))
+            return 0
         repo = Path(git(args.checkout, "rev-parse", "--show-toplevel").strip())
         base, remote, fresh = resolve_base(repo, args.base, args.no_fetch)
         print(f"range: {base}...HEAD", file=sys.stderr)

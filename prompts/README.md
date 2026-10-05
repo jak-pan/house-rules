@@ -1,17 +1,17 @@
 # Prompt collection
 
-- [common/](common/): rules every role receives.
-- [utils/](utils/): shared pieces used by some roles.
+- [skills/](skills/): code-change rules.
+- [util/](util/): shared pieces used by some roles.
 - [roles/](roles/): role instructions and includes; a role may include another role.
 - [lenses/](lenses/): review focus instructions.
 
 Include one whole file per line:
 
 ```text
-@rule house-rules:skills/pr-ready/prompts/common/code-canon.md
+@rule house-rules:prompts/skills/code-canon.md
 ```
 
-Common and utility files never include other files. Includes are repository-relative
+Skill and utility files never include other files. Includes are repository-relative
 whole files, recursively expanded without heading parsing or title stripping.
 A missing file fails the build.
 

@@ -9,8 +9,8 @@ Output: first line "VERDICT: APPROVE" if there is no FIX-NOW item, else "VERDICT
 - "## Issues to file" — one per ISSUE item, as "### <title>" then the body. The title names the behavior in plain words (no internal labels, codes or round names, never cut mid-phrase). The body follows skill operator-writing references/github-text.md section 2 (issue): what happens and its effect first; current behavior with file:line at the commit SHA you reviewed; evidence (a command, test or quoted line; say "From code reading" when untested); cause; acceptance criteria. Short sentences.
 - "## Rejected" — NITPICK and FALSE items, one line each with the class and the reason.
 
-@rule house-rules:skills/pr-ready/prompts/utils/triage-classes.md
-@rule house-rules:skills/pr-ready/prompts/common/code-canon.md
-@rule house-rules:skills/pr-ready/prompts/common/native-first.md
-@rule house-rules:skills/pr-ready/prompts/common/no-fortification.md
-@rule house-rules:skills/pr-ready/prompts/common/test-discipline.md
+@rule house-rules:prompts/util/triage-classes.md
+@rule house-rules:prompts/skills/code-canon.md
+@rule house-rules:prompts/skills/native-first.md
+@rule house-rules:prompts/skills/no-fortification.md
+@rule house-rules:prompts/skills/test-discipline.md

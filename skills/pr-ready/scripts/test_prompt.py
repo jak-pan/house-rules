@@ -32,22 +32,22 @@ class PromptTest(unittest.TestCase):
         self.assertEqual(len(result.stderr.splitlines()), 1)
         self.assertIn(message, result.stderr)
 
-    def test_every_role_expands_with_all_common_rules(self):
-        roles = sorted((ROOT / "skills/pr-ready/prompts/roles").glob("*.md"))
+    def test_every_role_expands_with_all_code_change_rules(self):
+        roles = sorted((ROOT / "prompts/roles").glob("*.md"))
         self.assertEqual(len(roles), 5)
         for role in roles:
             with self.subTest(role=role.name):
                 result = self.run_prompt(str(role.relative_to(ROOT)))
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertNotRegex(result.stdout, r"(?m)^@rule ")
-                for rule in (ROOT / "skills/pr-ready/prompts/common").glob("*.md"):
+                for rule in (ROOT / "prompts/skills").glob("*.md"):
                     self.assertEqual(result.stdout.count(rule.read_text()), 1)
 
     def test_checker_uses_shared_classes_with_cost_exception_once(self):
-        role = ROOT / "skills/pr-ready/prompts/roles/checker.md"
+        role = ROOT / "prompts/roles/checker.md"
         result = self.run_prompt(str(role.relative_to(ROOT)))
         self.assertEqual(result.returncode, 0, result.stderr)
-        classes = (ROOT / "skills/pr-ready/prompts/utils/triage-classes.md").read_text()
+        classes = (ROOT / "prompts/util/triage-classes.md").read_text()
         self.assertEqual(result.stdout.count(classes), 1)
         self.assertIn("FIX-NOW even if the fix adds an index", result.stdout)
         self.assertIn("Apply the same classes as round 1.", role.read_text())
@@ -140,10 +140,80 @@ class PromptTest(unittest.TestCase):
         self.assertEqual(first.returncode, 0, first.stderr)
         self.assertEqual(first.stdout, second.stdout)
 
-    def test_common_and_utils_are_leaf_files(self):
-        for folder in ("common", "utils"):
-            for path in (ROOT / "skills/pr-ready/prompts" / folder).glob("*.md"):
+    def test_skills_and_util_are_leaf_files(self):
+        for folder in ("skills", "util"):
+            for path in (ROOT / "prompts" / folder).glob("*.md"):
                 self.assertNotRegex(path.read_text(), r"(?m)^@rule ")
+
+
+class CollectionAcceptanceTest(unittest.TestCase):
+    def test_collection_is_at_repository_root(self):
+        self.assertTrue((ROOT / "prompts/README.md").is_file())
+        self.assertFalse((ROOT / "skills/pr-ready/prompts").exists())
+        result = PromptTest().run_prompt("prompts/roles/reviewer.md", cwd="/")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_code_change_rules_are_skills_without_common_folder(self):
+        rules = ROOT / "prompts/skills"
+        self.assertEqual({p.stem for p in rules.glob("*.md")},
+                         {"code-canon", "native-first", "no-fortification", "test-discipline"})
+        self.assertFalse((ROOT / "prompts/common").exists())
+        self.assertTrue((ROOT / "prompts/util").is_dir())
+        self.assertFalse((ROOT / "prompts/utils").exists())
+
+    def test_lenses_are_pure_prompts_and_config_covers_every_lens(self):
+        config = SCRIPT.with_name("review-panel.lenses")
+        rows = [line.split() for line in config.read_text().splitlines() if line.strip()]
+        lenses = sorted((ROOT / "prompts/lenses").glob("*.md"))
+        self.assertEqual(sorted(row[0] for row in rows), sorted(p.stem for p in lenses))
+        for path in lenses:
+            with self.subTest(path=path.name):
+                self.assertNotRegex(path.read_text(), r"(?m)^(---|lens:|family:|sandbox:)")
+
+    def test_generalist_direction_matches_role_before_lens(self):
+        for name in ("generalist-a", "generalist-b", "generalist-c"):
+            text = (ROOT / "prompts/lenses" / (name + ".md")).read_text()
+            self.assertIn("review bar above", text)
+            self.assertNotIn("review bar below", text)
+
+    def test_guard_include_documentation_uses_whole_files(self):
+        text = (ROOT / "skills/pr-ready/references/guards.md").read_text()
+        self.assertIn("@rule house-rules:<path>`", text)
+        self.assertIn("whole file", text)
+        self.assertNotIn("heading-anchor", text)
+        self.assertNotIn("missing file or heading", text)
+
+    def test_roles_receive_verbatim_gate_and_guard_instructions(self):
+        worker = (ROOT / "prompts/roles/implementer.md").read_text()
+        skill = (ROOT / "skills/pr-ready/SKILL.md").read_text()
+        start = skill.index("In a repository without PR CI,")
+        end = skill.index(" When a required reviewer", start)
+        self.assertIn(" ".join(skill[start:end].split()), " ".join(worker.split()))
+        guards = (ROOT / "skills/pr-ready/references/guards.md").read_text()
+        start = guards.index("Every guard and every test logs")
+        end = guards.index(" Testing constraints:", start)
+        rules = (ROOT / "prompts/skills/test-discipline.md").read_text()
+        self.assertIn(" ".join(guards[start:end].split()), " ".join(rules.split()))
+        for role in (ROOT / "prompts/roles").glob("*.md"):
+            prompt = PromptTest().run_prompt(str(role.relative_to(ROOT)))
+            self.assertEqual(prompt.returncode, 0, prompt.stderr)
+            self.assertNotIn("SKILL.md#4-merge-and-cleanup", prompt.stdout)
+            self.assertNotIn("guards.md#guard-upkeep", prompt.stdout)
+
+    def test_checker_uses_triager_issue_body_wording(self):
+        triager = (ROOT / "prompts/roles/triager.md").read_text()
+        wording = triager.split('- "## Issues to file" — ', 1)[1].split("\n", 1)[0]
+        checker = (ROOT / "prompts/roles/checker.md").read_text()
+        self.assertIn(wording, checker)
+        self.assertNotIn("3–6 line body", checker)
+
+    def test_triage_preserves_requirements_without_a_decision(self):
+        text = (ROOT / "prompts/util/triage-classes.md").read_text()
+        self.assertIn("Deleting or weakening requirement text (a spec, design, rule or prompt sentence) is never a smallest fix and never accepted without a recorded decision ID; reviewer verdicts such as 'overbuilt' or 'waste' are proposals, not decisions.", text)
+
+    def test_triage_classifies_rare_triggers(self):
+        text = (ROOT / "prompts/util/triage-classes.md").read_text()
+        self.assertIn("A trigger that needs several independent rare conditions at once (for example a repository changing visibility mid-round AND a failing API read AND a non-default mode) is NITPICK unless it is a real security defect (someone acts without permission or secret content leaks) or loses data; say which conditions make it rare.", text)
 
 
 class RuleOwnershipTest(unittest.TestCase):
@@ -172,7 +242,7 @@ class RuleOwnershipTest(unittest.TestCase):
 
     def test_spec_challenges_belong_to_shared_review_bar(self):
         lenses = self.text("skills/pr-ready/references/review-lenses.md")
-        self.assertIn("../prompts/utils/review-bar.md", lenses)
+        self.assertIn("../../../prompts/util/review-bar.md", lenses)
         for copied in (
             "Every reviewer challenges the spec",
             "infeasible or unmeasurable requirements",
@@ -184,7 +254,7 @@ class RuleOwnershipTest(unittest.TestCase):
         self.assertIn("The lead triages each one", lenses)
         self.assertIn("a clarification is proposed in the same PR", lenses)
         self.assertIn("Requirement removals and spec/code drift", lenses)
-        common = self.text("skills/pr-ready/prompts/utils/review-bar.md")
+        common = self.text("prompts/util/review-bar.md")
         self.assertIn("Challenge the spec as well", common)
         self.assertIn("a spec issue blocks only", common)
 
@@ -234,15 +304,15 @@ class RuleOwnershipTest(unittest.TestCase):
         self.assertNotIn("not a hardcoded stop", reassessment)
 
     def test_design_disposition_has_one_owner(self):
-        common = self.text("skills/pr-ready/prompts/utils/review-bar.md")
-        bar = self.text("skills/pr-ready/prompts/utils/cost-and-design.md")
-        remainder = self.text("skills/pr-ready/prompts/utils/review-report.md")
+        common = self.text("prompts/util/review-bar.md")
+        bar = self.text("prompts/util/cost-and-design.md")
+        remainder = self.text("prompts/util/review-report.md")
         self.assertRegex(bar, r"design finding.*stops for a lead decision")
         self.assertIn("never becomes a follow-up or starts another fix round", bar)
         self.assertNotRegex(remainder, r"design finding (?:stays|stops)")
         self.assertIn("§Review bar", common)
         for path in (
-            "skills/pr-ready/prompts/lenses/design.md",
+            "prompts/lenses/design.md",
             "skills/pr-ready/SKILL.md",
             "skills/pr-ready/references/review-lenses.md",
             "skills/design-flow/SKILL.md",
@@ -264,8 +334,8 @@ class RuleOwnershipTest(unittest.TestCase):
         self.assertNotIn("never settle them by editing the spec", implementation)
 
     def test_test_logging_and_pruning_belong_to_guard_upkeep(self):
-        canon = self.text("skills/pr-ready/prompts/common/test-discipline.md")
-        self.assertIn("references/guards.md#guard-upkeep", canon)
+        canon = self.text("prompts/skills/test-discipline.md")
+        self.assertIn("Every guard and every test logs", canon)
         self.assertNotIn("log runtime", canon)
         self.assertNotRegex(canon, r"prune or bound slow")
         self.assertIn("Scale tests move, never vanish", canon)
@@ -279,7 +349,7 @@ class RuleOwnershipTest(unittest.TestCase):
         self.assertNotRegex(lanes, r"target directory must never bypass")
         self.assertIn("Build output lives inside the lane's own worktree", lanes)
         self.assertIn(".tmp/cargo-target/<lane>", lanes)
-        worker = self.text("skills/pr-ready/prompts/roles/implementer.md")
+        worker = self.text("prompts/roles/implementer.md")
         self.assertIn("configured compiler cache; never disable it", worker)
 
     def test_decision_ids_keep_option_formatting_in_operator_writing(self):
@@ -323,23 +393,23 @@ class RuleOwnershipTest(unittest.TestCase):
         )
 
     def test_worker_full_suite_prohibition_preserves_no_pr_ci_exception(self):
-        worker = self.text("skills/pr-ready/prompts/roles/implementer.md")
+        worker = self.text("prompts/roles/implementer.md")
         gate = worker.split("- Local gate only:", 1)[1].split(
             "- Use the machine's", 1
         )[0]
         self.assertIn("targeted tests", gate)
         self.assertIn("Never run the full test suite or workspace-wide tests", gate)
         self.assertRegex(gate, r"except.*no-PR-CI")
-        self.assertIn("SKILL.md#4-merge-and-cleanup", gate)
+        self.assertIn("Required reviews still approve the exact head.", gate)
 
     def test_test_discipline_heading_and_references_do_not_collide(self):
-        canon = (self.root / "skills/pr-ready/prompts/common/test-discipline.md").read_text()
+        canon = (self.root / "prompts/skills/test-discipline.md").read_text()
         self.assertIn("## Test discipline\n", canon)
         self.assertNotIn("## Tests\n", canon)
         self.assertIn("§Test discipline", self.text("AGENTS.md"))
         guards = self.text("skills/pr-ready/references/guards.md")
-        self.assertIn("prompts/common/test-discipline.md", guards)
-        self.assertNotIn("prompts/common/test-discipline.md#tests", guards)
+        self.assertIn("prompts/skills/test-discipline.md", guards)
+        self.assertNotIn("prompts/skills/test-discipline.md#tests", guards)
 
 
 if __name__ == "__main__":

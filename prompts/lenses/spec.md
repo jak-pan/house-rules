@@ -1,7 +1,1 @@
----
-lens: spec
-family: b
-sandbox: read-only
----
-
 Only: a traceability pass over the referenced spec sections. For each requirement and acceptance test, cite where the code implements it and which test proves it; report every requirement that is missing, partial, contradicted, or claimed without a test. Name the section for every finding.

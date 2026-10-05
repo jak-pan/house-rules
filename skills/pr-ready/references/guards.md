@@ -1,8 +1,8 @@
 ## Guard upkeep
 
 Each rule has one home. Prompts reference it with
-`@rule house-rules:<path>#<heading-anchor>`; the prompt builder resolves and includes the
-section at build time. Prompts never keep copied rule text. A missing file or heading
+`@rule house-rules:<path>`; the prompt builder resolves and includes the
+whole file at build time. Prompts never keep copied rule text. A missing file
 fails the run visibly. Product targets stay in the repository's spec; private extensions
 stay in `custom/`.
 
@@ -12,7 +12,7 @@ real findings or defects caught, false positives or flaky failures, waivers with
 IDs, and runtime. Use existing run/test output and tracker records rather than a second
 source of truth. The lead reviews these records daily at first, then every 3 days, pruning
 or narrowing guards and tests that do not earn their cost. Testing constraints:
-[prompts/common/test-discipline.md §Test discipline](../prompts/common/test-discipline.md). Review-round reassessment:
+[prompts/skills/test-discipline.md §Test discipline](../../../prompts/skills/test-discipline.md). Review-round reassessment:
 [pr-ready §3](../SKILL.md#3-review-rounds).
 
 There are no fixed caps on blocking findings or filed issues. The triager decides by

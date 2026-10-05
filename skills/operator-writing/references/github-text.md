@@ -222,7 +222,7 @@ Rules:
 
 - One finding per comment, anchored on the line when the host allows it.
 - The bold first line makes sense alone. A finding code may follow it, never replace it.
-- "Blocking" uses the review bar of skill `pr-ready` (`prompts/utils/review-bar.md`).
+- "Blocking" uses the review bar of skill `pr-ready` (`prompts/util/review-bar.md`).
 - Label untested claims "From code reading".
 - An approval names the head SHA it covers and what was checked.
 

@@ -14,7 +14,7 @@ Under <N> lines of explanation where possible; never omit findings to fit a leng
 
 ## Fix prompt template
 
-Expand the [implementer role](../prompts/roles/implementer.md) with `scripts/prompt.py` before this template.
+Expand the [implementer role](../../../prompts/roles/implementer.md) with `scripts/prompt.py` before this template.
 
 ```text
 <PR>, branch <branch>, this checkout. Review: <path> — read fully. Fix every blocking item

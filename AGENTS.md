@@ -104,7 +104,7 @@ another repair:
 - Should it be simplified, deleted, deferred, or redesigned?
 - Is continuing inside the approved resource envelope?
 
-Repeat-defect repair order has one home: `pr-ready/prompts/roles/implementer.md`.
+Repeat-defect repair order has one home: `prompts/roles/implementer.md`.
 
 The third occurrence does not automatically require operator approval and does not
 prohibit an obvious aligned fix. It prohibits a blind fourth iteration. Escalate only
@@ -263,10 +263,10 @@ use `decision-brief`.
   head. Do not repeatedly run the full matrix after changes that cannot
   affect it.
 - **CI owns the full suite.** Local worker and reviewer scopes live in
-  `pr-ready/prompts/roles/implementer.md` and `pr-ready/prompts/roles/reviewer.md`; the no-PR-CI exception
+  `prompts/roles/implementer.md` and `prompts/roles/reviewer.md`; the no-PR-CI exception
   lives in `pr-ready` §4.
 - **Tests earn their cost.** Test duration, hanging-test removal, build-queue hold limits
-  and scale-test replacement have one home: `pr-ready/prompts/common/test-discipline.md` §Test discipline. Guard
+  and scale-test replacement have one home: `prompts/skills/test-discipline.md` §Test discipline. Guard
   and test upkeep, and daily whole-system audits: `pr-ready/references/guards.md`.
 - **Authorized, bounded, and durable before expensive.** Paid, long-running, or
   non-reproducible external runs (agents, model CLIs, remote jobs, benchmarks, crawls)

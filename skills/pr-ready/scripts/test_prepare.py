@@ -7,6 +7,7 @@ import io
 import json
 import os
 import re
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -949,14 +950,57 @@ else:
         self.write(self.repo, "odd name.py", "pass\n")
         self.commit(self.repo, "Implement behavior")
 
+    def test_lens_settings_read_plain_config_and_fail_visible(self):
+        config = self.root / "review-panel.lenses"
+        config.write_text("generalist-a b read-only\n")
+        self.assertEqual(prepare.lens_settings("generalist-a", config), ("b", "read-only"))
+        for text in ("generalist-a b read-only\ngeneralist-a a read-only\n",
+                     "generalist-a b\n", "generalist-a z read-only\n",
+                     "generalist-a b workspace-write\n", "other a read-only\n"):
+            with self.subTest(config=text):
+                config.write_text(text)
+                with self.assertRaises(prepare.PrepareError):
+                    prepare.lens_settings("generalist-a", config)
+        config.unlink()
+        with self.assertRaises(prepare.PrepareError):
+            prepare.lens_settings("generalist-a", config)
+
+    def test_review_requires_lens_config_without_emitting_prompt(self):
+        with mock.patch.object(prepare, "HERE", self.root):
+            code, out, err = self.invoke("review", str(self.repo), "--base", "origin/trunk", "--no-fetch")
+            self.assertEqual(code, 1, err)
+            self.assertEqual(out, "")
+            self.assertIn("review-panel.lenses", err)
+
+    def test_panel_dispatches_family_from_plain_lens_config(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        kit = self.root / "kit"
+        scripts = kit / "skills/pr-ready/scripts"
+        shutil.copytree(SCRIPT.parent, scripts)
+        shutil.copytree(SCRIPT.parents[3] / "prompts", kit / "prompts")
+        (scripts / "review-panel.lenses").write_text("generalist-a b read-only\n")
+        Path(env["REVIEW_PANEL_CONF"]).write_text("b = codex family-b-model - high\n")
+        (self.binaries / "codex").write_text("#!" + sys.executable + "\n" +
+            "import pathlib, sys\n" +
+            "assert sys.argv[sys.argv.index('-s') + 1] == 'read-only'\n" +
+            "pathlib.Path(sys.argv[sys.argv.index('-o') + 1]).write_text('VERDICT: APPROVE\\n')\n")
+        result = subprocess.run(["bash", str(scripts / "review-panel.sh"), "round",
+                                 str(self.repo), str(summary), "generalist-a"],
+                                capture_output=True, text=True, env=env, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("generalist-a codex/family-b-model", result.stdout)
+        prompt = (output / "round/generalist-a.prompt").read_text()
+        self.assertNotRegex(prompt, r"(?m)^(family:|sandbox:|lens:|---$)")
+
     def test_review_preserves_whole_role_and_lens_files(self):
         prompt = self.review()
-        role, _ = prepare.expand(file="skills/pr-ready/prompts/roles/reviewer.md")
-        lens = (SCRIPT.parent.parent / "prompts/lenses/generalist-a.md").read_text()
+        role, _ = prepare.expand(file="prompts/roles/reviewer.md")
+        lens = (SCRIPT.parents[3] / "prompts/lenses/generalist-a.md").read_text()
         self.assertIn("# 1. Review pack\n" + role, prompt)
         self.assertIn("# 2. Instructions\n" + lens, prompt)
         self.assertNotRegex(prompt, r"(?m)^@rule ")
-        for rule in (SCRIPT.parent.parent / "prompts/common").glob("*.md"):
+        for rule in (SCRIPT.parents[3] / "prompts/skills").glob("*.md"):
             self.assertEqual(prompt.count(rule.read_text()), 1)
 
     def test_spec_is_preserved_whole_despite_section_and_test_references(self):

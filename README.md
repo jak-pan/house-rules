@@ -13,6 +13,7 @@ and established project stacks override its defaults.
   Node for ordinary backends and scripts, static Svelte for browser UIs, and domain-specific
   alternatives where appropriate. Choose only the components needed.
 - [STRUCTURE.md](STRUCTURE.md): default paths and naming for projects using House Rules.
+- [prompts/](prompts/README.md): role instructions, code-change rules, review lenses and shared pieces.
 - `skills/`: project bootstrap, design, implementation, the PR change loop, upstream
   contributions, experiments, diagnosis, reporting, decision briefs, and work tracking. Load only the
   relevant procedures. The audit-report skill includes an optional structural linter that

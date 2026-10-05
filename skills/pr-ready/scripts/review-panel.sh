@@ -2,16 +2,16 @@
 # Run a read-only review panel in parallel.
 # Usage: review-panel.sh <name> <checkout> <base-prompt> [reviewer ...]
 #   name: [A-Za-z0-9][A-Za-z0-9._-]*, a single directory name
-#   reviewer: a file stem in ../prompts/lenses/ (default: generalist-<family> for each configured family)
+#   reviewer: a file stem in ../../../prompts/lenses/ (default: generalist-<family> for each configured family)
 # Config: ${REVIEW_PANEL_CONF:-<house-rules>/custom/review-panel.conf}, lines "<family> = <cli> <model> [tier] [effort]",
 #   cli one of codex | grok | kimi. Unconfigured families are omitted from the default selection.
-# Prompt order: common rules, lens, summary/task, spec, change (prepare.py review).
+# Prompt order: role rules, lens, summary/task, spec, change (prepare.py review).
 # Range: ${REVIEW_BASE:-remote default branch}...HEAD; upstream preferred to origin.
 # Output directory: ${REVIEW_PANEL_OUT:-<checkout>/.tmp/review-panel}/<name>/ with <reviewer>.md,
 #   raw logs, and summary.txt (verdict and wall time per reviewer).
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
-reviewers_dir=$here/../prompts/lenses
+reviewers_dir=$here/../../../prompts/lenses
 conf=${REVIEW_PANEL_CONF:-$here/../../../custom/review-panel.conf}
 name=$1
 dir=$(cd "$2" && pwd) || exit 2
@@ -19,7 +19,6 @@ base=$(cd "$(dirname "$3")" && pwd)/$(basename "$3"); shift 3
 output_root=${REVIEW_PANEL_OUT:-$dir/.tmp/review-panel}
 out=$output_root/$name
 family_cfg() { sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "$conf" 2>/dev/null | head -1; }
-frontmatter() { sed -n "s/^$2:[[:space:]]*//p" "$1" | head -1; }
 
 if [ $# -eq 0 ]; then
   for f in a b c; do [ -n "$(family_cfg $f)" ] && set -- "$@" "generalist-$f"; done
@@ -79,9 +78,14 @@ resolved_base=$("$here/prepare.py" "${base_args[@]}") || {
 }
 
 run_one() {
-  local r=$1 file=$reviewers_dir/$1.md
-  local fam cfg cli model tier effort prompt=$out/$r.prompt t0 cli_status=0 verdict
-  fam=$(frontmatter "$file" family); cfg=$(family_cfg "$fam")
+  local r=$1
+  local fam sandbox settings cfg cli model tier effort prompt=$out/$r.prompt t0 cli_status=0 verdict
+  if ! settings=$("$here/prepare.py" lens "$r"); then
+    echo "$r failed: lens configuration" >> "$out/summary.txt"
+    return 1
+  fi
+  read -r fam sandbox <<<"$settings"
+  cfg=$(family_cfg "$fam")
   [ -n "$cfg" ] || { echo "$r failed: family $fam not configured" >> "$out/summary.txt"; return 1; }
   read -r cli model tier effort <<<"$cfg"; [ "$tier" = - ] && tier=
   local prepare_args=(review "$dir" --lens "$r" --cli "$cli" --summary "$base" --base "$resolved_base" --no-fetch)
@@ -101,7 +105,7 @@ run_one() {
     cli_status=0
     case $cli in
       codex) codex exec --json --skip-git-repo-check -m "$model" -c model_reasoning_effort="${effort:-high}" \
-               ${tier:+-c service_tier="\"$tier\""} -s read-only -C "$dir" -o "$out/$r.md" - < "$prompt" \
+               ${tier:+-c service_tier="\"$tier\""} -s "$sandbox" -C "$dir" -o "$out/$r.md" - < "$prompt" \
                > "$out/$r.jsonl" 2> "$out/$r.err" || cli_status=$? ;;
       # Grok has no read-only sandbox that starts on every host, so the reviewer gets only read tools:
     # no shell (which could reach authenticated gh/git), no file writes, no MCP. Names are Grok's runtime

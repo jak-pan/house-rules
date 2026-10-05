@@ -37,13 +37,13 @@ Rules.
 
 Where a repo ships build/test scripts (smoke gates, guard scripts), use them instead of
 raw commands — they encode repo law (scope checks, pinned flags) that raw cargo silently
-violates. Local test scope: `pr-ready/prompts/roles/implementer.md`. Git itself is used directly;
+violates. Local test scope: `prompts/roles/implementer.md`. Git itself is used directly;
 repo commit/push wrappers are retired.
 
 ## Gates
 
-Full CI gate below; local worker and reviewer scope: `pr-ready/prompts/roles/implementer.md` and
-`pr-ready/prompts/roles/reviewer.md`. Build profiles follow §Code rules. The no-PR-CI exception
+Full CI gate below; local worker and reviewer scope: `prompts/roles/implementer.md` and
+`prompts/roles/reviewer.md`. Build profiles follow §Code rules. The no-PR-CI exception
 lives in `pr-ready` §4.
 
 ```
