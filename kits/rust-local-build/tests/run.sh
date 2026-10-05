@@ -3,7 +3,8 @@
 # Never touches the real machine queue (CARGO_QUEUE_LOCK and CARGO_QUEUE_REAL point into the temp dir).
 set -uo pipefail
 KIT=$(cd "$(dirname "$0")/.." && pwd)
-T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
+base=${KIT_TEST_DIR:-$HOME/.cache/rust-local-build/test}; mkdir -p "$base"   # durable path, not the system temp folder
+T=$(mktemp -d "$base/run.XXXXXX"); trap 'rm -rf "$T"' EXIT
 fail=0; check() { if eval "$2"; then echo "ok   $1"; else echo "FAIL $1"; fail=1; fi; }
 H=$T/home; mkdir -p "$H/.cargo" "$H/.config/kache" "$H/bin"
 printf 'original cargo config\n' > "$H/.cargo/config.toml"

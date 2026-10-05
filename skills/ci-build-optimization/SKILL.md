@@ -151,6 +151,9 @@ A developer machine running several agent lanes builds Rust the same way everywh
   shipped binaries keep their own settings.
 - **A shared compiler cache, separate targets.** One kache store for rustc and C/C++ compiles; each
   worktree or lane keeps its own target directory.
+- **Keep test code path-free so worktrees share the cache.** Code that compiles a path in
+  (`env!("CARGO_MANIFEST_DIR")`, `env!("CARGO_BIN_EXE_<name>")`) gets a cache key per checkout, so a second
+  worktree recompiles it. Read these at run time with `std::env::var_os` instead.
 
 Install, check and remove this setup with the kit in [`kits/rust-local-build/`](../../kits/rust-local-build/README.md).
 Record the machine's values (paths, budget override) in `custom/rust-local-build.conf` and its row in
