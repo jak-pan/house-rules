@@ -57,7 +57,7 @@ that mechanism should exist; deleting or narrowing it is often the smallest fix.
 
 ### Cost and design findings
 
-A design finding names the supported native feature or root cause, the counted cost
+Name the supported native feature or root cause, the counted cost
 (calls, rows, writes, retained state or layers), and why the proposed mechanism does not
 earn that cost. Apply Native-first and No fortification from the canon below. Cost defects
 are FIX-NOW. A design finding stays Blocking and stops for a lead decision; it never becomes
