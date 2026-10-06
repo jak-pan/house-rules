@@ -147,3 +147,8 @@ repository's AGENTS.md, which becomes a loader.
 Operator direction: 2026-10-06, after a planned file and a file-relative path written in chat
 both rendered as dead links (the operator tested each link); relative-to-file links apply
 to every file, not only repository files.
+
+## rules/writing.md — Claim labels (verified facts only)
+
+Operator direction: 2026-10-06, after an agent labelled a tool's dry-run mode a `FACT` from
+memory; the mode had been removed, and the claim reached an operator decision.

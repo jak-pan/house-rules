@@ -67,6 +67,11 @@ happened, why it matters and what to do, in that order.
 - Label claims `FACT`, `ASSUMPTION`, `ESTIMATE`, `ASSESSMENT` or `DECISION`. Quote an
   existing decision; never present a settled operator decision as open, or your own choice
   as settled.
+- Label a claim `FACT` only after you verified it yourself, in this session, against its
+  primary source: the code at a named commit, a command you ran, or a log or record you read.
+- Give that evidence with the `FACT`: a link, the command, or the quoted line.
+- A claim you remember, infer, read in a summary, or receive from another agent or an earlier
+  session is never a `FACT`. Verify it first, or label it `ASSUMPTION` and name its source.
 
 ## Checks before sending
 
