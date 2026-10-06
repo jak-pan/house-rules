@@ -23,6 +23,10 @@ sync = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(sync)
 
 
+
+# The always-load rule files the fixture index lists (the real index lists the same four).
+RULES = ("core", "outcome", "delivery", "writing")
+
 class SyncTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix="house-rules-sync-")
@@ -44,10 +48,12 @@ class SyncTests(unittest.TestCase):
         self.write(self.origin / ".gitignore", "custom/\n")
         shutil.copyfile(REPO / "INSTALL-AGENTS.md", self.origin / "INSTALL-AGENTS.md")
         self.write(self.origin / "skills/sample/SKILL.md", "# Sample\n")
-        for name in ("core", "outcome", "delivery"):
+        self.write(self.origin / "AGENTS.md", "# Index\n\n## Always load\n\n" + "".join(
+            f"- [{name}](rules/{name}.md)\n" for name in RULES) + "\n## Load when needed\n")
+        for name in RULES:
             self.write(self.origin / f"rules/{name}.md", f"# {name} rules\n")
-        self.commit(self.origin, [".gitignore", "INSTALL-AGENTS.md", "skills/sample/SKILL.md",
-                                  "rules/core.md", "rules/outcome.md", "rules/delivery.md"])
+        self.commit(self.origin, [".gitignore", "INSTALL-AGENTS.md", "AGENTS.md", "skills/sample/SKILL.md",
+                                  *(f"rules/{name}.md" for name in RULES)])
         self.root = self.base / "checkout"
         self.git(self.base, "clone", str(self.origin), str(self.root))
         self.home = self.base / "user"
@@ -116,7 +122,7 @@ class SyncTests(unittest.TestCase):
 
     def test_missing_rule_files_are_reported_without_installation_writes(self):
         self.install_fixture()
-        for name in ("core", "outcome", "delivery"):
+        for name in RULES:
             with self.subTest(name=name):
                 path = self.root / f"rules/{name}.md"
                 text = path.read_text()

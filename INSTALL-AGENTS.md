@@ -283,7 +283,7 @@ On a clean default-branch checkout, the script fetches the default branch and ru
 updates and no local commits ahead of the remote. The merge uses the captured fetched
 revision and aborts if incoming tracked paths would overwrite ignored local files.
 Dirty, detached, non-default, ahead and diverged checkouts are reported and never updated.
-It then checks the required `rules/core.md`, `rules/outcome.md`, and `rules/delivery.md` files,
+It then checks that every rule file the index lists under "Always load" exists,
 then every configured home's managed block, missing or stale Skill links, owned links to
 removed Skills, and same-name entries in the other scanned Skill folders. Git and
 filesystem errors reach the caller. Findings collected before a verification error are
