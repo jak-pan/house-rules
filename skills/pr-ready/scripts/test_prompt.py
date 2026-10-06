@@ -794,14 +794,10 @@ class AnsweredRestoreTest(unittest.TestCase):
                       "structure, language, options, Mermaid diagrams, and reader test.",
                       communication)
 
-    def test_detail_instructions_fit_the_limit_and_keep_adjacent_consequences(self):
+    def test_detail_test_keeps_adjacent_consequences(self):
         detail = self.text("skills/operator-writing/SKILL.md").split(
             "- **Detail test:**", 1
         )[1].split("Decisions use skill", 1)[0]
-        for sentence in detail.split("."):
-            if sentence.strip():
-                with self.subTest(sentence=sentence.strip()):
-                    self.assertLessEqual(len(sentence.split()), 20)
         for requirement in (
             "limit, stop, failure or change",
             "the same or the next sentence",

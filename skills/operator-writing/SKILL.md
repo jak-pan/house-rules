@@ -23,7 +23,8 @@ reader test.
 
 ## Language
 
-- One fact per sentence. Instructions: at most 20 words. Descriptions: at most 25 words.
+- One fact per sentence. Prefer short sentences; split one that carries more than one fact.
+  Length is never a reason to drop content.
 - Active voice, simple tense. Name who does what.
 - One term per concept. Define it once at first use, then never use a synonym.
 - No unexplained acronyms, internal labels or IDs as a replacement for meaning. An ID may
@@ -33,6 +34,15 @@ reader test.
 - Keep the source's uncertainty and qualifiers. Never add a cause, frequency or number the
   evidence does not show. Never drop a hedge, exception or consequence that changes what a
   statement means for the reader.
+- Required output formats, needed context, tool announcements and approval explanations come
+  first. Brevity never removes evidence or content the task needs.
+- State what the evidence shows and what it does not show.
+- Keep these pairs apart:
+  - an observed cause and a hypothesis;
+  - a failure in the running system and a risk of a proposed change;
+  - a completed fix and a plan or an unverified deployment.
+- Report an error as the observed failure, its known cause or "cause unknown", and the next
+  diagnostic or fix. Use no alarmist words.
 - No filler, no marketing adjectives, no ceremonial openings or closings.
 - Size work per [rules/core.md prime rule 13](../../rules/core.md#prime-rules).
 
@@ -44,9 +54,20 @@ reader test.
   give each option or item its own short section instead.
 - Diagrams are Mermaid in files and chat, never ASCII art or indented text trees.
   Orient them vertically, with groups and comparisons stacked rather than side by side.
-  Unconnected subgraphs render side by side, so use separate diagrams with text between
-  them. When the client shows Mermaid as source, render it with the client's visual tool.
-
+  Draw unconnected groups as separate diagrams, with text between them; one diagram would
+  place them side by side.
+- Make every file reference a link that works where the text is read.
+- In chat, show a local file's absolute path as the link text.
+- In chat, set the link target to the file's path from the session root, so the client can
+  open it.
+- In chat, also give the web link when the reader may need the reviewed version.
+- In a repository file, link another file of the same repository with a path relative to
+  the linking file.
+- In other text read on the web (issues, PRs, comments, commits, web pages), link files only
+  with web links.
+- Pin a web link to a commit when it cites evidence.
+- Send a file that no link can open with the client's file-sending tool, when it has one.
+- Write a PR or issue reference as a Markdown link: `[#52](https://github.com/owner/repo/pull/52)`.
 - Prefer lists of five or fewer items.
 - Group longer lists only when helpful.
 - Preserve sequence, identifiers, and coverage when grouping.
@@ -62,7 +83,8 @@ only the parts the message needs:
 4. **Facts:** what exists or happened, each with its evidence link.
 5. **Problem:** what breaks or is missing, shown in the example.
 6. **Change or options:** what changed, or the options, numbered 1, 2, 3.
-7. **Recommendation and next step:** one recommendation, and who acts next.
+7. **Recommendation and next step:** one prominent recommendation, with its trade-offs when it
+   has any, and who acts next. Keep any order the operator asked for.
 
 Rules:
 
@@ -75,7 +97,18 @@ Rules:
   Diagram format follows §Format.
 - Short chat replies use the same order in compressed form: result → why → what is next.
   Omit empty parts; do not add parts the message does not need.
-
+- Put commands, paths and snippets before optional explanation.
+- Order explanations by consequence, not by the order the work happened. Omit empty template
+  sections, long activity logs and repeated caveats.
+- Number steps that must happen in order. Keep each step small. Use only the steps needed.
+  This order is for the reader. It does not limit authorized parallel work.
+- Answer numbered questions in the same order, with the same numbers.
+- Stay on the requested topic. Keep optional findings separate. Report blockers and material
+  risks at once.
+- When work closes or is replaced, state what was delivered, what was already done and what
+  replaced it. Link the remaining work.
+- Keep old evidence below a labeled current summary. Old "unresolved" notes must not
+  contradict the current status.
 - Keep the requested outcome and material blockers visible.
 - State the next action and its owner in messages.
 - Highlight operator-owned actions with bold text or a heading.
@@ -83,32 +116,64 @@ Rules:
 ## GitHub text
 
 Issues, PR bodies, review comments, replies to review and commit messages use the forms in
-[references/github-text.md](references/github-text.md). In short:
-
-- Lead with the observable behavior and its effect; history comes last or not at all.
-- Every claim names the commit or version it was seen on, with a full-SHA permalink, a
-  command, a count or a verbatim log line. Untested claims say "From code reading".
-- Show each regression test as failing on the base and passing on the head.
-- State limits: what was not run, not built or not covered.
-- Titles name the behavior in plain words, never an internal label or code, and never stop
-  mid-phrase. Automatically filed issues follow the issue form too.
-- Commit messages state the old behavior, its consequence, then the change. No gate logs,
-  no internal round labels, no references to files outside the repository.
+[references/github-text.md](references/github-text.md).
 
 ## Questions to the operator
 
-A question the operator must answer is a card, placed after the explanation:
+Questions the operator must answer come after the explanation. Example:
 
-| Row | Content |
-|---|---|
-| Type | Decision (choose, approve, accept a risk), design request (define intended behavior) or evidence request (provide a record). |
-| Why we ask | One or two sentences, each labelled as fact or assessment. |
-| The request | One direct question naming the concrete choices. |
-| How to answer | The exact answer format, plus how to answer "not decided", "need more information about X" or "not applicable because …". |
-| Done when | What changes after the answer. |
+````markdown
+## Warden
 
-Work the agent's own team must do (tests, replays, verification) is never a question to
-the operator. List it as an internal task.
+### 1\. What should Warden do with a review request in an unmanaged repository?
+`fact` Five repositories are unmanaged. `fact` Today Warden ignores the request and nobody sees why. `assessment` A silent skip looks like an outage.\
+Either option also applies to repositories added later.
+
+1. **One comment saying the repository is not managed by House Rules (recommended).**
+2. A silent skip, visible only in Warden's host log.
+
+### 2\. Send the error text from the failed App install?
+`fact` GitHub opened the organization settings page instead of the install page. `fact` Warden's host log has no entry from that time. `assessment` The error is probably visible only in the browser.\
+Without the text, the cause stays a guess between a missing permission and a wrong link.
+
+## House Rules
+
+### 3\. Merge [#52](https://github.com/jak-pan/house-rules/pull/52), the writing-rules PR?
+`fact` An earlier cleanup removed several writing rules without an operator decision; it puts them back. `fact` It changes only the operator-writing skill and the rules changelog.\
+Agents on this machine use the rules from their next session; Warden and the lanes get them only after their House Rules pins move.
+
+**Answer with one numbered line per question, like so:**
+
+1. 1
+2. explain how the install link could be wrong
+3. ok
+````
+
+- Write each topic as a level-2 heading.
+- Write each question as a level-3 heading.
+- Start each question heading with its number, typed and escaped: `### 1\.`.
+- Number questions across topics: 1, 2, 3. Never use 1a or 1b.
+- Below the heading, give enough context that the operator can answer from the question
+  alone. Add a link or a short code excerpt when the answer depends on it.
+- Keep the context brief: a few sentences, never a wall of text.
+- Start each context sentence with the flag `fact` or `assessment` in inline code.
+- Write all context sentences on one source line. Do not wrap it.
+- Add one line on what happens after the answer, only when the reader cannot infer it.
+- When that line follows, end the context line with a backslash, so it renders as a line
+  break.
+- Write the options of a choice as a numbered list. Never nest it.
+- Give each option what changes and its side effect.
+- Recommend exactly one option. Write its whole line in bold and end it with "(recommended)".
+- Do not write the word "Option" in option text.
+- When the answer is text, name the text in the question title, for example "Send the
+  error text …?".
+- Put no reply line, answer box, quote or table in the questions.
+- End the message with the bold line "Answer with one numbered line per question, like so:".
+- Below it, give a three-line numbered example: an option number, a request for more
+  context and `ok`.
+- Treat an answer that asks for more context as a new question: explain, then ask again.
+- Never ask the operator about work the agent's own team must do (tests, replays,
+  verification). List it as an internal task.
 
 ## Checks before sending
 
