@@ -254,6 +254,11 @@ class TranscriptGapsTest(unittest.TestCase):
                                  "<INSTRUCTIONS>injected</INSTRUCTIONS>")
             for envelope in list(envelopes):
                 tag = envelope.split("<", 1)[1].split(">", 1)[0].split()[0]
+                for quote in ("`", "``"):
+                    for token in (f"<{tag}>", f"</{tag}>"):
+                        envelopes.append(envelope.replace(
+                            "injected", f"Use {quote}{token}{quote} for injected rules.\n"
+                            "Synthetic generated rule.\n"))
                 envelopes.append(envelope.replace(
                     "injected", f"injected <{tag}>example <{tag}>nested example</{tag}></{tag}>\n"
                     f"<{tag}>another example</{tag}>\nSynthetic generated rule after the example."))

@@ -65,7 +65,7 @@ def strip_injected(text, tool):
         if opening.start() < position:
             continue
         tag = opening.group(opening.lastgroup)
-        tokens = re.compile(r"<" + tag + r"(?:\s[^<>]*)?>|</" + tag + r">")
+        tokens = re.compile(r"(?<!`)(?:<" + tag + r"(?:\s[^<>]*)?>|</" + tag + r">)(?!`)")
         depth = 1
         for token in tokens.finditer(text, opening.end()):
             depth += -1 if token.group().startswith("</") else 1
