@@ -210,22 +210,18 @@ class CollectionAcceptanceTest(unittest.TestCase):
         self.assertEqual(contract, (
             'one per ISSUE item, as "### <title>" then the body. '
             'The title names the behavior in plain words (no internal labels, codes or round names, never cut mid-phrase). '
-            'The body follows [the issue form](../../skills/operator-writing/references/github-text.md#2-issue). '
-            'The body states: what happens and its effect first; current behavior with file:line at the commit SHA you reviewed, '
-            'linked as a full-SHA permalink; evidence (a command, test or quoted line; say "From code reading" when untested); '
-            'cause; acceptance criteria. Short sentences.\n'
+            'The body follows [the issue form](../../skills/operator-writing/references/github-text.md#2-issue).\n'
         ))
         form = (ROOT / "skills/operator-writing/references/github-text.md").read_text()
         issue_form = form.split("## 2. Issue\n", 1)[1].split("## 3. PR body\n", 1)[0]
-        self.assertIn(
-            'The issue body contract is [Issue report](../../../prompts/util/issue-report.md).',
-            issue_form,
-        )
+        self.assertNotIn("prompts/util/issue-report.md", issue_form)
         for requirement in ("## Evidence", "## Cause", "## Acceptance criteria", "Label untested parts", "full SHA"):
-            self.assertIn(requirement, form)
-        for marker in ("The title names the behavior in plain words", "The body states:"):
-            owners = [p for p in ROOT.rglob("*.md") if marker in p.read_text()]
-            self.assertEqual(owners, [contract_path])
+            self.assertIn(requirement, issue_form)
+        self.assertIn("Code references are full-SHA permalinks.", form)
+        self.assertIn('Label each claim that no test covers as "From code reading" or "Hypothesis".', form)
+        owners = [p for p in ROOT.rglob("*.md")
+                  if "The title names the behavior in plain words" in p.read_text()]
+        self.assertEqual(owners, [contract_path])
         for role in ("checker", "triager"):
             with self.subTest(role=role):
                 prompt = PromptTest().run_prompt(f"prompts/roles/{role}.md")
@@ -321,6 +317,21 @@ class CollectionAcceptanceTest(unittest.TestCase):
             'it, never under "## Accepted").', text,
         )
         self.assertNotIn("if there is no FIX-NOW item", text)
+
+    def test_unresolved_design_findings_block_outside_the_fix_queue(self):
+        for role in ("triager", "checker"):
+            with self.subTest(role=role):
+                result = PromptTest().run_prompt(f"prompts/roles/{role}.md")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                text = " ".join(result.stdout.split())
+                self.assertIn('"## Blocking lead decisions"', text)
+                self.assertIn("outside the accepted FIX-NOW queue", text)
+                self.assertIn("regardless of severity", text)
+                self.assertIn("never becomes a follow-up or starts another fix round", text)
+        triager = (ROOT / "prompts/roles/triager.md").read_text()
+        self.assertIn('For an unresolved design finding, use "VERDICT: REQUEST_CHANGES" regardless of severity. Otherwise:', triager)
+        checker = (ROOT / "prompts/roles/checker.md").read_text()
+        self.assertIn("no unresolved design finding remains", checker)
 
     def test_triager_does_not_restore_reviewer_parser_tokens(self):
         text = (ROOT / "prompts/roles/triager.md").read_text()

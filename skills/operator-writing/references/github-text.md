@@ -67,7 +67,6 @@ Rules:
 - One problem per issue. An audit with several findings numbers them; each fix PR names
   its finding number.
 - The first paragraph alone tells the reader what breaks.
-- The issue body contract is [Issue report](../../../prompts/util/issue-report.md).
 - A feature or follow-up issue replaces Reproduction with "Current behavior" and "Wanted
   behavior". It keeps Acceptance criteria.
 - Work-item sections (Scope, Decisions, Lane, Design; skill `work-tracking`) follow
