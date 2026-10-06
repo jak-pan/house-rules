@@ -37,3 +37,13 @@ consequence, which read as changes that had not happened.
 
 Operator direction: 2026-10-06, after a compaction dropped a loaded skill and the next
 operator messages broke its rules.
+
+## skills/operator-writing — restored writing rules
+
+Operator direction: 2026-10-03, after decision pages introduced options and labels before
+explaining them and mixed letter schemes.
+
+Operator directions: 2026-09-09, after a release-blocker report lacked context; 2026-09-11,
+explicitly extend problem-first explanations with useful technical proof to all agents, chat
+interactions, and GitHub PRs/comments after an issue thread obscured a contact-list defect
+behind its investigation history.

@@ -23,6 +23,15 @@ reader test.
 - Keep the source's uncertainty and qualifiers. Never add a cause, frequency or number the
   evidence does not show. Never drop a hedge, exception or consequence that changes what a
   statement means for the reader.
+- Required output formats, needed context, tool announcements and approval explanations come
+  first. Brevity never removes evidence or content the task needs.
+- State what the evidence shows and what it does not show.
+- Keep these pairs apart:
+  - an observed cause and a hypothesis;
+  - a failure in the running system and a risk of a proposed change;
+  - a completed fix and a plan or an unverified deployment.
+- Report an error as the observed failure, its known cause or "cause unknown", and the next
+  diagnostic or fix. Use no alarmist words.
 - No filler, no marketing adjectives, no ceremonial openings or closings.
 - Size work per [AGENTS.md prime rule 13](../../AGENTS.md#prime-rules).
 
@@ -36,6 +45,8 @@ reader test.
   Orient them vertically, with groups and comparisons stacked rather than side by side.
   Unconnected subgraphs render side by side, so use separate diagrams with text between
   them. When the client shows Mermaid as source, render it with the client's visual tool.
+- A file the reader must open that lies outside the open workspace (scratch, temporary or
+  another repository) is sent with the client's file-sending tool. A link to it does not open.
 
 ## Structure
 
@@ -48,7 +59,8 @@ only the parts the message needs:
 4. **Facts:** what exists or happened, each with its evidence link.
 5. **Problem:** what breaks or is missing, shown in the example.
 6. **Change or options:** what changed, or the options, numbered 1, 2, 3.
-7. **Recommendation and next step:** one recommendation, and who acts next.
+7. **Recommendation and next step:** one prominent recommendation with short trade-offs, and
+   who acts next. Keep any order the operator asked for.
 
 Rules:
 
@@ -61,6 +73,18 @@ Rules:
   Diagram format follows §Format.
 - Short chat replies use the same order in compressed form: result → why → what is next.
   Omit empty parts; do not add parts the message does not need.
+- Put commands, paths and snippets before optional explanation.
+- Order explanations by consequence, not by the order the work happened. Omit empty template
+  sections, long activity logs and repeated caveats.
+- Number steps that must happen in order. Keep each step small. Use only the steps needed.
+  This order is for the reader. It does not limit authorized parallel work.
+- Answer numbered questions in the same order, with the same numbers.
+- Stay on the requested topic. Keep optional findings separate. Report blockers and material
+  risks at once.
+- When work closes or is replaced, state what was delivered, what was already done and what
+  replaced it. Link the remaining work.
+- Keep old evidence below a labeled current summary. Old "unresolved" notes must not
+  contradict the current status.
 
 ## GitHub text
 

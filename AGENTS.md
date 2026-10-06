@@ -199,8 +199,7 @@ Every operator-facing text follows skill `operator-writing` for structure, langu
 options, Mermaid diagrams and the reader test. Decisions and explanations additionally
 use `decision-brief`.
 
-- Claims carry evidence; distinguish observed causes from hypotheses, and completed
-  fixes from plans or deployment awaiting verification.
+- Claims carry evidence.
 - Keep the requested outcome and material blockers visible; messages state the next
   action and its owner. When the owner is the operator, the action is highlighted
   (bold or a heading).
