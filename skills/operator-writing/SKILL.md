@@ -61,8 +61,10 @@ reader test.
 - In chat, set the link target to the file's path from the session root, so the client can
   open it.
 - In chat, also give the web link when the reader may need the reviewed version.
-- In text read on the web (issues, PRs, comments, commits, web pages), link files only with
-  web links.
+- In a repository file, link another file of the same repository with a path relative to
+  the linking file.
+- In other text read on the web (issues, PRs, comments, commits, web pages), link files only
+  with web links.
 - Pin a web link to a commit when it cites evidence.
 - Send a file that no link can open with the client's file-sending tool, when it has one.
 - Write a PR or issue reference as a Markdown link: `[#52](https://github.com/owner/repo/pull/52)`.
