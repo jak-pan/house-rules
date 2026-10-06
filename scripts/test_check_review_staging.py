@@ -18,7 +18,7 @@ class ReviewStagingTest(unittest.TestCase):
     def test_role_including_an_unstaged_file_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            for folder in ("prompts", "skills"):
+            for folder in ("prompts", "rules", "skills"):
                 shutil.copytree(REPO / folder, root / folder)
             role = root / "prompts/roles/triager.md"
             role.write_text(role.read_text() + "@rule house-rules:skills/operator-writing/SKILL.md\n")

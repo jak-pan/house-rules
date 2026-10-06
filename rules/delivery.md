@@ -43,32 +43,7 @@
 
 ## Git
 
-- Stage explicit files.
-- Never use `git add -A`.
-- Never amend or force-push unless told.
-- Default to frequent commits at logical-piece completion.
-- Require green gates and update tracker state at that point.
-- Use repository commit tooling and message conventions.
-- Allow repositories to override commit cadence in their bible.
-- Push each fixer’s work once, after the complete fix.
-- Never push mid-fix.
-- Allow spawned agents to push only when their task explicitly mandates it.
-- Otherwise, report proposed posts for the lead or lane script to push.
-- Keep each commit one logical chunk.
-- Never mix unrelated fixes, docs, refactors, or in-flight prototypes in one commit.
-- Keep one topic per commit unless one larger task requires them together.
-- Default to work branches, validation, and local commits in owned repositories or organizations.
-- Push work branches within recorded repository/work-item delivery authority.
-- Require explicit work-item or project authorization for main-branch pushes and merges.
-- Accept standing project authorization.
-- Do not ask again when it already authorizes the action.
-- Never treat confidence alone as delivery authority.
-- Never let subagents push or merge into main.
-- Keep spawning authority separate from delivery authority under rules/outcome.md §Resource envelopes and §Parallel work in this file.
-- Read, clone, or fork externally owned repositories freely.
-- For externally owned repositories, never push upstream, open pull requests/issues, or comment until the operator says ready.
-- Follow `upstream-contribution` §3 for our fork’s push exception and local review requirements.
-- Commit documentation with the code it describes.
+- Follow [Git rules](git.md).
 
 ## Parallel work
 
@@ -100,19 +75,21 @@
 - Follow `handoff-continuity` for contents, triggers, and resuming.
 - Derive boards and status views from tracker items.
 - Never maintain status files by hand.
+- The workspace tracker file under "Track every deferred item" is the one exception.
 
 **Track every deferred item.**
 
 - Make a work item in the same turn when you defer a requested outcome, an accepted finding or a promise to the operator.
-- Use an issue in the GitHub repository that owns the change.
-- If no repository owns it, add one entry to the workspace tracker file. The entry holds one item and its status.
+- Use the workspace's tracker. By default, that is an issue in the GitHub repository that owns the change.
+- If no repository exists for the item, add one entry to the workspace tracker file. The entry holds one item and its status.
+- That file is the one exception to the status-file and two-tracker rules.
 - Link the work item where you defer the work.
 - Do not write "later", "I will file" or "a follow-up covers" without that link.
 - Plans, documents, chat, reports, logs and unmerged branches record intent. They do not track work.
 - When the operator repeats a request, search the tracker first. State whether the request was tracked.
 - Ideas the operator did not request are proposals, not work items (rules/outcome.md §Outcome and resource contract).
 
-- A requested outcome or accepted finding that the session does not finish becomes a work item in the repository that owns the change, before the session ends, linked from wherever it was set aside.
+- A requested outcome or accepted finding that the session does not finish becomes a work item in the tracker chosen above, before the session ends, linked from wherever it was set aside.
 - That covers work that is deferred, "saved as a task", scoped out of another item, left as an audit gap, a plan or migration step, or said to "belong to the other repository's side".
 - Accepted findings are findings the operator or a review accepted.
 

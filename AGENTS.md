@@ -15,6 +15,9 @@ At session start and after every reset or compaction, read these files in full:
 - [outcome rules](rules/outcome.md)
 - [delivery rules](rules/delivery.md)
 - [writing rules](rules/writing.md)
+- [Git rules](rules/git.md)
+- [priority labels](rules/priority-labels.md)
+- [session writing rules](rules/session-writing.md)
 
 ## Load when the task needs it
 
