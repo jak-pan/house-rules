@@ -122,17 +122,16 @@ plain bold section labels. Example:
    decision; #52 puts them back. `fact` It changes only the operator-writing skill, one line
    of AGENTS.md and the rules changelog.\
    Agents on this machine use the rules from their next session; Warden and the lanes get
-   them only after their House Rules pins move.\
-   Reply `ok`, or send your edits.
+   them only after their House Rules pins move.
 
 **Warden**
 
 2. **What should Warden do with a review request in an unmanaged repository?**\
    ***Why:*** `fact` Five repositories are unmanaged. `fact` Today Warden ignores the request
    and nobody sees why. `assessment` A silent skip looks like an outage.\
-   Either option also applies to repositories added later.
-   1. One comment saying the repository is not managed by House Rules (recommended).
-   2. A silent skip, visible only in Warden's host log.
+   Either option also applies to repositories added later.\
+   1\. One comment saying the repository is not managed by House Rules (recommended).\
+   2\. A silent skip, visible only in Warden's host log.
 3. **Send the error text from the failed App install?**\
    ***Why:*** `fact` GitHub opened the organization settings page instead of the install
    page. `fact` Warden's host log has no entry from that time. `assessment` The error is
@@ -140,27 +139,22 @@ plain bold section labels. Example:
    Without the text, the cause stays a guess between a missing permission and a wrong link.\
    Reply with the pasted text, or `not available`.
 
-The operator answers with a numbered list that mirrors the questions; a choice is answered
-with the option's number:
-
-```text
-1. ok
-2. 1
-3. not available
-```
+The operator answers with a numbered list that mirrors the questions: `ok` for a yes or
+approval question, the option's number for a choice, and the requested text otherwise.
 
 - The title is one direct question.
 - ***Why:*** gives the context in one to three sentences. Each sentence starts with the
   inline-code flag `fact` or `assessment`.
 - The next line says what happens after the answer, only when the reader could not infer it.
-- A choice lists its options as a nested numbered list, each with what changes and its side
-  effect. Exactly one option is marked "(recommended)". Option text never repeats the word
-  "Option".
-- The reply line comes last. Yes, no and approval questions accept `ok`. A choice needs no
-  reply line: the answer is the option's number.
+- A choice lists its options as lines that start with an escaped number (`1\.`), each with
+  what changes and its side effect. Never use a nested Markdown list: chat and GitHub number
+  nested lists differently (letters or roman numerals), which leads to wrong answers. Exactly
+  one option is marked "(recommended)". Option text never repeats the word "Option".
+- A yes or approval question and a choice need no reply line. Only a question whose answer
+  is text ends with one.
 - Numbering continues across sections (1, 2, 3), never 1a, 1b.
-- No quotes or tables. Each line inside a question ends with a backslash, so GitHub files
-  show it as a separate line.
+- No quotes, tables or answer templates. Each line inside a question ends with a backslash,
+  so GitHub files show it as a separate line.
 - Work the agent's own team must do (tests, replays, verification) is never a question to
   the operator. List it as an internal task.
 
