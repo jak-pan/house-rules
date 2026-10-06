@@ -112,49 +112,49 @@ Issues, PR bodies, review comments, replies to review and commit messages use th
 
 ## Questions to the operator
 
-Questions the operator must answer come after the explanation, as a numbered list under
-plain bold section labels. Example:
+Questions the operator must answer come after the explanation. Each topic is a level-2
+heading; each question is a level-3 heading with its number typed in. Example:
 
-**General**
+## Warden
 
-1. **Merge #52, the writing-rules PR?**\
-   ***Why:*** `fact` An earlier cleanup removed several writing rules without an operator
-   decision; #52 puts them back. `fact` It changes only the operator-writing skill, one line
-   of AGENTS.md and the rules changelog.\
-   Agents on this machine use the rules from their next session; Warden and the lanes get
-   them only after their House Rules pins move.
+### 1\. What should Warden do with a review request in an unmanaged repository?
+`fact` Five repositories are unmanaged. `fact` Today Warden ignores the request and nobody
+sees why. `assessment` A silent skip looks like an outage.\
+Either option also applies to repositories added later.
 
-**Warden**
+1. One comment saying the repository is not managed by House Rules (recommended).
+2. A silent skip, visible only in Warden's host log.
 
-2. **What should Warden do with a review request in an unmanaged repository?**\
-   ***Why:*** `fact` Five repositories are unmanaged. `fact` Today Warden ignores the request
-   and nobody sees why. `assessment` A silent skip looks like an outage.\
-   Either option also applies to repositories added later.\
-   1\. One comment saying the repository is not managed by House Rules (recommended).\
-   2\. A silent skip, visible only in Warden's host log.
-3. **Send the error text from the failed App install?**\
-   ***Why:*** `fact` GitHub opened the organization settings page instead of the install
-   page. `fact` Warden's host log has no entry from that time. `assessment` The error is
-   probably visible only in the browser.\
-   Without the text, the cause stays a guess between a missing permission and a wrong link.\
-   Reply with the pasted text, or `not available`.
+### 2\. Send the error text from the failed App install?
+`fact` GitHub opened the organization settings page instead of the install page. `fact`
+Warden's host log has no entry from that time. `assessment` The error is probably visible
+only in the browser.\
+Without the text, the cause stays a guess between a missing permission and a wrong link.
 
-The operator answers with a numbered list that mirrors the questions: `ok` for a yes or
-approval question, the option's number for a choice, and the requested text otherwise.
+## House Rules
 
-- The title is one direct question.
-- ***Why:*** gives the context in one to three sentences. Each sentence starts with the
-  inline-code flag `fact` or `assessment`.
+### 3\. Merge #52, the writing-rules PR?
+`fact` An earlier cleanup removed several writing rules without an operator decision; #52
+puts them back. `fact` It changes only the operator-writing skill and the rules changelog.\
+Agents on this machine use the rules from their next session; Warden and the lanes get them
+only after their House Rules pins move.
+
+Answer with one numbered line per question: the option's number for a choice, ok for a yes
+or approval question, and your text otherwise. For example: 1. 1, 2. not available, 3. ok.
+
+- Topic headings are level 2 and question headings level 3, so on GitHub only topics get a
+  divider line. The question number is typed and escaped (`1\.`), so no renderer
+  renumbers it; numbering continues across topics (1, 2, 3), never 1a, 1b.
+- Below the heading come one to three context sentences, each starting with the
+  inline-code flag `fact` or `assessment`, with no label in front.
 - The next line says what happens after the answer, only when the reader could not infer it.
-- A choice lists its options as lines that start with an escaped number (`1\.`), each with
-  what changes and its side effect. Never use a nested Markdown list: chat and GitHub number
-  nested lists differently (letters or roman numerals), which leads to wrong answers. Exactly
-  one option is marked "(recommended)". Option text never repeats the word "Option".
-- A yes or approval question and a choice need no reply line. Only a question whose answer
-  is text ends with one.
-- Numbering continues across sections (1, 2, 3), never 1a, 1b.
-- No quotes, tables or answer templates. Each line inside a question ends with a backslash,
-  so GitHub files show it as a separate line.
+- A choice lists its options as a normal numbered list (not nested), each with what changes
+  and its side effect. Exactly one option is marked "(recommended)". Option text never
+  repeats the word "Option".
+- One plain sentence at the end says how to answer, with an inline example. No reply line
+  inside the questions, no answer box, no quotes and no tables.
+- Each line inside the context ends with a backslash, so GitHub files show it as a separate
+  line.
 - Work the agent's own team must do (tests, replays, verification) is never a question to
   the operator. List it as an internal task.
 
