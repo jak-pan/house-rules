@@ -65,7 +65,7 @@ skills/pr-ready/scripts/prompt.py [--rev COMMIT [--repo DIR]] [--list] [FILE]
 skills/pr-ready/scripts/prompt.py --rev COMMIT [--repo DIR] [--list]
     [--role NAME] [--lens NAME] [--include PATH]... [--task FILE [--task-source NAME]]...
     (--target DIR [--target-rev COMMIT] | --no-target)
-    [--omit-shared-rules] [--out DIR | --manifest FILE]
+    [--session] [--out DIR | --manifest FILE]
 ```
 
 - `--rev COMMIT` reads House Rules files from that commit. Legacy single-file and standard-input expansion can still read the working tree without this option. Dispatchers use `--rev` for every worker prompt, including lane review panels.
@@ -75,9 +75,9 @@ skills/pr-ready/scripts/prompt.py --rev COMMIT [--repo DIR] [--list]
 - `--task FILE` adds local task text without expanding it. Repeated options retain command-line order.
 - `--task-source NAME` gives the immediately preceding `--task` a logical source identifier, such as `symbiotic-sh/house-rules#77` or a caller-chosen name. It defaults to `inline`. It requires an immediately preceding `--task` and must never contain a machine path (lead decision L1).
 - `--target DIR` selects a target Git checkout. `--target-rev COMMIT` selects its rules revision, defaulting to its `HEAD`. `--no-target` declares that the pack has no target. Pack mode requires exactly one target choice.
-- `--omit-shared-rules` omits includes whose House Rules repository-relative paths are under `rules/`. The dispatcher uses this option only for workers whose normal sessions already load the shared rules. The manifest records each omitted path. Warden and specialists without the foundation receive shared-rule includes by default.
+- `--session` omits includes whose House Rules repository-relative paths are under `rules/`. The dispatcher uses this option only for workers whose normal sessions already load the shared rules. The manifest records each omitted path. Warden and specialists without the foundation receive shared-rule includes by default.
 - `--out DIR` publishes `pack.txt` and `manifest.json` together in a new directory. It requires pack mode and the destination must not exist. Without `--out`, pack bytes go to standard output. `--manifest FILE` optionally writes the manifest in standard-output mode and requires `--rev`. The two output options are mutually exclusive.
-- An entry file or standard-input text cannot be combined with pack part options. `--omit-shared-rules` is a pack-mode option.
+- An entry file or standard-input text cannot be combined with pack part options. `--session` is a pack-mode option.
 - A failure returns exit 2 and one standard-error line. A compilation failure writes no output. In file-output mode, the compiler writes the complete pack and manifest into one temporary sibling directory on the destination filesystem, then publishes them with one directory rename. A failed write or rename publishes neither file. Standard-output mode is best effort: a failed output write exits nonzero, and the caller discards all output, including any manifest, from a nonzero run (lead decision L3).
 - The compiler uses only the Python standard library. The compiler supports Python 3.9 through `/usr/bin/python3`.
 
@@ -129,10 +129,11 @@ The dispatcher writes the work item's Decisions and Pre-flight sections into the
 The compiler reads the target's rules from its selected commit through Git with replacement refs disabled, using the requested-path reader described above. The compiler picks exactly one source:
 
 1. If `<target>/.agents/rules.md` exists, include that file. Do not read `<target>/AGENTS.md`.
-2. Otherwise, if `<target>/AGENTS.md` exists and is not a loader, include that file unchanged.
-3. Otherwise, emit `Repository rules: this repository has no rules of its own.`
+2. Otherwise, if `<target>/AGENTS.md` mixes the House Rules loader with local requirements, refuse compilation with exit 2 and no output. The error line is `prompt: AGENTS.md mixes the House Rules loader with local requirements; move local requirements to .agents/rules.md and restore the canonical House Rules pointer in AGENTS.md`.
+3. Otherwise, if `<target>/AGENTS.md` exists and is not a loader, include that file unchanged.
+4. Otherwise, emit `Repository rules: this repository has no rules of its own.`
 
-The compiler recognizes a loader by the pointer template owned by the smaller-core design. The pointer's install paths may vary. The compiler must not classify a file as a loader merely because the file mentions House Rules. The compiler never includes a loader as target rules. A change to the canonical pointer template must update the detection test in the same change.
+The compiler recognizes a loader by the pointer template owned by the smaller-core design. The pointer's install paths may vary. The compiler must not classify a file as a loader merely because the file mentions House Rules. A canonical loader with added local requirements is a mixed loader; it must not fall through to unchanged inclusion or the no-rules result. The compiler never includes a loader as target rules. A change to the canonical pointer template must update the detection test in the same change.
 
 The smaller-core design renames the House Rules index to `house-rules/INDEX.md`. The House Rules pointer at `house-rules/AGENTS.md` points to that index and `house-rules/.agents/rules.md`. Global and managed-repository pointer files use the same shape with installation paths adjusted. This design must test the renamed-index shape rather than preserve the former index in `house-rules/AGENTS.md`.
 
@@ -220,7 +221,7 @@ def build_pack(source, *, role=None, lens=None, includes=(), tasks=(),
 The lane runner changes are outside this House Rules change:
 
 1. Build each worker prompt in one pack-mode call using the pin. Replace compiler calls followed by concatenation.
-2. Use `--omit-shared-rules` for normal lane sessions. Keep the operator's Codex home, skills and guardian escalation path.
+2. Use `--session` for normal lane sessions. Keep the operator's Codex home, skills and guardian escalation path.
 3. Pass the role, lens, extra files, target worktree and task files through their compiler options.
 4. Send the output pack unchanged. Retain each pack and manifest beside its worker log. Print the pack hash in worker status output.
 5. Replace clean-checkout or checked-out-branch requirements with commit availability and the compiler self-check. Retire the separate pinned checkout requirement.
@@ -232,7 +233,7 @@ Lane sessions still load session rules from the live House Rules checkout throug
 
 ### Warden adoption
 
-Warden can use the same compiler entry point with its named House Rules commit. Warden builds reviewer packs without `--omit-shared-rules`. Warden can then retain manifests for its prompt inputs. Shared rules remain in `rules/`; this design adds no verbatim copies under `prompts/util/`.
+Warden can use the same compiler entry point with its named House Rules commit. Warden builds reviewer packs without `--session`. Warden can then retain manifests for its prompt inputs. Shared rules remain in `rules/`; this design adds no verbatim copies under `prompts/util/`.
 
 The role-pack design owns Warden staging of `rules/` and the corresponding guard update. The matching Warden compiler change is drafted after the lane runner's test run passes on the new assembly. The draft goes to the operator for approval before external writes.
 
@@ -268,7 +269,7 @@ Implementation tests belong in [skills/pr-ready/scripts/test_prompt.py](../../sk
 4. Every role compiles with no repeated includes in both shared-rule modes. Normal-session mode omits `rules/` includes and records the omissions. Default mode includes the shared rules once. An invalid omitted-rule path still fails.
 5. A symlink entry, a mismatched compiler, a missing commit, a manifest without `--rev`, or pack mode without `--rev` returns exit 2 with one error line and no outputs.
 6. Pack parts and separators match the declared order. Legacy single-file and standard-input output has no revision header. Task bytes and manifest hashes agree with the part-ending newline rule. A standalone include line in a task remains literal and does not read the named rule. Task sources cover an issue reference, a caller-chosen name and the `inline` default; no machine input path reaches the manifest.
-7. Target fixtures cover `<target>/.agents/rules.md`, a non-loader `<target>/AGENTS.md`, a canonical renamed-index loader with and without a target-rule pointer, no target instruction file, and an uncommitted target-rule edit. The target manifest records the selected commit and blob. House Rules' own pointer selects `house-rules/.agents/rules.md`, not `house-rules/INDEX.md`.
+7. Target fixtures cover `<target>/.agents/rules.md`, a non-loader `<target>/AGENTS.md`, a canonical renamed-index loader with and without a target-rule pointer, no target instruction file, and an uncommitted target-rule edit. A mixed loader with local requirements and no separate rules file returns exit 2 with one error line and no outputs; assert the remediation message specified above. The target manifest records the selected commit and blob. House Rules' own pointer selects `house-rules/.agents/rules.md`, not `house-rules/INDEX.md`.
 8. Pack mode without exactly one target choice fails with exit 2. The compiler tests run under `/usr/bin/python3` with Python 3.9.
 9. One bounded replacement-ref case uses small House Rules and target fixtures. Install replacement commits, trees and blobs in turn, including the compiler blob and one selected rule blob in each repository. Extract the compiler with replacements disabled. Compile before and after each replacement; pack bytes, resolved revisions, blob ids and manifest hashes must stay identical. Record Git invocations and check that every revision, tree and blob read, including compiler extraction, uses native replacement protection. Each subprocess has a fixed short timeout.
 10. Requested-path reads use one long-lived batch process per source repository and no whole-tree enumeration. A fixture with an unrelated file records Git requests and confirms that only requested paths are read.
