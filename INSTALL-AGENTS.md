@@ -273,18 +273,21 @@ cache as the source.
 Use the Python 3.9 or later standard-library sync script from the permanent checkout:
 
 ```sh
-python3 <HOUSE_RULES_ROOT>/scripts/sync.py        # report; no writes
-python3 <HOUSE_RULES_ROOT>/scripts/sync.py --fix  # update, repair, verify
+python3 <HOUSE_RULES_ROOT>/scripts/sync.py  # update checkout and report installation drift
 ```
 
-Report mode checks Git and every configured home's managed block, missing or stale
-Skill links, owned links to removed Skills, and same-name entries in the other scanned
-Skill folders. It makes no changes, including no Git fetch. Fix mode fetches and runs
-`git pull --ff-only origin <default-branch>` only on a clean default-branch checkout
-with no local commits ahead of the remote. Dirty, detached, non-default, ahead and
-diverged checkouts are reported and never pulled; installation repairs can still run
-against their current source. Git and filesystem errors reach the caller. Exit codes
-are 0 for no remaining findings, 1 for reported drift or conflicts, and 2 for an error.
+On a clean default-branch checkout, the script fetches the default branch and runs
+`git pull --ff-only origin <default-branch>` when there are remote updates and no local
+commits ahead of the remote. Dirty, detached, non-default, ahead and diverged checkouts
+are reported and never pulled. It then checks every configured home's managed block, missing or stale Skill links, owned links to
+removed Skills, and same-name entries in the other scanned Skill folders. Git and
+filesystem errors reach the caller. Exit codes are 0 for no findings, 1 for reported
+drift or conflicts, and 2 for an error.
+
+The scheduled run reports drift; an agent repairs it by following §3, including the
+no-write plan in §2 and the verification in §5. The script does not modify instruction
+files, Skill entries, backups, receipts or the custom index, and does not start agent
+sessions. Runtime discovery remains the separate check in §5.
 
 Only present product homes are selected from the baseline locations in §1, respecting
 `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and `KIMI_CODE_HOME` when set; explicit environment
@@ -303,43 +306,24 @@ CLAUDE_CONFIG_DIR="<EXTRA_CLAUDE_HOME>"
 KIMI_CODE_HOME="<EXTRA_KIMI_HOME>"
 ```
 
-Fix mode preserves surrounding instruction bytes and instruction symlinks, honors
-Codex's override file, and uses the exact §3 template. Malformed or multiple blocks
-and unrelated same-name entries remain conflicts for inspection. Links are installed
-only into §1's designated folders; owned shadowing entries are removed from the other
-scanned folders. `$CODEX_HOME/skills/.system/` is excluded. Symlink creation errors
-are reported; on platforms requiring checked copies, use the installation procedure
-above instead of treating a failed symlink as success.
+Verification honors Codex's override file and follows instruction symlinks. The
+managed block must equal the exact §3 template. Malformed or multiple blocks and
+unrelated same-name entries are reported for inspection. Links are expected only in
+§1's designated folders; owned shadowing entries are reported in the other scanned
+folders. `$CODEX_HOME/skills/.system/` is excluded.
 
-Before each installation change, the script backs up an existing file, link or
-receipt-matched directory in `custom/backups/sync-<run-id>/`; a previously absent file
-is recorded as such. It writes a JSON run receipt in
-`custom/installations/runs/sync-<run-id>.json`, recording homes, source root and revision,
-previous roots, the block, changes, backups, outcomes and filesystem verification.
-The backup and planned change are recorded before the write; outcomes follow each
-write. A failure leaves backups and a receipt identifying partial state, exits with
-an error, and requires another fix or manual restoration before claiming success.
-A fix with no installation changes still records a verification receipt. After verification,
-fix mode updates one current `home-<identity>.json` receipt per product home, including
-unchanged destinations and installed hashes, and its pointer section in `custom/INDEX.md`.
-The identity is derived from the product and resolved home path. Ownership reads current
-JSON receipts; `runs/sync-<run-id>.json` receipts remain run history and are excluded from
-ownership scans. Runtime discovery
-remains the separate check in §5; the script does not start agent sessions.
-
-Ownership follows §2. Machine-readable JSON installation receipts can supply
-`source_root`, `previous_roots` (absolute path strings), and `copies` (absolute
-destination paths mapped to the complete directory hash produced by
-`scripts/sync.py`'s `copy_hash`). Other receipt formats remain available for manual
-inspection; the script cannot claim a copy or previous root from them. A matching
-copy is preserved in the backup and replaced by a source link; an altered copy is a
-conflict. Symlinked Skills pick up source changes immediately. No new ownership is
-inferred from a matching name or from following an unrelated link.
+Link ownership follows §2. The script reads `source_root` and `previous_roots` (absolute
+path strings) from machine-readable JSON installation receipts in
+`custom/installations/` to recognize links to earlier source roots. It does not read
+run history. Other receipt formats and checked copies require manual inspection by
+an agent following §3. A copied Skill is reported as a same-name conflict because the
+script checks for links; it does not replace it. Symlinked Skills pick up source changes
+immediately. No ownership is inferred from a matching name or from following an
+unrelated link.
 
 For a daily schedule, adapt one of these examples locally. Replace every placeholder
 with an absolute path, XML-escape plist values, and keep the installed schedule and
 logs outside tracked files. These examples are documentation, not installed jobs.
-Use report mode by removing `--fix` if automatic repair is not wanted.
 
 macOS launchd, saved locally as `~/Library/LaunchAgents/org.house-rules.sync.plist`:
 
@@ -351,7 +335,6 @@ macOS launchd, saved locally as `~/Library/LaunchAgents/org.house-rules.sync.pli
   <key>ProgramArguments</key><array>
     <string>PYTHON3_PATH</string>
     <string>HOUSE_RULES_ROOT/scripts/sync.py</string>
-    <string>--fix</string>
   </array>
   <key>StartCalendarInterval</key><dict>
     <key>Hour</key><integer>9</integer>
@@ -374,7 +357,7 @@ Description=Update and verify House Rules installations
 
 [Service]
 Type=oneshot
-ExecStart="<PYTHON3_PATH>" "<HOUSE_RULES_ROOT>/scripts/sync.py" --fix
+ExecStart="<PYTHON3_PATH>" "<HOUSE_RULES_ROOT>/scripts/sync.py"
 ```
 
 Companion `~/.config/systemd/user/house-rules-sync.timer`:
