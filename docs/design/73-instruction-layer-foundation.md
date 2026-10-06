@@ -14,7 +14,9 @@ House Rules' own [&lt;HOUSE_RULES_ROOT&gt;/AGENTS.md](../../AGENTS.md) points to
 Each session reads a smaller foundation: [&lt;HOUSE_RULES_ROOT&gt;/rules/core.md](../../rules/core.md) and [&lt;HOUSE_RULES_ROOT&gt;/rules/writing.md](../../rules/writing.md).
 The outcome and delivery rules load when the task needs them.
 The index also loads the shared rules defined by [design #74](https://github.com/symbiotic-sh/house-rules/issues/74).
-After a compaction, an agent re-reads the index, foundation and current task files once each.
+After a compaction, an agent re-reads each required rule-loading file exactly once.
+The agent reads each required current task file completely at least once in the recovery turn.
+Later reads of task files during the work are allowed.
 An agent stops re-reading and reports the loop if recovery causes another compaction.
 
 The operator approved this design's own canary runs on 2026-10-07.
@@ -37,6 +39,7 @@ Links to existing House Rules files resolve relative to this document.
 - **Index:** the proposed `<HOUSE_RULES_ROOT>/INDEX.md`, which owns shared loading instructions.
 - **Foundation:** the House Rules text every session reads in full: [&lt;HOUSE_RULES_ROOT&gt;/rules/core.md](../../rules/core.md) and [&lt;HOUSE_RULES_ROOT&gt;/rules/writing.md](../../rules/writing.md).
 - **Triggered file:** a rule file or skill an agent reads when the task first needs the file.
+- **Rule-loading file:** the index, foundation, every triggered rule file and skill, the repository bible and repository context file when present.
 - **Recovery:** the files an agent re-reads after a compaction or another context reset.
 - **Instruction import:** a tool feature that links current file text into instructions, such as Claude's `@<HOUSE_RULES_ROOT>/rules/core.md`.
 - **o200k:** the GPT tokenizer `o200k_base`, used for the token counts below.
@@ -109,7 +112,7 @@ flowchart TB
   B --> C["Foundation, read in full: &lt;HOUSE_RULES_ROOT&gt;/rules/core.md + &lt;HOUSE_RULES_ROOT&gt;/rules/writing.md"]
   C --> D["Task needs it: read &lt;HOUSE_RULES_ROOT&gt;/rules/outcome.md, &lt;HOUSE_RULES_ROOT&gt;/rules/delivery.md, skills"]
   D --> E["Compaction: conversation shrinks"]
-  E --> F["Recovery: index, foundation, bible, ledger, task files; each once"]
+  E --> F["Recovery: rule-loading files exactly once; ledger and required task files at least once"]
   F --> G["Another compaction during recovery: stop and report"]
 ```
 
@@ -205,9 +208,11 @@ architecture, The bar. Deferred work holds the delivery rule lines 104-117, unde
 ## After a compaction
 
 - After a compaction or other context reset, re-read <HOUSE_RULES_ROOT>/INDEX.md, <HOUSE_RULES_ROOT>/rules/core.md and <HOUSE_RULES_ROOT>/rules/writing.md.
-- Re-read the bible and any active campaign ledger.
+- Re-read the bible and `<REPOSITORY_ROOT>/CONTEXT.md` when present, and any active campaign ledger.
 - Reload the triggered rule files and skills the current task uses.
-- Read each file at most once per compaction.
+- Read each required rule-loading file exactly once per compaction.
+- Read each required current task file completely at least once in the recovery turn.
+- Later reads of task files during the work are allowed.
 - If re-reading causes another compaction, stop re-reading and report the loop to the operator.
 
 ## Authority
@@ -339,7 +344,7 @@ One installation update changes the pointers; later rule edits need no reinstall
 
 A managed repository's `<REPOSITORY_ROOT>/AGENTS.md` points to the same shared index as the global block.
 The agent reads the index once at session start, even if both loaders request that read.
-The same once-per-file rule governs recovery.
+The same once-per-file rule governs rule loading during recovery.
 Lane workers use normal sessions under [design #74](https://github.com/symbiotic-sh/house-rules/issues/74).
 
 ### 4.7 Conditional Claude import in a separate pull request
@@ -475,8 +480,13 @@ The fixture repository contains both `<REPOSITORY_ROOT>/.agents/rules.md` (the b
 For steps 1-3, use a required-file inventory for startup, task-triggered loading and recovery.
 Before each phase, record the complete paths in the event log from the pointer, index, repository rules and applicable task rules and skills.
 Deduplicate paths requested by multiple loaders.
-A missing, partial or duplicate read fails the phase.
-Task-triggered loading inventories only newly required files; startup files are not read again before compaction.
+Distinguish rule-loading files (§2) from task files in each inventory, following the lead decision in §10, Decision 5.
+The exactly-once check governs required rule loading at startup, when a task first triggers a file, and after compaction.
+A missing, partial or duplicate rule-loading read fails the phase.
+Every required task file must receive at least one complete read before the work requiring it.
+Later reads of task files are allowed and do not fail the canary.
+Task-triggered loading inventories only newly required rule-loading files plus the required task files.
+Rule-loading files read at startup are not read again before compaction.
 
 1. **Hello:** "hello". The startup inventory includes the index, foundation, `<REPOSITORY_ROOT>/.agents/rules.md` and `<REPOSITORY_ROOT>/CONTEXT.md` when present.
    Include every shared rule required at startup by [design #74](https://github.com/symbiotic-sh/house-rules/issues/74).
@@ -488,19 +498,26 @@ Task-triggered loading inventories only newly required files; startup files are 
    The task-triggered inventory includes outcome, delivery, every other triggered rule file and skill,
    the work item, latest handoff when present, source and regression test files,
    and `<SUBSYSTEM_ROOT>/CONTEXT.md` and `<SUBSYSTEM_ROOT>/README.md` when present.
-   Pass before compaction: every inventoried file receives exactly one complete read before the work requiring it.
+   Pass before compaction: every newly required rule-loading file receives exactly one complete read before the work requiring it.
+   Also, every required task file receives at least one complete read before the work requiring it.
    Verify the tracker board, work item and latest handoff reads in the order required by §4.4.
+   To check ordinary verification reads, read the changed source and regression test files again after editing.
+   These later reads must not fail the canary.
 3. **Compaction:** before finishing step 2, fill the context by inspecting the fixture read-only, then compact
    (`/compact` in Claude and Kimi; a low auto-compaction limit in Codex, as in the load test).
    Before compaction, list the complete paths of the required recovery files in the event log:
    `<canary root>/INDEX.md`, [&lt;canary root&gt;/rules/core.md](../../rules/core.md),
    [&lt;canary root&gt;/rules/writing.md](../../rules/writing.md), [&lt;canary root&gt;/rules/outcome.md](../../rules/outcome.md),
-   [&lt;canary root&gt;/rules/delivery.md](../../rules/delivery.md), the fixture's bible and any active campaign ledger when present,
+   [&lt;canary root&gt;/rules/delivery.md](../../rules/delivery.md), the fixture's bible and repository context file when present,
+   any active campaign ledger when present,
    every other triggered rule file and skill still used, and all still-required task files from step 2.
    Include the shared rules required by [design #74](https://github.com/symbiotic-sh/house-rules/issues/74).
-   Pass: the recovery turn performs exactly one complete read of every listed required file before resuming the coding task.
+   Pass: the recovery turn performs exactly one complete read of every required rule-loading file before resuming the coding task.
+   It performs at least one complete read of every still-required task file before resuming, including the work item, source and regression test files.
+   After resuming work, read the changed source and regression test files again to verify further edits.
+   These later reads must not fail the canary.
 4. **Compaction loop:** repeat step 3 in Codex with a limit low enough that the re-read itself
-   compacts again. Pass: the agent stops re-reading and reports the loop; no file is read a
+   compacts again. Pass: the agent stops re-reading and reports the loop; no rule-loading file is read a
    third time.
 5. **Claude import probe (§4.7, not a pass condition for this issue):** a Claude home whose
    user-level `$CLAUDE_CONFIG_DIR/CLAUDE.md` block holds the pointer plus `@<canary root>/rules/core.md` and
@@ -563,6 +580,12 @@ The other designs' choices remain with their owners in §9.
    Global and managed-repository instruction files use the same pointer shape with installation-specific paths.
    House Rules' own [&lt;HOUSE_RULES_ROOT&gt;/AGENTS.md](../../AGENTS.md) points to the index and `<HOUSE_RULES_ROOT>/.agents/rules.md`.
    File references use complete paths, including diagram labels.
+5. `DECISION` (lead, 2026-10-07) The exactly-once check governs required rule loading at startup and after compaction.
+   It covers the index, foundation, every triggered rule file and skill, the repository bible and repository context file when present.
+   Newly triggered rule files and skills receive exactly one complete read before the work requiring them.
+   The coding task's work item, source and regression test files must each be read completely at least once in the recovery turn.
+   Later reads of task files during the work are allowed and do not fail the canary.
+   This preserves [issue #73](https://github.com/symbiotic-sh/house-rules/issues/73)'s exactly-once requirement for rule loading.
 
 ## 11. Open points
 
