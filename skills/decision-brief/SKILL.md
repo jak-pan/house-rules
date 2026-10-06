@@ -1,6 +1,6 @@
 ---
 name: decision-brief
-description: Present one or more decisions to the operator so they can choose without reading anything else — context, what exists today, options with side effects, a recommendation and an answer format. Use whenever a choice needs operator input, in chat or as a document, including follow-ups that go deeper on one decision. Not for recording a decision already made (spec-writing §Decisions) or for audit findings (audit-report-authoring).
+description: Present one or more decisions to the operator so they can choose without reading anything else — context, what exists today, options with side effects, a recommendation and an answer format. Use whenever a choice needs operator input, in chat or as a document, including follow-ups that go deeper on one decision. Not for recording a decision already made (spec-writing §Decisions) or for audit findings (audit-report-authoring). [HRD-skills-decision-brief-83a0]
 license: MIT
 ---
 
@@ -76,3 +76,8 @@ Ground every claim in the current spec or code; say where the spec is silent.
 - Organize by consequence, not by the order the work happened. No activity logs.
 - After the operator answers, record each choice where it belongs (rules/core.md prime rule
   11) and stop asking about it.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-decision-brief-83a0`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

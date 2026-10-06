@@ -1,6 +1,6 @@
 ---
 name: design-canon
-description: Architecture principles — raw-canonical data with rebuildable derived stores, black-box module boundaries, config over hardcoding, metadata over text heuristics, end-state-first, no pre-launch legacy, spec-first UX. Use for design decisions, new components, refactors, specs, or architecture reviews.
+description: Architecture principles — raw-canonical data with rebuildable derived stores, black-box module boundaries, config over hardcoding, metadata over text heuristics, end-state-first, no pre-launch legacy, spec-first UX. Use for design decisions, new components, refactors, specs, or architecture reviews. [HRD-skills-design-canon-949b]
 license: MIT
 ---
 
@@ -103,3 +103,8 @@ must exist and be satisfying.
 
 - Two tiers: one clean system map for high-level understanding + deep dives per feature.
 - Doc sweeps after design changes (same-commit rule: rules/delivery.md §Git).
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-design-canon-949b`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

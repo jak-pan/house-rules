@@ -12,3 +12,8 @@ Output: first line "VERDICT: APPROVE" when every accepted High or Medium finding
 @rule house-rules:prompts/skills/no-fortification.md
 @rule house-rules:prompts/skills/test-discipline.md
 @rule house-rules:prompts/util/issue-form.md
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-prompts-roles-checker-3bb8`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

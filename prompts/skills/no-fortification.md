@@ -19,3 +19,8 @@ apply this repair order.
 - Check whether the abstraction or supporting mechanism is wrong.
 - Consider simplifying, deleting, deferring, or redesigning it.
 - Check whether continuing remains inside the approved resource envelope.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-prompts-skills-no-fortification-1ca0`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

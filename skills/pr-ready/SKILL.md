@@ -1,6 +1,6 @@
 ---
 name: pr-ready
-description: The repeated change loop — local fast gate, push, CI as the full gate, review rounds, merge and cleanup. Use before pushing or marking a PR ready, when writing or running a review round (human or agent reviewer), when fixing review findings, and when merging a PR.
+description: The repeated change loop — local fast gate, push, CI as the full gate, review rounds, merge and cleanup. Use before pushing or marking a PR ready, when writing or running a review round (human or agent reviewer), when fixing review findings, and when merging a PR. [HRD-skills-pr-ready-d791]
 license: MIT
 ---
 
@@ -161,3 +161,8 @@ load no other rules. Specialist dispatch follows
 - When all reviewer families approve, CI passes, and deployment is documented routine procedure, finish landing.
 - Merge within rules/delivery.md §Git delivery authority, deploy, verify after deployment, then report changes.
 - Do not hand routine landing steps to the operator.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-pr-ready-d791`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

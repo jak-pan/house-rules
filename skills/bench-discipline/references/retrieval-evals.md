@@ -13,3 +13,8 @@
 - Triage every miss by mechanism: model bug / retrieval miss / broken data / shaky gold /
   judge-strict → compute the honest reachable ceiling. Never accept "ceiling" while a
   competitor scores higher; quantify headroom instead.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-bench-discipline-references-retrieval-evals-6500`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

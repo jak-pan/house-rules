@@ -1,6 +1,6 @@
 ---
 name: experiment-planning
-description: Establish an evidence-backed experiment plan by inspecting prior work and asking only consequential unsettled questions. Use before a new benchmark, evaluation, A/B test, or tuning campaign, or when its decision or design changes; skip a questionnaire for a simple reproduction or an already-settled run.
+description: Establish an evidence-backed experiment plan by inspecting prior work and asking only consequential unsettled questions. Use before a new benchmark, evaluation, A/B test, or tuning campaign, or when its decision or design changes; skip a questionnaire for a simple reproduction or an already-settled run. [HRD-skills-experiment-planning-3936]
 license: MIT
 ---
 
@@ -60,3 +60,8 @@ Execute and interpret the planned comparison, and record each run, with skill
 relying on the new comparison; preserve the earlier version (record the revised plan as a new claim; skill
 `work-tracking`) and label
 exploratory findings honestly.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-experiment-planning-3936`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

@@ -77,3 +77,8 @@ happened, why it matters and what to do, in that order.
   Use the same or the next sentence.
   Include what is changed or unchanged, who acts, and what happens next.
   Cut only what the reader does not need.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-rules-writing-9e2b`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

@@ -33,3 +33,8 @@ not force every application into a Markdown vault.
 Architecture principles (canonical data, end-state design, tenancy) live in
 `skills/design-canon/SKILL.md`; Rust-specific tooling defaults live in
 `skills/rust-canon/SKILL.md`.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-preferences-aeed`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.
