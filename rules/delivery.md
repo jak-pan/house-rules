@@ -114,7 +114,7 @@
 - When the operator repeats a request, search the tracker first. State whether the request was tracked.
 - Ideas the operator did not request are proposals, not work items (rules/outcome.md §Outcome and resource contract).
 
-- A requested outcome or accepted finding that the session does not finish becomes a work item in the repository that owns the change, before the session ends, linked from wherever it was set aside.
+- A requested outcome or accepted finding that the session does not finish becomes a work item in the tracker chosen above, before the session ends, linked from wherever it was set aside.
 - That covers work that is deferred, "saved as a task", scoped out of another item, left as an audit gap, a plan or migration step, or said to "belong to the other repository's side".
 - Accepted findings are findings the operator or a review accepted.
 

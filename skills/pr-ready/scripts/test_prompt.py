@@ -1063,12 +1063,13 @@ class InvariantsOnlyTest(unittest.TestCase):
     def test_approved_tracking_rule_is_exact(self):
         agents = (ROOT / "rules/delivery.md").read_text()
         self.assertEqual(agents.count(self.TRACKING_RULE), 1)
+        self.assertEqual(agents.count(self.RESTORED_TRACKING), 1)
         self.assertNotIn("Operator requests stay tracked until done", agents)
 
     # These clauses must remain verbatim under the operator's restoration decision.
     RESTORED_TRACKING = (
         '- A requested outcome or accepted finding that the session does not finish '
-        'becomes a work item in the repository that owns the change, before the session'
+        'becomes a work item in the tracker chosen above, before the session'
         ' ends, linked from wherever it was set aside.\n- That covers work that is '
         'deferred, "saved as a task", scoped out of another item, left as an audit gap,'
         ' a plan or migration step, or said to "belong to the other repository\'s '
