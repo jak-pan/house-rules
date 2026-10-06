@@ -37,3 +37,8 @@ consequence, which read as changes that had not happened.
 
 Operator direction: 2026-10-06, after a compaction dropped a loaded skill and the next
 operator messages broke its rules.
+
+## skills/bench-discipline/SKILL.md — Cost ladder (parallel paid runs)
+
+Operator direction: 2026-10-06, House Rules audit; the restored rule blocked unrelated
+parallel runs.
