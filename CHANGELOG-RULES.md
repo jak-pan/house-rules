@@ -152,3 +152,8 @@ to every file, not only repository files.
 
 Operator direction: 2026-10-06, after an agent labelled a tool's dry-run mode a `FACT` from
 memory; the mode had been removed, and the claim reached an operator decision.
+
+## rules/writing.md — Claim labels (citations)
+
+Operator direction: 2026-10-06; evidence written inline with each `FACT` made text too long,
+so facts cite numbered sources listed at the end, as in standard citation practice.
