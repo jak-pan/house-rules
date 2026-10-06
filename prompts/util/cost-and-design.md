@@ -6,6 +6,5 @@ earn that cost. Apply [Native-first](../skills/native-first.md) and
 [No fortification](../skills/no-fortification.md). A design finding questions whether the
 approach or mechanism is right. A design finding stays Blocking and stops for a lead decision; it never becomes a follow-up or starts another
 fix round. The lead may refer that decision to the council. Cost defects and design findings
-cannot be reclassified to escape review reassessment. Cost-defect classification and the
-cost-defect definition follow [Triage classes](triage-classes.md); settled-decision
+cannot be reclassified to escape review reassessment. The cost-defect definition follows [Cost defect](cost-defect.md); settled-decision
 disagreements follow [Code canon](../skills/code-canon.md).

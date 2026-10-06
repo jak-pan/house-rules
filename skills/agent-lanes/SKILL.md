@@ -21,7 +21,7 @@ explicit goals.
   checkout, and it deletes that directory when the lane ends.
   Compiler-cache policy: [worker rules](../../prompts/roles/implementer.md).
 - **Git limits.** Lanes push only their own work branches, within the delivery authority
-  recorded in the bible (policy: rules/delivery.md §Git). Commits follow the repo's canon; lanes
+  recorded in the bible (policy: rules/git.md). Commits follow the repo's canon; lanes
   report exactly which files they touched.
 - **Multi-repo work (owned repos) is normal.** One work item, a branch per repo touched
   (named per `STRUCTURE.md` after the owning issue),
