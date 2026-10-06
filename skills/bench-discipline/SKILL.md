@@ -9,6 +9,14 @@ license: MIT
 Plan a new campaign, and revisit its plan, with skill `experiment-planning`; this skill
 executes and interprets the comparison.
 
+Paid experiments run autonomously inside the approved envelope (AGENTS.md §Resource
+envelopes); crossing it requires a proposed expansion, never a silent reduction of rigor.
+
+**Waste is never answered by reducing rigor.** Making yourself less capable is not
+hardening.
+
+Retrieval evaluations also apply the [retrieval rules](references/retrieval-evals.md).
+
 ## Production-valid comparisons
 
 - The evaluated system must use only information available at its intended production
@@ -21,7 +29,8 @@ executes and interprets the comparison.
 - Use designated development data for tuning and independent evaluation data for the
   claimed generalization result. Record prior exposure and reuse limitations when an
   independent holdout is unavailable.
-- Cross-check suspicious labels against the raw source and benchmark specification.
+- Never tune to match broken gold — cross-check a "miss" against raw source first.
+  Cross-check suspicious labels against the raw source and benchmark specification.
   Record label corrections separately so they do not masquerade as system improvement.
   An oracle or gold-assisted diagnostic may estimate a stage's headroom, but label it as
   diagnostic and keep its artifacts separate from production-valid comparisons.
@@ -42,6 +51,9 @@ executes and interprets the comparison.
 - Prove the change took effect through effective configuration, executed paths, or output
   artifacts. A large change with little effect warrants a wiring check, but may also be
   a valid null result or insufficient precision; distinguish them with evidence.
+- The baseline run is the bare default run — zero tuning env vars; flags exist only
+  for the lever under test. When a default flips, re-baseline — scores across a default
+  change are not comparable; running the old value afterwards is a pinned, named test.
 - Keep experiment settings explicit and reproducible. Name the baseline configuration;
   do not silently change shipped defaults to simplify a benchmark command (AGENTS.md
   §Autonomy).
@@ -75,7 +87,8 @@ executes and interprets the comparison.
   including confirmation of a null result or a correctness check.
 - Reuse valid compatible artifacts and resume completed stages. A planned independent
   replicate is new evidence, not redundant work. Inspect in-flight work before launching
-  duplicates; obey the approved concurrency and stop conditions.
+  duplicates; obey the approved concurrency and stop conditions. Finish in-flight paid
+  runs before starting new ones.
 - Validate a judge or grader against its specification and representative source-backed
   examples before trusting it. Inspect relevant raw traces when aggregate results are
   surprising; use `failure-forensics` for an unexplained failure or regression.

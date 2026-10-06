@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>local.house-rules.transcript-gaps</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/sh</string>
+        <string>-c</string>
+        <string>set -eu; rules='/placeholder/house-rules'; if [ -f "$rules/custom/transcript-gaps.env" ]; then set -a; . "$rules/custom/transcript-gaps.env"; set +a; fi; batch=$('/placeholder/python3' "$rules/skills/operator-protocol/scripts/transcript_gaps.py"); if [ -n "$batch" ]; then '/placeholder/local-compare-runner' "$batch" "$rules/prompts/util/transcript-gaps.md" "${TRANSCRIPT_GAPS_DECISIONS_FILE:-}" "$rules"; fi</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>1</integer>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+</dict>
+</plist>

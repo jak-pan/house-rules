@@ -48,8 +48,8 @@ Verification invariant: AGENTS.md §Verification. Local work follows
   before → now and cites no file outside the repository.
 - Open PRs as drafts (`gh pr create --draft`) while work is in progress; mark them ready
   (`gh pr ready`) only once the local gate passes. Ready means "review this": a server-side
-  review gate reviews each new head of a ready PR and ignores drafts. To push unfinished
-  work without a review, convert back to draft (`gh pr ready --undo`).
+  review gate reviews each new head of a ready PR and ignores drafts. Draft status does
+  not change the complete-fix push rule in AGENTS.md §Git.
 - Push; wait for CI to finish green on the exact head commit.
 - On a CI failure, reproduce only the failing tests locally. Before attributing a failure
   to the change, compare it against the default branch under the same conditions.
@@ -57,8 +57,9 @@ Verification invariant: AGENTS.md §Verification. Local work follows
 ## 3. Review rounds
 
 **Where reviews run.** If the repository has a server-side review gate (a review app
-running in CI), pushing triggers the review and only its result counts for merging; a
-local panel is optional pre-push feedback. Otherwise the agent runs the panel locally.
+running in CI), pushing triggers the review. Otherwise the agent runs the panel locally.
+Required reviews are defined only in §4. Adversarial verification scope and the single-pass
+rule: AGENTS.md §Parallel work.
 External repositories always get local review rounds (skill `upstream-contribution`).
 
 **Review bar.** [`prompts/util/review-bar.md`](../../prompts/util/review-bar.md) holds the bar;
@@ -81,29 +82,34 @@ load no other rules. Specialist dispatch follows
   control, confidentiality, durability, storage, security-sensitive paths or new mechanisms.
   It refuses changes above 300 changed lines by default; a blocker or spec issue it raises
   sends the change back to the full panel after the fix. For an eligible change its approval
-  completes review under §4; check-backs verify fixes without replacing the required
-  final-head reviews.
+  completes review under §4; check-backs verify fixes under that section's merge
+  exception.
 - Run a panel of one generalist per model family, adding focused lenses where warranted
   ([review panels](references/review-lenses.md)). Except for eligible quick reviews, the
   full panel reviews the first and final heads, and fixes to shared mechanisms or large
-  diffs; check-backs in between may be quick reviews. Test scope:
+  diffs, subject to the own-blocker merge exception in §4; check-backs in between may be
+  quick reviews. The project may require two clean rounds for security-critical changes.
+  Test scope:
   [`prompts/roles/reviewer.md`](../../prompts/roles/reviewer.md).
-- The fixer closes every blocking item from all reviewers in one run, following the
-  [worker pack](../../prompts/roles/implementer.md), with one commit per round. The next review names that
-  commit and marks each prior blocker RESOLVED or NOT. A fixer never approves its own fix.
+- The fixer follows the [fixer role](../../prompts/roles/fixer.md) for accepted scope and
+  the [worker pack](../../prompts/roles/implementer.md) for implementation, with commit
+  cadence from AGENTS.md §Git.
+  The next review names that commit or those commits and marks each prior blocker RESOLVED
+  or NOT. A fixer never approves its own fix.
 - Finding disposition follows the [shared review bar](../../prompts/util/review-bar.md).
   Unsettled implementation choices follow the [worker pack](../../prompts/roles/implementer.md).
 - **Hosted review bots.** Review threads from bots the host runs on the PR (for example
   GitHub Copilot) are reviewer input for the next fix round, judged by the same bar. Before
   merging, the lead replies to each with the fix or the reason it is not one, and resolves it.
-- **Review reassessment.** After two fix rounds on one PR, stop for a lead decision to
-  simplify or split and record why. Follow-ups are tracked before merging and never hold
+- **Review reassessment.** After three fix rounds on one PR, stop for a lead decision to
+  simplify or split and record why; at most three fix rounds run per PR. Follow-ups are
+  tracked before merging and never hold
   the merge; finding disposition follows the
   [shared review bar](../../prompts/util/review-bar.md).
   A slower reviewer's findings on an older head feed the next fix round; its fixer
   never pushes onto a head that moved. Merge eligibility has one home: §4.
-- **Repeat defects.** Use the worker pack's mechanism-first reassessment
-  ([prompts/roles/implementer.md](../../prompts/roles/implementer.md)); the general third-occurrence checkpoint
+- **Repeat defects.** Use the repair order in
+  [No fortification](../../prompts/skills/no-fortification.md); the general third-occurrence checkpoint
   remains AGENTS.md §Three-occurrence reassessment.
 - **No idle gaps.** A fix run pushes and starts its review in the same job; a review that
   needs a fix starts the fix in the same job. The lead intervenes only for decisions.
@@ -134,8 +140,14 @@ load no other rules. Specialist dispatch follows
 
 ## 4. Merge and cleanup
 
-- Merge only when the required reviews approve the exact head with no Blocking items,
-  CI is green on that head, and the closeout checklist holds (`design-flow` §6).
+- **Required reviews** are the configured server-side review (Warden where used) when
+  it covers the deliverable; otherwise, the lane's review. Additional reviews explicitly
+  required by the project's approved review plan remain required, including both the lane
+  and server-side reviews for the recorded comparison trial.
+- Merge only when the required reviews approve the exact head with no Blocking items;
+  an earlier approved head whose later commits only fix those reviewers' own blockers
+  and pass a quick check-back may merge. CI must be green on the final head, and the
+  closeout checklist must hold (`design-flow` §6).
   The no-PR-CI exception follows the [worker pack](../../prompts/roles/implementer.md).
   When a required reviewer model family is unavailable, the operator decides how to
   proceed; the missed review runs after that family returns. Pin the head

@@ -20,8 +20,9 @@ reader test.
   follow the plain description, never replace it.
 - Concrete over abstract: a real name, number, example or before/after, not "the
   mechanism" or "the invariant".
-- Keep the source's uncertainty. Never add a cause, frequency or number the evidence does
-  not show. Never remove a hedge the source needs.
+- Keep the source's uncertainty and qualifiers. Never add a cause, frequency or number the
+  evidence does not show. Never drop a hedge, exception or consequence that changes what a
+  statement means for the reader.
 - No filler, no marketing adjectives, no ceremonial openings or closings.
 - Size work per [AGENTS.md prime rule 13](../../AGENTS.md#prime-rules).
 
@@ -101,8 +102,14 @@ the operator. List it as an internal task.
   why it matters, what to choose or do, and what happens next.
 - **Language test:** no unexplained acronym or label; every sentence states one fact; no
   option or decision appears before its explanation.
-- **Detail test:** every fact the decision or action depends on is present; anything the
-  reader does not need for it is cut.
+- **Detail test:** every fact the decision or action depends on is present.
+  For each limit, stop, failure or change, state what it means for the reader.
+  Use the same or the next sentence.
+  Include what is changed or unchanged, who acts, and what happens next.
+  Example: not "Fix rounds are capped at three." but "A pull request gets at most three fix rounds.
+  After that, the lead simplifies or splits the change within approved authority.
+  Routine work continues. Changes outside approved authority require your decision."
+  Cut only what the reader does not need.
 
 Decisions use skill `decision-brief` for their full content; this skill sets how all of it
 is written.

@@ -1,6 +1,6 @@
 ## Review bar
 
-Report only findings in your lens; every finding cites a concrete scenario.
+A lens sets focus, not a filter. Every finding cites a concrete scenario.
 
 - Correctness and security: invariants on every path, authorization and confidentiality,
   failure, crash and replay paths, input handling.
@@ -41,7 +41,7 @@ Place each item honestly:
 - Follow-ups and Non-blocking: everything else worth knowing. For design documents, a new
   edge case or recovery detail that no settled rule contradicts may be a Follow-up (an
   acceptance case or tracked issue for implementation). Design-finding disposition
-  follows the Design rule in §Review bar.
-Recorded operator decisions are settled: disagreement goes under Spec issues.
-When a finding targets a mechanism this change's earlier fix rounds added, first ask whether
-that mechanism should exist; deleting or narrowing it is often the smallest fix.
+  follows [Cost and design findings](cost-and-design.md).
+Settled-decision disagreements follow [Code canon](../skills/code-canon.md).
+Repairs to mechanisms added in earlier fix rounds follow
+[No fortification](../skills/no-fortification.md).

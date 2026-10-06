@@ -12,8 +12,9 @@ lens files contain only prompt text.
 
 Add focused reviewers for changes that warrant them, for example
 security on access-control code or durability on storage code: `security`, `durability`,
-`performance`, `spec` (a requirement-by-requirement traceability pass) and `waste`. Each
-reports only findings in its lens. Non-backend changes add their own reviewers, chosen by the
+`performance`, `spec` (a requirement-by-requirement traceability pass) and `waste`. Lens focus
+follows the [shared review bar](../../../prompts/util/review-bar.md). Non-backend changes add
+their own reviewers, chosen by the
 paths a change touches: `design-spec` for design documents and specifications, `frontend`
 for user-interface code, and `ux` for user flows (with screenshots or a preview link when
 available).
@@ -29,7 +30,8 @@ a clarification is proposed in the same PR.
 Requirement removals and spec/code drift follow `design-flow` §Design changes.
 
 **Loop:** follow [pr-ready §3](../SKILL.md#3-review-rounds). Merge eligibility is in
-[pr-ready §4](../SKILL.md#4-merge-and-cleanup). Track confirmed findings per family.
+[pr-ready §4](../SKILL.md#4-merge-and-cleanup). Track confirmed findings per family;
+drop pairings that mostly produce noise.
 
 Launch: `scripts/review-panel.sh <name> <checkout> <base-prompt> [reviewer ...]`
 (default reviewers: the generalists of the configured families).
