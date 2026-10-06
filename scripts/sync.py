@@ -240,6 +240,11 @@ def verify(root, home, findings, selected):
             elif exists and not install and name in skills:
                 findings.append(f"same-name shadowing conflict: {path}")
 
+    for name in ("core", "outcome", "delivery"):
+        path = root / f"rules/{name}.md"
+        if not is_file(path):
+            findings.append(f"missing rule file: {path}")
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)

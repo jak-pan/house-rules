@@ -9,8 +9,7 @@ license: MIT
 Plan a new campaign, and revisit its plan, with skill `experiment-planning`; this skill
 executes and interprets the comparison.
 
-Paid experiments run autonomously inside the approved envelope (AGENTS.md §Resource
-envelopes); crossing it requires a proposed expansion, never a silent reduction of rigor.
+Paid experiments run autonomously inside the approved envelope (rules/outcome.md §Resource envelopes); crossing it requires a proposed expansion, never a silent reduction of rigor.
 
 **Waste is never answered by reducing rigor.** Making yourself less capable is not
 hardening.
@@ -55,7 +54,7 @@ Retrieval evaluations also apply the [retrieval rules](references/retrieval-eval
   for the lever under test. When a default flips, re-baseline — scores across a default
   change are not comparable; running the old value afterwards is a pinned, named test.
 - Keep experiment settings explicit and reproducible. Name the baseline configuration;
-  do not silently change shipped defaults to simplify a benchmark command (AGENTS.md
+  do not silently change shipped defaults to simplify a benchmark command (rules/core.md
   §Autonomy).
 - When drift or a configuration error affects a run, identify the affected measurements,
   record their validity limits, and repeat only the comparisons whose evidence is no
@@ -87,8 +86,9 @@ Retrieval evaluations also apply the [retrieval rules](references/retrieval-eval
   including confirmation of a null result or a correctness check.
 - Reuse valid compatible artifacts and resume completed stages. A planned independent
   replicate is new evidence, not redundant work. Inspect in-flight work before launching
-  duplicates; obey the approved concurrency and stop conditions. Finish in-flight paid
-  runs before starting new ones.
+  duplicates; obey the approved concurrency and stop conditions. Paid runs may run in
+  parallel inside the approved envelope. Before a new run of the same experiment starts,
+  finish or cancel its in-flight run. The agent chooses which, by best judgment.
 - Validate a judge or grader against its specification and representative source-backed
   examples before trusting it. Inspect relevant raw traces when aggregate results are
   surprising; use `failure-forensics` for an unexplained failure or regression.
@@ -99,7 +99,7 @@ Retrieval evaluations also apply the [retrieval rules](references/retrieval-eval
 
 - Match the build profile, workload, and concurrency to the deployment or study question.
   Define expected resource behavior before diagnosing serialization or low utilization.
-  Isolation of competing performance runs: AGENTS.md §Parallel work. This skill does not
+  Isolation of competing performance runs: rules/delivery.md §Parallel work. This skill does not
   relax stronger shared-host, provider, or hardware restrictions.
 - Checkpoint expensive or non-reproducible stages according to the continuity policy.
   Record with each run: revision, effective configuration, dataset version, seed when

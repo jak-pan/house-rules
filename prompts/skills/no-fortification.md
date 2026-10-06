@@ -11,3 +11,11 @@ should exist: delete or narrow it when that suffices. Then check whether the spe
 Only then introduce one shared mechanism that makes the class impossible instead of
 patching another call site. When a finding targets a mechanism an earlier fix round added,
 apply this repair order.
+
+- Treat the first and second occurrence of the same failure class as potentially valid product or scope discoveries.
+- Implementers and fixers: diagnose, fix, and verify them normally when they remain outcome-aligned.
+- At the third consecutive occurrence, ask whether previous work advanced a requested acceptance criterion.
+- Check whether this remains the cheapest path to the requested outcome.
+- Check whether the abstraction or supporting mechanism is wrong.
+- Consider simplifying, deleting, deferring, or redesigning it.
+- Check whether continuing remains inside the approved resource envelope.

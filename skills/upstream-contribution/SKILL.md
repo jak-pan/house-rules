@@ -14,13 +14,16 @@ PRs, issues and comments land. Our own fork's push exception is in §3. Check wi
 Internal changes follow skill `pr-ready`. External repositories are different: their
 maintainers own the flow, their CI runs only after we post, and every post is public and
 permanent. Nothing is pushed, opened or commented upstream until the operator says ready
-(AGENTS.md §Git).
+(rules/delivery.md §Git).
 
 ## 1. Prove it is upstream's
 
 Reproduce on unmodified upstream: its current default branch and the version we pin. A
 bug needs a failing test in upstream's own test framework. A failure that exists only with
-our patches is ours (AGENTS.md §Prove necessity before expanding the critical path).
+our patches is ours (rules/outcome.md §Prove necessity before expanding the critical path).
+
+- Follow rules/outcome.md §Prove necessity before expanding the critical path for the
+  supported-API, configuration and simpler-design check.
 
 ## 2. Sweep what already exists
 

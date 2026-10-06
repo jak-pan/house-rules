@@ -1,5 +1,6 @@
 from pathlib import Path
 import shutil
+import re
 import subprocess
 import sys
 import tempfile
@@ -121,7 +122,7 @@ class PromptTest(unittest.TestCase):
         self.assert_failure(self.run_prompt("missing.md"), "missing.md")
 
     def test_section_reference_fails(self):
-        for path in ("AGENTS.md#prime-rules", "missing.md#section"):
+        for path in ("rules/core.md#prime-rules", "missing.md#section"):
             with self.subTest(path=path):
                 self.assert_failure(self.run_prompt(text="@rule house-rules:" + path + "\n"),
                                     "section")
@@ -450,6 +451,16 @@ class CollectionAcceptanceTest(unittest.TestCase):
             "Never reset, rebase, squash or amend commits that are already pushed.", text,
         )
 
+    def test_worker_git_references_name_house_rules(self):
+        for role, references in (("implementer", 1), ("fixer", 2)):
+            with self.subTest(role=role):
+                result = PromptTest().run_prompt(f"prompts/roles/{role}.md")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(
+                    result.stdout.count("House Rules rules/delivery.md §Git"),
+                    references,
+                )
+
 
 class RuleOwnershipTest(unittest.TestCase):
     root = SCRIPT.parents[3]
@@ -525,7 +536,7 @@ class RuleOwnershipTest(unittest.TestCase):
             result = PromptTest().run_prompt(str(role.relative_to(ROOT)))
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(" ".join(result.stdout.split()).count(canon), 1)
-        self.assertIn("prompts/skills/no-fortification.md", self.text("AGENTS.md"))
+        self.assertIn("../prompts/skills/no-fortification.md", self.text("rules/outcome.md"))
 
     def test_external_write_prohibition_reaches_every_role_once(self):
         contract = (ROOT / "prompts/util/external-writes.md").read_text()
@@ -576,11 +587,11 @@ class RuleOwnershipTest(unittest.TestCase):
 
     def test_work_sizing_belongs_to_prime_rule_13(self):
         for path, target in (
-            ("skills/decision-brief/SKILL.md", "../../AGENTS.md#prime-rules"),
-            ("skills/operator-writing/SKILL.md", "../../AGENTS.md#prime-rules"),
+            ("skills/decision-brief/SKILL.md", "../../rules/core.md#prime-rules"),
+            ("skills/operator-writing/SKILL.md", "../../rules/core.md#prime-rules"),
             (
                 "skills/operator-writing/references/github-text.md",
-                "../../../AGENTS.md#prime-rules",
+                "../../../rules/core.md#prime-rules",
             ),
         ):
             with self.subTest(path=path):
@@ -590,7 +601,7 @@ class RuleOwnershipTest(unittest.TestCase):
                 self.assertNotRegex(
                     text, r"[Tt]ime estimates|agent-days|files and lines touched"
                 )
-        self.assertIn("No time estimates for agent work", self.text("AGENTS.md"))
+        self.assertIn("Give no unmeasured time estimates", self.text("rules/core.md"))
         self.assertIn("No filler", self.text("skills/operator-writing/SKILL.md"))
         github = self.text("skills/operator-writing/references/github-text.md")
         self.assertIn('No ceremony. A "found by" line is allowed', github)
@@ -738,7 +749,7 @@ class RuleOwnershipTest(unittest.TestCase):
         canon = (self.root / "prompts/skills/test-discipline.md").read_text()
         self.assertIn("## Test discipline\n", canon)
         self.assertNotIn("## Tests\n", canon)
-        self.assertIn("§Test discipline", self.text("AGENTS.md"))
+        self.assertIn("§Test discipline", self.text("rules/delivery.md"))
         guards = self.text("skills/pr-ready/references/guards.md")
         self.assertIn("prompts/skills/test-discipline.md", guards)
         self.assertNotIn("prompts/skills/test-discipline.md#tests", guards)
@@ -768,19 +779,20 @@ class AnsweredRestoreTest(unittest.TestCase):
         )
 
     def test_reset_reloads_skills_and_references_the_writing_rule_owner(self):
-        session = self.text("AGENTS.md").split("## Session start", 1)[1].split(
-            "## Outcome and resource contract", 1
+        session = self.text("rules/core.md").split("## Session start", 1)[1].split(
+            "## Protected operator assets", 1
         )[0]
         self.assertIn("including a compaction", session)
         self.assertIn("reload the skills the current task uses", session.lower())
-        self.assertIn("§Actionable communication", session)
-        self.assertNotIn("operator-writing", session)
-        communication = self.text("AGENTS.md").split(
-            "## Actionable communication", 1
-        )[1].split("## Autonomy", 1)[0]
-        self.assertIn(
-            "Every operator-facing text follows skill `operator-writing`", communication
-        )
+        self.assertIn("skills/operator-writing/SKILL.md §Communication rules", session)
+        self.assertEqual(session.count("skills/operator-writing/SKILL.md"), 1)
+        self.assertNotIn("reader test", session)
+        communication = self.text("skills/operator-writing/SKILL.md").split(
+            "## Communication rules", 1
+        )[1].split("## Language", 1)[0]
+        self.assertIn("Follow `operator-writing` for every operator-facing text’s "
+                      "structure, language, options, Mermaid diagrams, and reader test.",
+                      communication)
 
     def test_detail_test_keeps_adjacent_consequences(self):
         detail = self.text("skills/operator-writing/SKILL.md").split(
@@ -797,28 +809,36 @@ class AnsweredRestoreTest(unittest.TestCase):
                 self.assertIn(requirement, detail)
 
     def test_measured_duration_exception(self):
-        self.assertIn(
-            "State size as files and lines touched; give a duration only when measured "
-            "from comparable past runs, with the measurement cited.", self.text("AGENTS.md")
-        )
+        rules = self.text("rules/core.md")
+        for requirement in ("State work size as files and lines touched.",
+                            "Give durations only from measured comparable past runs.",
+                            "Cite those measurements."):
+            self.assertIn(requirement, rules)
 
     def test_list_coverage_and_operator_action(self):
-        rules = self.text("AGENTS.md")
-        self.assertIn("Prefer lists of five or fewer items; group longer lists only when "
-                      "it helps, preserving sequence, identifiers, and coverage.", rules)
-        self.assertIn("When the owner is the operator, the action is highlighted "
-                      "(bold or a heading).", rules)
+        # A107–A109: reporting procedure belongs to operator-writing.
+        rules = self.text("skills/operator-writing/SKILL.md")
+        for requirement in ("Keep the requested outcome and material blockers visible.",
+                            "State the next action and its owner in messages.",
+                            "Prefer lists of five or fewer items.",
+                            "Group longer lists only when helpful.",
+                            "Preserve sequence, identifiers, and coverage when grouping.",
+                            "Highlight operator-owned actions with bold text or a heading."):
+            self.assertIn(requirement, rules)
 
     def test_stop_scope(self):
-        rules = self.text("AGENTS.md")
-        self.assertIn('"stop" halts the last thing the operator gave or the agent put '
-                      'in the chat. "Stop everything" halts everything.', rules)
+        # Stop scope is always loaded.
+        rules = self.text("rules/core.md")
+        self.assertIn('On "stop", halt the last thing the operator gave or the agent put '
+                      'in the chat.', rules)
+        self.assertIn('On "Stop everything", halt everything.', rules)
 
     def test_one_adversarial_pass_per_deliverable(self):
-        rules = self.text("AGENTS.md")
-        self.assertIn("Every deliverable gets one adversarial verify pass.", rules)
-        self.assertIn("CI review (including Warden) counts; when it covers the "
-                      "deliverable, do not add a separate local pass.", rules)
+        rules = self.text("rules/delivery.md")
+        self.assertIn("Require one adversarial verification pass per deliverable.", rules)
+        self.assertIn("Count CI review, including Warden, as that pass when it covers "
+                      "the deliverable.", rules)
+        self.assertIn("Do not add a separate local pass when CI covers the deliverable.", rules)
         self.assertNotIn("local panel is optional", self.text("skills/pr-ready/SKILL.md"))
 
     def test_merge_review_requirements_have_one_owner_and_keep_planned_reviews(self):
@@ -838,13 +858,18 @@ class AnsweredRestoreTest(unittest.TestCase):
                       "recorded comparison trial.", merge)
 
     def test_external_and_paid_boundary_only(self):
-        self.assertIn("An explicit maximum cost/token/runtime boundary before launch "
-                      "is required for external and paid work only.", self.text("AGENTS.md"))
+        rules = self.text("rules/delivery.md")
+        self.assertIn("Require an explicit maximum cost/token/runtime boundary before "
+                      "launching external or paid work.", rules)
+        self.assertIn("Apply this launch-boundary requirement only to external or paid work.", rules)
 
     def test_council_pointer_without_workflow(self):
-        self.assertIn("a decision that changes design or something important goes "
-                      "to the council when it does not conform to recorded rules, or "
-                      "when confidence is below 90 %.", self.text("AGENTS.md"))
+        rules = self.text("rules/core.md")
+        self.assertIn("Send design-changing or otherwise important decisions to the "
+                      "council when they do not conform to recorded rules.", rules)
+        self.assertIn("Also send those decisions to the council when confidence falls "
+                      "below 90%.", rules)
+        self.assertIn("Otherwise, choose the simplest option and list it.", rules)
 
     def test_retrieval_rules_restored(self):
         path = ROOT / "skills/bench-discipline/references/retrieval-evals.md"
@@ -877,9 +902,13 @@ class AnsweredRestoreTest(unittest.TestCase):
                       "change are not comparable", rules)
         self.assertNotIn("N≥2", rules)
 
-    def test_finish_paid_runs_before_new_runs(self):
-        self.assertIn("Finish in-flight paid runs before starting new ones.",
-                      self.text("skills/bench-discipline/SKILL.md"))
+    def test_paid_runs_parallel_but_same_experiment_settles_first(self):
+        rules = self.text("skills/bench-discipline/SKILL.md")
+        self.assertIn("Paid runs may run in parallel inside the approved envelope. "
+                      "Before a new run of the same experiment starts, "
+                      "finish or cancel its in-flight run. "
+                      "The agent chooses which, by best judgment.", rules)
+        self.assertNotIn("Finish in-flight paid", rules)
 
     def test_waste_does_not_reduce_rigor(self):
         rules = self.text("skills/bench-discipline/SKILL.md")
@@ -900,28 +929,27 @@ class AnsweredRestoreTest(unittest.TestCase):
                       "factors before adding new ones.", rules)
 
     def test_no_progress_and_runaway_guard(self):
-        rules = self.text("AGENTS.md")
-        self.assertIn("Long-running checks fail on no-progress, not wall-clock.", rules)
-        self.assertIn("Tests MAY have a generous overall ceiling as a runaway guard, "
-                      "but it must not be the primary failure mode.", rules)
+        rules = self.text("rules/delivery.md")
+        self.assertIn("Fail long-running checks on lack of progress, rather than elapsed time.", rules)
+        self.assertIn("Allow generous overall test ceilings only as runaway guards.", rules)
+        self.assertIn("Never use overall ceilings as the primary failure mode.", rules)
 
     def test_ci_runtime_policy(self):
-        rules = self.text("AGENTS.md")
-        for phrase in ("Each repository has a standard CI time",
-                       "a run more than 20 % over it is investigated",
-                       "Warden reviews CI runs", "failing jobs go to a CI-repair investigator",
-                       "an expected long run, such as a rebuilt dependency cache, is allowed once"):
-            with self.subTest(phrase=phrase):
-                self.assertIn(phrase, rules)
+        rules = self.text("rules/delivery.md")
+        for phrase in ("Define a standard CI time for each repository.",
+                       "Investigate runs more than 20% over that time.",
+                       "Allow an expected long run once, including a rebuilt dependency cache."):
+            self.assertIn(phrase, rules)
 
     def test_specialized_visual_ui_verification(self):
-        self.assertIn("UI work is verified visually (screenshots) by a specialized "
-                      "agent, not only by programmatic assertions.", self.text("AGENTS.md"))
+        rules = self.text("rules/delivery.md")
+        self.assertIn("Require a specialized agent to verify UI work visually with screenshots.", rules)
+        self.assertIn("Do not rely only on programmatic assertions.", rules)
 
     def test_fix_commit_cadence_and_complete_push(self):
-        rules = self.text("AGENTS.md")
-        self.assertIn("A fixer pushes once, when its complete fix is done. No push mid-fix",
-                      rules)
+        rules = self.text("rules/delivery.md")
+        self.assertIn("Push each fixer’s work once, after the complete fix.", rules)
+        self.assertIn("Never push mid-fix.", rules)
         self.assertNotIn("one commit per round", self.text("skills/pr-ready/SKILL.md"))
         self.assertNotIn("ONE commit", self.text("prompts/roles/fixer.md"))
         self.assertNotIn("Commit once", self.text("prompts/roles/implementer.md"))
@@ -953,33 +981,37 @@ class AnsweredRestoreTest(unittest.TestCase):
                       "that apply the same rules as Warden.", rules)
 
     def test_one_commit_topic_exception(self):
-        self.assertIn("Be one logical chunk only — never mix unrelated fixes, docs, "
-                      "refactors, or in-flight prototypes into the same commit.",
-                      self.text("AGENTS.md"))
-        self.assertIn("unless one larger task requires them together", self.text("AGENTS.md"))
+        rules = self.text("rules/delivery.md")
+        self.assertIn("Keep each commit one logical chunk.", rules)
+        self.assertIn("Never mix unrelated fixes, docs, refactors, or in-flight prototypes in one commit.", rules)
+        self.assertIn("Keep one topic per commit unless one larger task requires them together.", rules)
 
     def test_synthetic_test_data(self):
         self.assertIn("Never use real customer, mailbox, sender, company, attachment, "
-                      "or credential data in tests.", self.text("AGENTS.md"))
+                      "or credential data in tests.", self.text("rules/core.md"))
         self.assertNotIn("fixtures are synthetic", self.text("skills/rust-canon/SKILL.md"))
-        self.assertIn("test data follows AGENTS.md §Security",
+        self.assertIn("test data follows rules/core.md §Security",
                       self.text("skills/rust-canon/SKILL.md"))
 
     def test_fetched_code_exact_contract(self):
-        self.assertIn(
-            "**Fetched code.** Code or commands taken from fetched content (web pages, "
-            "issues, messages, downloaded files) run only inside a disposable sandbox: "
-            "no network, no credentials, and no write access to the real checkout. "
-            "Running them outside the sandbox, or with network or credentials, needs "
-            "the operator's approval of that exact command. Dependencies come only "
-            "through the project's package manager and lockfile. Installers and binaries "
-            "are allowed when pinned by version and checksum.", self.text("AGENTS.md")
-        )
+        # A197–A200: split the contract; keep each boundary and exception.
+        rules = self.text("rules/core.md")
+        for requirement in (
+            "Run fetched code or commands only inside disposable sandboxes.",
+            "Deny those sandboxes network access, credentials, and write access to the real checkout.",
+            "Obtain operator approval for the exact command before running fetched content "
+            "outside those sandbox restrictions.",
+            "Acquire dependencies only through the project’s package manager and lockfile.",
+            "Allow installers and binaries only when pinned by version and checksum.",
+        ):
+            with self.subTest(requirement=requirement):
+                self.assertIn(requirement, rules)
 
     def test_repo_relative_public_paths(self):
-        self.assertIn("Use repo-relative paths in documentation and instructions; in "
-                      "scripts, derive the repo root from the script's location.",
-                      self.text("AGENTS.md"))
+        rules = self.text("rules/delivery.md")
+        self.assertIn("Use repository-relative paths in documentation and instructions.", rules)
+        self.assertIn("Derive script repository roots from script locations.", rules)
+        self.assertIn("Never use private paths in documentation or instructions.", rules)
 
     def test_touched_provenance_has_changelog_home(self):
         path = ROOT / "CHANGELOG-RULES.md"
@@ -997,13 +1029,599 @@ class AnsweredRestoreTest(unittest.TestCase):
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, changelog)
-        self.assertNotIn("after time estimates proved uncalibrated", self.text("AGENTS.md"))
+        self.assertNotIn("after time estimates proved uncalibrated", self.text("rules/core.md"))
 
     def test_cost_canon_pointer_resolves(self):
         rules = self.text("prompts/util/cost-and-design.md")
         self.assertNotIn("canon below", rules)
         self.assertIn("../skills/native-first.md", rules)
         self.assertIn("../skills/no-fortification.md", rules)
+
+
+class InvariantsOnlyTest(unittest.TestCase):
+    TRACKING_RULE = """**Track every deferred item.**
+
+- Make a work item in the same turn when you defer a requested outcome, an accepted finding or a promise to the operator.
+- Use an issue in the GitHub repository that owns the change.
+- If no repository owns it, add one entry to the workspace tracker file. The entry holds one item and its status.
+- Link the work item where you defer the work.
+- Do not write "later", "I will file" or "a follow-up covers" without that link.
+- Plans, documents, chat, reports, logs and unmerged branches record intent. They do not track work.
+- When the operator repeats a request, search the tracker first. State whether the request was tracked.
+- Ideas the operator did not request are proposals, not work items (rules/outcome.md §Outcome and resource contract).
+"""
+
+    def test_approved_tracking_rule_is_exact(self):
+        agents = (ROOT / "rules/delivery.md").read_text()
+        self.assertEqual(agents.count(self.TRACKING_RULE), 1)
+        self.assertNotIn("Operator requests stay tracked until done", agents)
+
+    # These clauses must remain verbatim under the operator's restoration decision.
+    RESTORED_TRACKING = (
+        '- A requested outcome or accepted finding that the session does not finish '
+        'becomes a work item in the repository that owns the change, before the session'
+        ' ends, linked from wherever it was set aside.\n- That covers work that is '
+        'deferred, "saved as a task", scoped out of another item, left as an audit gap,'
+        ' a plan or migration step, or said to "belong to the other repository\'s '
+        'side".\n'
+    )
+
+    def test_each_invariant_sentence_fits_twenty_words(self):
+        agents = "\n".join((ROOT / path).read_text() for path in
+                           ("rules/core.md", "rules/outcome.md", "rules/delivery.md"))
+        agents += "\n" + (ROOT / "STRUCTURE.md").read_text().split(
+            "## Layout\n", 1)[1].split("```", 1)[0]
+        agents += "\n" + (ROOT / "skills/operator-writing/SKILL.md").read_text().split(
+            "## Communication rules\n", 1)[1].split("## Language", 1)[0]
+        agents = agents.replace(self.TRACKING_RULE, "").replace(self.RESTORED_TRACKING, "")
+        agents = re.sub(r"(?m)^#.*$", "", agents)
+        blocks = re.split(r"\n\s*\n|\n(?=\s*(?:[-*]|\d+\.)\s)", agents)
+        for block in blocks:
+            instruction = re.sub(r"^\s*(?:[-*]|\d+\.)\s+", "", block)
+            instruction = " ".join(re.sub(r"[*`]", "", instruction).split())
+            for sentence in re.split(r"(?<=[.!?])\s+(?=[A-Z\"])", instruction):
+                if sentence:
+                    with self.subTest(sentence=sentence):
+                        self.assertLessEqual(len(sentence.split()), 20)
+
+    def test_all_inline_source_notes_live_in_changelog(self):
+        marker = re.compile(r"(?:Operator directions?|Source incident):")
+        files = [ROOT / "AGENTS.md", *(ROOT / "rules").glob("*.md")]
+        files += list((ROOT / "skills").rglob("*.md"))
+        files += list((ROOT / "prompts").rglob("*.md"))
+        for path in files:
+            with self.subTest(path=path.relative_to(ROOT)):
+                self.assertNotRegex(path.read_text(), marker)
+        changelog = (ROOT / "CHANGELOG-RULES.md").read_text()
+        notes = (
+            'Operator direction: 2026-09-10, after an empty-deployment\nclarification was unnecessarily turned into a durable note.',
+            'Operator direction: 2026-10-02, after an approved\n  implementation sat idle overnight waiting on review-loop decisions.',
+            'Operator direction: 2026-10-01,\n  after the routine deploy of an approved change was handed back to the operator.',
+            'Operator direction:\n2026-09-28, after a secret handoff asked the operator for a manually created file outside\nthe repository instead of an env file.',
+            'Operator direction: 2026-09-28, after a repeatedly requested consolidation lived only in\n  plans and documents and was never done.',
+            'Operator direction: 2026-09-30, after idle build directories of open PRs\n  were deleted to free space.',
+            "Operator direction: 2026-09-28, after a\n  product's CI had to mirror a kit's native library releases into its own repository.",
+            'Operator direction: 2026-09-28, after a consumer forked a shared\n  mechanism it could not use as it stood.',
+            "Operator direction: 2026-09-28, after agent-approved designs put a product's\ncanonical records in a second store beside the shared one, contradicting a parallel plan\nthat was never reconciled.",
+            'Operator direction: 2026-10-04, after issue and PR bodies relied on internal labels and\nomitted reproduction and test evidence; an upstream contribution in this form was chosen\nas the model.',
+            'Operator direction:\n  2026-10-03, after a fixer traded a bound for an integrity check and back.',
+            'Operator direction: 2026-10-03, after parallel slow-review fixers doubled builds and\n  overloaded the machine.',
+            'Operator direction:\n  2026-09-07, cross-repository CI correction.',
+            'Operator direction: 2026-10-04.',
+        )
+        for note in notes:
+            with self.subTest(note=note):
+                self.assertIn(note, changelog)
+
+    def test_procedure_moves_preserve_reading_and_landing_order(self):
+        expected = {
+            "rules/core.md": (
+                "At session start, read the bible and `CONTEXT.md` when present.",
+                "Default to the project board.",
+                "Then read the tracker board, followed by your work item's state and latest handoff.",
+            ),
+            "skills/design-flow/SKILL.md": (
+                "Read the design doc, then the architecture doc, then code before feature work.",
+            ),
+            "skills/pr-ready/SKILL.md": (
+                "When all reviewer families approve, CI passes, and deployment is documented "
+                "routine procedure, finish landing.",
+                "Merge within rules/delivery.md §Git delivery authority, deploy, verify after deployment, "
+                "then report changes.",
+                "Do not hand routine landing steps to the operator.",
+            ),
+        }
+        for path, instructions in expected.items():
+            text = " ".join((ROOT / path).read_text().split())
+            for instruction in instructions:
+                with self.subTest(path=path, instruction=instruction):
+                    self.assertIn(instruction, text)
+
+
+class RuleIndexTest(unittest.TestCase):
+    def test_agents_contains_only_purpose_precedence_and_load_lines(self):
+        purpose = {
+            "House Rules provides shared operating rules and task-specific skills.",
+            "This file is its index.",
+            "- Repository instructions and explicit operator choices override House Rules when they conflict.",
+            "- Both stay subject to the host instruction hierarchy, permissions, access, and approval controls.",
+            "At session start and after every reset or compaction, read these files in full:",
+        }
+        section = ""
+        for line in (ROOT / "AGENTS.md").read_text().splitlines():
+            if line.startswith("## "):
+                section = line[3:]
+            if not line or line.startswith("#") or line in purpose:
+                continue
+            with self.subTest(line=line):
+                if section == "Always load":
+                    self.assertRegex(line, r"^- \[[^]]+\]\(rules/(?:core|outcome|delivery)\.md\)$")
+                else:
+                    self.assertRegex(line, r"^- [^:]+: load \[[^]]+\]\([^)]+\)\.$")
+
+    def test_index_loads_every_skill_and_rule_file_with_resolving_relative_links(self):
+        index = (ROOT / "AGENTS.md").read_text()
+        targets = re.findall(r"\[[^]]+\]\(([^)]+)\)", index)
+        required = {"rules/core.md", "rules/outcome.md", "rules/delivery.md",
+                    "STRUCTURE.md", "PREFERENCES.md"}
+        required.update(str(path.relative_to(ROOT))
+                        for path in (ROOT / "skills").glob("*/SKILL.md"))
+        self.assertEqual(set(targets), required)
+        self.assertEqual(len(targets), len(required))
+        for target in targets:
+            with self.subTest(target=target):
+                self.assertFalse(Path(target).is_absolute())
+                self.assertNotRegex(target, r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
+                self.assertTrue((ROOT / target).is_file())
+
+
+class AuditRestorationTest(unittest.TestCase):
+    """Preserve audited requirements in the files that agents always read."""
+
+    def test_H1_exact_asset_confirmation(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            'Immediately before consuming or changing one, state the exact asset and '
+            'effect.',
+            'Obtain explicit confirmation for that exact action.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_H2_credentials_logins_stop(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            'Stop for the operator before credential steps.',
+            'Stop for the operator before logins.',
+            'Stop for the operator before destructive steps beyond a routine deploy.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_H3_shared_model_cache_protection(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            "Never stop or clean shared host resources, such as other projects' "
+            'services or shared model caches.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_M1_precedence_remains_bounded(self):
+        text = (ROOT / 'AGENTS.md').read_text()
+        for clause in (
+            'Repository instructions and explicit operator choices override House Rules'
+            ' when they conflict.',
+            'Both stay subject to the host instruction hierarchy, permissions, access, '
+            'and approval controls.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_M4_public_repository_scope(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            'Treat House Rules as a public repository.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_M5_fail_visible_covers_everything(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            'Never silently skip, drop, cap, or degrade anything: inputs, items, tests,'
+            ' steps, or results.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_M6_findings_and_decisions_persist_on_time(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            'Never leave settled decisions or findings only in chat.',
+            'Never leave operator-confirmed rules only in chat.',
+            "Save findings in the work item's record as they happen.",
+            'Save durable repo-wide decisions in the bible when work closes.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_M7_detach_mechanisms_explicit(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            'Never detach long-running work with `nohup`, `&` in a subshell, `disown`, '
+            'or `setsid`.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_M8_boundary_definition_exclusive(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            'Treat only boundaries declared by an approved threat model, specification,'
+            ' or shipped runtime as security boundaries.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_M9_implicit_noncompletion_and_six_cases(self):
+        text = (ROOT / 'rules/delivery.md').read_text()
+        for clause in (
+            '- A requested outcome or accepted finding that the session does not finish'
+            ' becomes a work item in the repository that owns the change, before the '
+            'session ends, linked from wherever it was set aside.\n- That covers work '
+            'that is deferred, "saved as a task", scoped out of another item, left as '
+            'an audit gap, a plan or migration step, or said to "belong to the other '
+            'repository\'s side".\n',
+            'Accepted findings are findings the operator or a review accepted.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_M12_layout_always_loads(self):
+        text = (ROOT / 'rules/delivery.md').read_text()
+        for clause in (
+            '## Layout',
+            'Never use private paths in documentation or instructions.',
+            'Never change directories inside compound commands.',
+            'Always use absolute paths for file-tool reads, edits, writes, and '
+            'searches.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L1_invariant_homes(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            'State invariants in the `rules/` files.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L2_divergent_relative_to_outcome(self):
+        text = (ROOT / 'rules/outcome.md').read_text()
+        for clause in (
+            'Classify work unrelated to the current outcome or disproportionate to its '
+            'value as divergent.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L3_approval_allows_proposal_execution(self):
+        text = (ROOT / 'rules/outcome.md').read_text()
+        for clause in (
+            'Do not execute a proposal until it is approved.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L4_resource_proposals_always_allowed(self):
+        text = (ROOT / 'rules/outcome.md').read_text()
+        for clause in (
+            'You may always propose additional resources.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L5_third_occurrence_alone_no_approval(self):
+        text = (ROOT / 'rules/outcome.md').read_text()
+        for clause in (
+            'The third occurrence alone does not require operator approval.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L6_source_incident_home(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            'Record the source incident in CHANGELOG-RULES.md.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L7_assumptions_require_validation(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            '**Never assume. Validate claims against reality.**',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L9_collaboration_mode_no_repeated_asks(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            'Do not ask for the collaboration mode every turn or on simple questions.',
+            'Do not ask again after the operator already chose a collaboration mode.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L10_autonomous_reversibility_and_conformance(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            'In autonomous mode, require evidence that the choice is reversible.',
+            'Send design-changing or otherwise important decisions to the council when '
+            'they do not conform to recorded rules.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L11_product_default_scope(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            'shipped product defaults',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L12_cleanup_crosscheck_pointer(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            'Follow `handoff-continuity` §Filing for cleanup or supersession '
+            'cross-checks.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L13_harness_evidence_cap(self):
+        text = (ROOT / 'rules/delivery.md').read_text()
+        for clause in (
+            'Prove harness repairs with only the smallest evidence that restores trust.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L15_external_run_subject_and_examples(self):
+        text = (ROOT / 'rules/delivery.md').read_text()
+        for clause in (
+            'Examples include agents, model command-line interfaces, remote jobs, '
+            'benchmarks, and crawls.',
+            'Require a durable transcript or checkpoint before the first substantive '
+            'call for those runs.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L17_parallel_reference_target(self):
+        text = (ROOT / 'rules/delivery.md').read_text()
+        for clause in (
+            'under rules/outcome.md §Resource envelopes and §Parallel work in this '
+            'file.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L18_generated_files_out_of_top_level(self):
+        text = (ROOT / 'rules/delivery.md').read_text()
+        for clause in (
+            "Keep generated files out of the repository's top-level directory.",
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L19_secret_file_has_no_values(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            'When the operator must supply a value, create the secret file with '
+            'variable names and no values.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L20_process_pattern_example_and_reason(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            'Never kill processes through broad command patterns, such as `pkill -f '
+            "'cargo test'`.",
+            'Concurrent sessions run the same commands.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L21_claim_conflicts_stop_work(self):
+        text = (ROOT / 'rules/delivery.md').read_text()
+        for clause in (
+            'Treat a claim conflict as a signal to stop and coordinate.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L22_terms_and_bible_edit_condition(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            "The bible is the repository's `AGENTS.md`, including settled local "
+            'decisions and execution choices.',
+            'Edit or prune bible entries only with the change explained in the commit.',
+            'The tracker is the organization/repository-defined work-management system.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L23_reference_convention(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            'Interpret `rules/*.md §X` in House Rules files as a reference to the named'
+            ' rule file.',
+            'A bare §X refers to the same file.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L24_decision_explanation_trigger(self):
+        text = (ROOT / 'AGENTS.md').read_text()
+        for clause in (
+            'Choices needing operator input, decisions, or explanations: load '
+            '[decision-brief](skills/decision-brief/SKILL.md).',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L25_protection_sections_apply_all_session(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            '\n## Protected operator assets\n',
+            '\n## Operator correction\n',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L26_landing_reference(self):
+        for path, clause in (
+            ("skills/work-tracking/SKILL.md", "Priority (design-flow §2)"),
+            ("skills/design-flow/SKILL.md", "A P0 or P1 design (§2)"),
+            ("skills/operator-protocol/SKILL.md", "policy changes follow rules/core.md §Operator correction."),
+            ("skills/operator-protocol/SKILL.md", "rules/outcome.md, and rules/delivery.md for authority."),
+        ):
+            with self.subTest(path=path):
+                self.assertIn(clause, (ROOT / path).read_text())
+        text = (ROOT / 'CHANGELOG-RULES.md').read_text()
+        for clause in (
+            '## skills/pr-ready/SKILL.md — 4. Merge and cleanup (finish the landing)',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L27_fix_instructions_apply_to_fixers(self):
+        text = (ROOT / 'prompts/skills/no-fortification.md').read_text()
+        for clause in (
+            'Implementers and fixers: diagnose, fix, and verify them normally when they'
+            ' remain outcome-aligned.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L28_core_reference_path_style(self):
+        text = (ROOT / 'rules/core.md').read_text()
+        for clause in (
+            '`skills/pr-ready/references/guards.md`',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_L29_ordinary_fixes_remain_required(self):
+        text = (ROOT / 'rules/outcome.md').read_text()
+        for clause in (
+            'Do not use these requirements to refuse ordinary application fixes.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, text)
+
+    def test_load_sentence_requires_all_rules_in_full_after_reset(self):
+        index = (ROOT / "AGENTS.md").read_text()
+        always = index.split("## Always load\n", 1)[1].split("## Load when", 1)[0]
+        self.assertIn("At session start and after every reset or compaction, read these files in full:", always)
+        self.assertEqual(re.findall(r"\((rules/[^)]+)\)", always), ["rules/core.md", "rules/outcome.md", "rules/delivery.md"])
+
+
+class AcceptedScopeRegressionTest(unittest.TestCase):
+    """Keep accepted requirements in their unconditional homes, without copies."""
+
+    def test_application_hardening_checks_simpler_designs_without_loading_upstream(self):
+        rules = (ROOT / "rules/outcome.md").read_text().split(
+            "### Prove necessity before expanding the critical path", 1
+        )[1].split("### Resource envelopes", 1)[0]
+        check = "First check supported APIs, configuration and simpler application designs."
+        self.assertIn(check, rules)
+        upstream = (ROOT / "skills/upstream-contribution/SKILL.md").read_text()
+        self.assertNotIn(check, upstream)
+        self.assertIn(
+            "Follow rules/outcome.md §Prove necessity before expanding the critical path "
+            "for the supported-API, configuration and simpler-design check.",
+            " ".join(upstream.split()),
+        )
+
+    def test_routine_commands_are_exempt_from_expensive_work_requirements(self):
+        delivery = (ROOT / "rules/delivery.md").read_text()
+        self.assertIn(
+            "Apply this launch-boundary requirement only to external or paid work.\n"
+            "- Exempt routine short, cheap, reproducible commands from these expensive-work requirements.",
+            delivery,
+        )
+        handoff = (ROOT / "skills/handoff-continuity/SKILL.md").read_text()
+        self.assertIn(
+            "Apply the routine-command exemption in rules/delivery.md §Verification.",
+            handoff,
+        )
+        self.assertNotIn("from the durable-external-run procedure", handoff)
+
+    def test_preventive_safety_stops_do_not_require_operator_approval(self):
+        delivery = (ROOT / "rules/delivery.md").read_text()
+        self.assertIn(
+            "Obtain operator approval before stopping materially paid work, except under "
+            "rules/core.md §Operator correction or safety requirements.", delivery,
+        )
+        self.assertNotIn("urgent safety requirements", delivery)
+        handoff = " ".join((ROOT / "skills/handoff-continuity/SKILL.md").read_text().split())
+        self.assertIn(
+            "For a materially paid or unique run, apply the approval requirement and "
+            "exceptions in rules/delivery.md §Verification.", handoff,
+        )
+        self.assertIn("An urgent safety stop takes precedence", handoff)
+
+    def test_ready_instruction_is_required_only_for_externally_owned_repositories(self):
+        delivery = (ROOT / "rules/delivery.md").read_text()
+        self.assertIn(
+            "For externally owned repositories, never push upstream, open pull "
+            "requests/issues, or comment until the operator says ready.", delivery,
+        )
+        self.assertNotIn("\n- Never push upstream,", delivery)
+
+    def test_local_iteration_and_invalidated_evidence_use_always_loaded_verification(self):
+        verification = (ROOT / "rules/delivery.md").read_text().split(
+            "## Verification", 1
+        )[1].split("## Git", 1)[0]
+        procedure = (ROOT / "skills/pr-ready/SKILL.md").read_text()
+        for requirement in (
+            "During iteration, run the smallest gate that proves the current change.",
+            "Run the complete required gate on the resulting candidate or whenever "
+            "changes invalidate prior full-gate evidence.",
+            "Where CI owns the full suite, use CI’s run on the pushed head.",
+        ):
+            with self.subTest(requirement=requirement):
+                self.assertIn(requirement, verification)
+                self.assertNotIn(requirement, procedure)
+        self.assertIn(
+            "Follow rules/delivery.md §Verification for iteration gates and renewal "
+            "of invalidated verification evidence.", procedure,
+        )
+
+    def test_scheduled_ci_failures_receive_review_and_repair_without_pr_preparation(self):
+        delivery = (ROOT / "rules/delivery.md").read_text()
+        self.assertIn(
+            "Define a standard CI time for each repository.\n"
+            "- Investigate runs more than 20% over that time.\n"
+            "- Allow an expected long run once, including a rebuilt dependency cache.\n"
+            "- Have Warden review CI runs.\n"
+            "- Send failing jobs to a CI-repair investigator.",
+            delivery,
+        )
+        procedure = (ROOT / "skills/pr-ready/SKILL.md").read_text()
+        self.assertNotIn("Have Warden review CI runs.", procedure)
+        self.assertNotIn("Send failing jobs to a CI-repair investigator.", procedure)
+        self.assertIn(
+            "Follow rules/delivery.md §Verification for CI review, failure routing "
+            "and the expected-long-run exception.", procedure,
+        )
 
 
 if __name__ == "__main__":

@@ -63,7 +63,7 @@ When the goal is "match this reference" or "iterate until perfect":
 - Credentials or an operator-only action required (name it precisely).
 - Destructive/irreversible fork, or a genuine design fork → present options + recommendation.
 - The third consecutive failure of the same class → three-occurrence reassessment
-  (AGENTS.md) before another attempt.
+  (rules/outcome.md §Three-occurrence reassessment) before another attempt.
 - Supporting work is consuming the critical path without changing the completion gap.
 - Continuing requires a new work category or expansion of the resource envelope.
 - Target reached → confirm with repeated runs sized per skill `bench-discipline`

@@ -9,7 +9,7 @@ license: MIT
 Use the relevant checkpoints to catch unsupported assumptions and wasted work. They are
 a review aid, not a requirement to narrate every step, invent extra documents, or apply
 an experiment protocol to a simple question. Decision authority and the operator's
-selected collaboration mode come from AGENTS.md; these checkpoints do not redefine them.
+selected collaboration mode come from rules/core.md; these checkpoints do not redefine them.
 
 ## Ground
 
@@ -56,7 +56,7 @@ selected collaboration mode come from AGENTS.md; these checkpoints do not redefi
   of the claim rather than a fixed record count. Verify delegated key claims against
   primary evidence before repeating them.
 - Lead with the result and explain its evidence, implications, remaining work, and any
-  required decision. Follow AGENTS.md's communication and timing rules.
+  required decision. Follow skills/operator-writing/SKILL.md and rules/core.md prime rule 13.
 
 ## Learn
 
@@ -68,5 +68,5 @@ selected collaboration mode come from AGENTS.md; these checkpoints do not redefi
 - Correct erroneous durable claims explicitly and propagate the correction to affected
   reports (a released report gets an erratum or a new dated report: `STRUCTURE.md`).
   Preserve the original evidence and explain changed interpretations.
-- Apply AGENTS.md's three-occurrence reassessment before repeating the same failure
+- Apply rules/outcome.md §Three-occurrence reassessment before repeating the same failure
   class again. Reconsider the mechanism and scope, not just the next patch.

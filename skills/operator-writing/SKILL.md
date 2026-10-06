@@ -11,6 +11,16 @@ happened, why it matters and what to do, in that order. This skill combines a co
 language (ASD-STE100, applied at about 80 %) with an explanation-first structure and a
 reader test.
 
+## Communication rules
+
+- Follow `operator-writing` for every operator-facing text’s structure, language, options, Mermaid diagrams, and reader test.
+- Use `decision-brief` for decisions and explanations.
+- Support claims with evidence.
+- Distinguish observed causes from hypotheses.
+- Distinguish completed fixes from plans and deployments awaiting verification.
+- Do not invent operator homework.
+- Do not ask permission to continue authorized work.
+
 ## Language
 
 - One fact per sentence. Prefer short sentences; split one that carries more than one fact.
@@ -34,7 +44,7 @@ reader test.
 - Report an error as the observed failure, its known cause or "cause unknown", and the next
   diagnostic or fix. Use no alarmist words.
 - No filler, no marketing adjectives, no ceremonial openings or closings.
-- Size work per [AGENTS.md prime rule 13](../../AGENTS.md#prime-rules).
+- Size work per [rules/core.md prime rule 13](../../rules/core.md#prime-rules).
 
 ## Format
 
@@ -48,6 +58,10 @@ reader test.
   place them side by side.
 - Give every file the reader must open as an absolute path. If the client cannot open that
   path, also send the file with the client's file-sending tool, when it has one.
+
+- Prefer lists of five or fewer items.
+- Group longer lists only when helpful.
+- Preserve sequence, identifiers, and coverage when grouping.
 
 ## Structure
 
@@ -86,6 +100,10 @@ Rules:
   replaced it. Link the remaining work.
 - Keep old evidence below a labeled current summary. Old "unresolved" notes must not
   contradict the current status.
+
+- Keep the requested outcome and material blockers visible.
+- State the next action and its owner in messages.
+- Highlight operator-owned actions with bold text or a heading.
 
 ## GitHub text
 
