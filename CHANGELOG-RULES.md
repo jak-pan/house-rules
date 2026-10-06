@@ -53,3 +53,9 @@ behind its investigation history.
 Operator direction: 2026-10-04, after issue and PR bodies relied on internal labels and
 omitted reproduction and test evidence; an upstream contribution in this form was chosen
 as the model.
+
+## skills/operator-writing — sentence length
+
+Operator direction: 2026-10-06, House Rules review; fixed per-sentence word caps conflicted with
+the decision that there are no size targets except a soft split prompt, and length is never a
+reason to remove a requirement.

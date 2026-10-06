@@ -13,7 +13,8 @@ reader test.
 
 ## Language
 
-- One fact per sentence. Instructions: at most 20 words. Descriptions: at most 25 words.
+- One fact per sentence. Prefer short sentences; split one that carries more than one fact.
+  Length is never a reason to drop content, and sentence length is never counted or tested.
 - Active voice, simple tense. Name who does what.
 - One term per concept. Define it once at first use, then never use a synonym.
 - No unexplained acronyms, internal labels or IDs as a replacement for meaning. An ID may
