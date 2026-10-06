@@ -59,7 +59,6 @@ reader test.
 - Write a PR or issue reference as a Markdown link: `[#52](https://github.com/owner/repo/pull/52)`.
 - Give every file the reader must open as an absolute path. If the client cannot open that
   path, also send the file with the client's file-sending tool, when it has one.
-
 - Prefer lists of five or fewer items.
 - Group longer lists only when helpful.
 - Preserve sequence, identifiers, and coverage when grouping.
@@ -101,7 +100,6 @@ Rules:
   replaced it. Link the remaining work.
 - Keep old evidence below a labeled current summary. Old "unresolved" notes must not
   contradict the current status.
-
 - Keep the requested outcome and material blockers visible.
 - State the next action and its owner in messages.
 - Highlight operator-owned actions with bold text or a heading.
@@ -113,24 +111,58 @@ Issues, PR bodies, review comments, replies to review and commit messages use th
 
 ## Questions to the operator
 
-Questions the operator must answer come after the explanation. See the rendered
-[example](references/question-example.md).
+Questions the operator must answer come after the explanation. Example:
+
+````markdown
+## Warden
+
+### 1\. What should Warden do with a review request in an unmanaged repository?
+`fact` Five repositories are unmanaged. `fact` Today Warden ignores the request and nobody
+sees why. `assessment` A silent skip looks like an outage.\
+Either option also applies to repositories added later.
+
+1. **One comment saying the repository is not managed by House Rules (recommended).**
+2. A silent skip, visible only in Warden's host log.
+
+### 2\. Send the error text from the failed App install?
+`fact` GitHub opened the organization settings page instead of the install page. `fact`
+Warden's host log has no entry from that time. `assessment` The error is probably visible
+only in the browser.\
+Without the text, the cause stays a guess between a missing permission and a wrong link.
+
+## House Rules
+
+### 3\. Merge [#52](https://github.com/jak-pan/house-rules/pull/52), the writing-rules PR?
+`fact` An earlier cleanup removed several writing rules without an operator decision; it
+puts them back. `fact` It changes only the operator-writing skill and the rules changelog.\
+Agents on this machine use the rules from their next session; Warden and the lanes get them
+only after their House Rules pins move.
+
+**Answer with one numbered line per question, like so:**
+
+1. 1
+2. explain how the install link could be wrong
+3. ok
+````
 
 - Write each topic as a level-2 heading.
 - Write each question as a level-3 heading.
 - Start each question heading with its number, typed and escaped: `### 1\.`.
 - Number questions across topics: 1, 2, 3. Never use 1a or 1b.
-- Below the heading, write one to three context sentences.
+- Below the heading, give enough context that the operator can answer from the question
+  alone. Add a link or a short code excerpt when the answer depends on it.
+- Keep the context brief: a few sentences, never a wall of text.
 - Start each context sentence with the flag `fact` or `assessment` in inline code.
 - End each context line with a backslash.
 - Add one line on what happens after the answer, only when the reader cannot infer it.
 - Write the options of a choice as a numbered list. Never nest it.
 - Give each option what changes and its side effect.
-- Mark one option "(recommended)".
+- Recommend exactly one option. Write its whole line in bold and end it with "(recommended)".
 - Do not write the word "Option" in option text.
 - Put no reply line, answer box, quote or table in the questions.
 - End the message with the bold line "Answer with one numbered line per question, like so:".
-- Below it, give a three-line numbered example: an option number, a text answer and `ok`.
+- Below it, give a three-line numbered example: an option number, a request for more
+  context and `ok`.
 - Never ask the operator about work the agent's own team must do (tests, replays,
   verification). List it as an internal task.
 
