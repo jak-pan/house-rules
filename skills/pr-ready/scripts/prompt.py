@@ -20,12 +20,14 @@ def expand(text=None, *, file=None, root=ROOT, session=False):
     Repeated includes are expanded and listed each time. The optional entry file
     is listed first; stdin text has no entry path. No output is written on failure.
     Session builds validate declared shared owners but omit their include contents.
-    Role builds state the loading path; other inputs retain their original bytes.
+    Role builds and shared-rule declarations state the loading path.
     """
     root = Path(root).resolve()
     used = []
+    shared_declared = False
 
     def visit(name, stack, *, include=False):
+        nonlocal shared_declared
         if not name:
             raise PromptError("empty include path at repository root")
         if "\x00" in name:
@@ -40,6 +42,8 @@ def expand(text=None, *, file=None, root=ROOT, session=False):
         relative = path.relative_to(root).as_posix()
         with path.open(encoding="utf-8", newline="") as source:
             content = source.read()
+        if include and relative in SHARED_RULES:
+            shared_declared = True
         if session and include and relative in SHARED_RULES:
             return ""
         used.append(relative)
@@ -56,7 +60,7 @@ def expand(text=None, *, file=None, root=ROOT, session=False):
         result = visit(file, ()) if file is not None else render(text, ())
     except (OSError, UnicodeError, RuntimeError) as exc:
         raise PromptError(str(exc)) from exc
-    if any(name.startswith("prompts/roles/") for name in used):
+    if shared_declared or any(name.startswith("prompts/roles/") for name in used):
         loading = ("session; shared rules come from the live House Rules index."
                    if session else "compiled shared rules; canonical owners are included in this pack.")
         result = f"Loading path: {loading}\n\n" + result

@@ -180,6 +180,18 @@ class CompleteWorkerPackTest(unittest.TestCase):
     assert_failure = PromptTest.assert_failure
     shared = ("rules/writing.md", "rules/git.md", "rules/priority-labels.md")
 
+    def test_stdin_role_text_has_the_same_loading_header_as_file_input(self):
+        for role in sorted((ROOT / "prompts/roles").glob("*.md")):
+            for session in (False, True):
+                args = ("--session",) if session else ()
+                with self.subTest(role=role.stem, session=session):
+                    result = PromptTest.run_prompt(self, *args, text=role.read_text())
+                    expected = self.run_prompt(*args, role.relative_to(ROOT).as_posix())
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertTrue(result.stdout.startswith(
+                        "Loading path: session" if session else "Loading path: compiled shared rules"))
+                    self.assertEqual(result.stdout, expected.stdout)
+
     def test_both_loading_paths_preserve_roles_and_every_review_lens(self):
         for role in sorted((ROOT / "prompts/roles").glob("*.md")):
             for session in (False, True):
@@ -220,7 +232,8 @@ class CompleteWorkerPackTest(unittest.TestCase):
         source += "@rule house-rules:rules/other.md\n"
         result = self.run_prompt("--session", text=source, script=script)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "Other rule\n")
+        self.assertEqual(result.stdout, "Loading path: session; shared rules come from the live "
+                         "House Rules index.\n\nOther rule\n")
         used = self.run_prompt("--session", "--list", text=source, script=script)
         self.assertEqual(used.stdout, "rules/other.md\n")
         for owner in self.shared:
