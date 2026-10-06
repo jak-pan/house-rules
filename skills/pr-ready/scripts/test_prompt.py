@@ -227,6 +227,14 @@ class CollectionAcceptanceTest(unittest.TestCase):
                 prompt = PromptTest().run_prompt(f"prompts/roles/{role}.md")
                 self.assertEqual(prompt.returncode, 0, prompt.stderr)
                 self.assertEqual(prompt.stdout.count(contract), 1)
+                self.assertEqual(prompt.stdout.count(form), 1)
+                for requirement in (
+                    "## Evidence", "## Cause", "## Acceptance criteria",
+                    "Label untested parts", "full SHA",
+                    "Code references are full-SHA permalinks.",
+                    'Label each claim that no test covers as "From code reading" or "Hypothesis".',
+                ):
+                    self.assertIn(requirement, prompt.stdout)
                 self.assertIn('"## Issues to file"', prompt.stdout)
                 self.assertNotIn("3–6 line body", prompt.stdout)
 
