@@ -210,14 +210,22 @@ class CollectionAcceptanceTest(unittest.TestCase):
         self.assertEqual(contract, (
             'one per ISSUE item, as "### <title>" then the body. '
             'The title names the behavior in plain words (no internal labels, codes or round names, never cut mid-phrase). '
-            'The body follows [the issue form](../../skills/operator-writing/references/github-text.md#2-issue).\n'
+            'The body follows [the issue form](../../skills/operator-writing/references/github-text.md#2-issue). '
+            'The body states: what happens and its effect first; current behavior with file:line at the commit SHA you reviewed, '
+            'linked as a full-SHA permalink; evidence (a command, test or quoted line; say "From code reading" when untested); '
+            'cause; acceptance criteria. Short sentences.\n'
         ))
         form = (ROOT / "skills/operator-writing/references/github-text.md").read_text()
+        issue_form = form.split("## 2. Issue\n", 1)[1].split("## 3. PR body\n", 1)[0]
+        self.assertIn(
+            'The issue body contract is [Issue report](../../../prompts/util/issue-report.md).',
+            issue_form,
+        )
         for requirement in ("## Evidence", "## Cause", "## Acceptance criteria", "Label untested parts", "full SHA"):
             self.assertIn(requirement, form)
-        marker = "The title names the behavior in plain words"
-        owners = [p for p in ROOT.rglob("*.md") if marker in p.read_text()]
-        self.assertEqual(owners, [contract_path])
+        for marker in ("The title names the behavior in plain words", "The body states:"):
+            owners = [p for p in ROOT.rglob("*.md") if marker in p.read_text()]
+            self.assertEqual(owners, [contract_path])
         for role in ("checker", "triager"):
             with self.subTest(role=role):
                 prompt = PromptTest().run_prompt(f"prompts/roles/{role}.md")
