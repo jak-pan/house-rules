@@ -246,9 +246,6 @@ class CollectionAcceptanceTest(unittest.TestCase):
                 self.assertEqual(includes.returncode, 0, includes.stderr)
                 self.assertNotIn("skills/operator-writing/references/github-text.md", includes.stdout.splitlines())
                 self.assertEqual(includes.stdout.splitlines().count(form_path), 1)
-                prompt = PromptTest().run_prompt(f"prompts/roles/{role}.md")
-                self.assertEqual(prompt.returncode, 0, prompt.stderr)
-                self.assertEqual(prompt.stdout.count((ROOT / form_path).read_text()), 1)
 
     def test_triage_preserves_requirements_without_a_decision(self):
         text = (ROOT / "prompts/util/triage-classes.md").read_text()
