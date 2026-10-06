@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Prepare every role and lens the way the review service does, and fail on any error.
 
-The review service copies only prompts/ and skills/pr-ready/ from a House Rules commit, then
-builds each role prompt and each lens review from that copy. This check copies the same two
-folders into an empty directory, compiles every role with prompt.py, and runs
+The review service copies only prompts/, rules/ and skills/pr-ready/ from a House Rules commit,
+then builds each role prompt and each lens review from that copy. This check copies the same
+three folders into an empty directory, compiles every role with prompt.py, and runs
 `prepare.py review` for every lens against a small fixture repository. Stdlib and git only.
 Usage: check_review_staging.py [--root <house-rules checkout>]
 """
@@ -15,7 +15,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-STAGED = ("prompts", "skills/pr-ready")
+STAGED = ("prompts", "rules", "skills/pr-ready")
 SECTIONS = ("# 1. Review pack", "# 2. Instructions", "# 3. Pull request and issue",
             "# 4. Requirements", "# 5. Change")
 GIT_ENV = {"GIT_AUTHOR_NAME": "check", "GIT_AUTHOR_EMAIL": "check@example.invalid",
