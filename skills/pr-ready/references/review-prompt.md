@@ -13,11 +13,11 @@ change, e.g. authorization on every path, crash/replay, bounded cost>.
 
 ## Fix prompt template
 
-Expand the [implementer role](../../../prompts/roles/implementer.md) with `scripts/prompt.py` before this template.
+Expand the [fixer role](../../../prompts/roles/fixer.md) with `scripts/prompt.py` before this template.
 
 ```text
-<PR>, branch <branch>, this checkout. Review: <path> — read fully. Fix every blocking item
-following the worker pack: <one line per item>.
+<PR>, branch <branch>, this checkout. Accepted findings: <path> — read fully. Follow the fixer role
+for scope and the worker pack for implementation: <one line per accepted item>.
 Merge the default branch first if it moved (merge, no rebase).
 Local gate: apply the worker pack and the repository's declared gates.
 Commit message conventions: <conventions>. Delivery override: <task-specific override, if any>.
