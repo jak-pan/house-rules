@@ -979,6 +979,7 @@ else:
         scripts = kit / "skills/pr-ready/scripts"
         shutil.copytree(SCRIPT.parent, scripts)
         shutil.copytree(SCRIPT.parents[3] / "prompts", kit / "prompts")
+        shutil.copytree(SCRIPT.parents[3] / "rules", kit / "rules")
         (scripts / "review-panel.lenses").write_text("generalist-a b read-only\n")
         Path(env["REVIEW_PANEL_CONF"]).write_text("b = codex family-b-model - high\n")
         (self.binaries / "codex").write_text("#!" + sys.executable + "\n" +

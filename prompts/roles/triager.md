@@ -26,3 +26,4 @@ Output: exactly one VERDICT: token in your response, with no quoted verdict toke
 @rule house-rules:prompts/skills/no-fortification.md
 @rule house-rules:prompts/skills/test-discipline.md
 @rule house-rules:skills/operator-writing/references/github-issue-form.md
+@rule house-rules:rules/writing.md

@@ -48,3 +48,4 @@ How to work:
 
 Final message: what changed per task item (fixed, already fixed, or does not hold, with
 evidence), files touched, the gate commands with counts, and anything left undone.
+@rule house-rules:rules/writing.md

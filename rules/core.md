@@ -44,6 +44,7 @@
 - Read context files fully.
 - After any context reset, including a compaction, re-read the bible and any active campaign ledger.
 - Reload the skills the current task uses.
+- rules/writing.md governs all text.
 - Follow skills/operator-writing/SKILL.md §Communication rules for operator-facing text.
 - Follow `work-tracking` §Session loop: fetch, update, reconcile for tracker procedure.
 - Follow `design-flow` §5 for feature reading order.
@@ -105,7 +106,7 @@
    Claim something works only after running it and observing logs, tests, or artifacts.
    Never fabricate.
 4. **Communicate clearly.**
-   Follow skills/operator-writing/SKILL.md §Communication rules.
+   Follow rules/writing.md §Communication rules.
 5. **Surface errors immediately.**
    Never silently skip, drop, cap, or degrade anything: inputs, items, tests, steps, or results.
    Fix root causes.

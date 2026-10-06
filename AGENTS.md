@@ -13,6 +13,7 @@ At session start and after every reset or compaction, read these files in full:
 - [core rules](rules/core.md)
 - [outcome rules](rules/outcome.md)
 - [delivery rules](rules/delivery.md)
+- [writing rules](rules/writing.md)
 
 ## Load when the task needs it
 
