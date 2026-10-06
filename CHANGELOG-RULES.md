@@ -27,3 +27,13 @@ filled the disk.
 
 Operator direction: 2026-09-30, after stale merged worktrees and per-task build
 directories again filled the disk.
+
+## skills/operator-writing/SKILL.md — Language (qualifiers) and Detail test
+
+Operator direction: 2026-10-06, after status lines stated limits and changes without their
+consequence, which read as changes that had not happened.
+
+## AGENTS.md — Session start (reload skills after a reset)
+
+Operator direction: 2026-10-06, after a compaction dropped a loaded skill and the next
+operator messages broke its rules.

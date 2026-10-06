@@ -730,6 +730,67 @@ class AnsweredRestoreTest(unittest.TestCase):
     def text(self, path):
         return " ".join((ROOT / path).read_text().split())
 
+    def test_progress_example_explains_pull_request(self):
+        detail = self.text("skills/operator-writing/SKILL.md").split(
+            "- **Detail test:**", 1
+        )[1].split("Decisions use skill", 1)[0]
+        example = detail.split("Example:", 1)[1]
+        self.assertNotRegex(example, r"\bPR\b")
+        self.assertIn("A pull request gets at most three fix rounds.", example)
+
+    def test_progress_example_preserves_operator_decisions(self):
+        detail = self.text("skills/operator-writing/SKILL.md").split(
+            "- **Detail test:**", 1
+        )[1].split("Decisions use skill", 1)[0]
+        self.assertNotIn("Nothing waits for you", detail)
+        self.assertIn("within approved authority.", detail)
+        self.assertIn("Routine work continues.", detail)
+        self.assertIn(
+            "Changes outside approved authority require your decision.", detail
+        )
+
+    def test_reset_reloads_skills_and_references_the_writing_rule_owner(self):
+        session = self.text("AGENTS.md").split("## Session start", 1)[1].split(
+            "## Outcome and resource contract", 1
+        )[0]
+        self.assertIn("including a compaction", session)
+        self.assertIn("reload the skills the current task uses", session.lower())
+        self.assertIn("§Actionable communication", session)
+        self.assertNotIn("operator-writing", session)
+        communication = self.text("AGENTS.md").split(
+            "## Actionable communication", 1
+        )[1].split("## Autonomy", 1)[0]
+        self.assertIn(
+            "Every operator-facing text follows skill `operator-writing`", communication
+        )
+
+    def test_reset_instructions_fit_the_twenty_word_limit(self):
+        reset = self.text("AGENTS.md").split("3. After any context reset", 1)[1].split(
+            "4. Feature reading order", 1
+        )[0]
+        for sentence in ("After any context reset" + reset).split("."):
+            if sentence.strip():
+                with self.subTest(sentence=sentence.strip()):
+                    self.assertLessEqual(len(sentence.split()), 20)
+
+    def test_detail_instructions_fit_the_limit_and_keep_adjacent_consequences(self):
+        detail = self.text("skills/operator-writing/SKILL.md").split(
+            "- **Detail test:**", 1
+        )[1].split("Decisions use skill", 1)[0]
+        for sentence in detail.split("."):
+            if sentence.strip():
+                with self.subTest(sentence=sentence.strip()):
+                    self.assertLessEqual(len(sentence.split()), 20)
+        for requirement in (
+            "limit, stop, failure or change",
+            "the same or the next sentence",
+            "changed or unchanged",
+            "who acts",
+            "what happens next",
+        ):
+            with self.subTest(requirement=requirement):
+                self.assertIn(requirement, detail)
+
     def test_measured_duration_exception(self):
         self.assertIn(
             "State size as files and lines touched; give a duration only when measured "
