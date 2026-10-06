@@ -24,3 +24,5 @@ jobs:
         run: python3 -B -m unittest discover -s skills/operator-protocol/scripts
       - name: Test prompts, preparer and verdict scripts
         run: python3 -B -m unittest discover -s skills/pr-ready/scripts
+      - name: Prepare every role and lens as the review service does
+        run: python3 -B scripts/check_review_staging.py && python3 -B -m unittest discover -s scripts -p 'test_check_review_staging.py'
