@@ -58,8 +58,7 @@ Housekeeping is part of the workflow, not a later chore. Cleanup follows AGENTS.
 - **At session start, for every repo the session works in**, remove stale lanes left by
   any session: linked worktrees whose branch is merged (its PR merged at the same head, or
   its HEAD is on the default branch), and `.tmp/cargo-target/<lane>` directories whose lane
-  no longer exists. Then run `git worktree prune`. Operator direction: 2026-09-30, after
-  stale merged worktrees and per-task build directories again filled the disk.
+  no longer exists. Then run `git worktree prune`.
 - **Removable only when all hold:** no uncommitted changes (`git status --porcelain` is
   empty); no commits missing from the remote (`git log HEAD --not --remotes` is empty, or
   its PR merged at this HEAD or a descendant of it — a squash merge deletes the branch);

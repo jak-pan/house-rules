@@ -8,7 +8,8 @@ license: MIT
 
 External means any repository not owned by the authenticated GitHub user or an
 organization where their membership is active. A fork counts as its parent, where its
-PRs, issues and comments land. Check with `scripts/repo-ownership.sh [owner/name]`.
+PRs, issues and comments land. Our own fork's push exception is in §3. Check with
+`scripts/repo-ownership.sh [owner/name]`.
 
 Internal changes follow skill `pr-ready`. External repositories are different: their
 maintainers own the flow, their CI runs only after we post, and every post is public and
@@ -40,6 +41,9 @@ our patches is ours (AGENTS.md §Prove necessity before expanding the critical p
   equivalent that covers the change; its CI cannot run for us earlier.
 - Run review rounds as in skill `pr-ready` §3, applying its review bar strictly and adding
   compatibility for upstream's other users, until reviewers approve.
+- Agents push to our own fork only after local review rounds that apply the same rules
+  as Warden. House Rules review and Warden stay fully aligned on rules. This does not
+  authorize upstream pushes, PRs, issues or comments.
 - Contribute only what the fix needs. Tests prove the defect and guard the fix; add no
   speculative coverage, no extra checks, no refactors or reformatting outside the change,
   and no new dependencies unless they are required.

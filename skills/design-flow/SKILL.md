@@ -101,16 +101,17 @@ A feature is done when the code shipped AND the paper trail moved. The PR closes
 on merge (skill `work-tracking` §The host view) and carries this checklist:
 
 - pre-merge quiz passed on significant work (skill `finding-unknowns`)
-- design doc `implemented` or `superseded` (never `draft`/`approved`); shipped sections
+- **CI closing check: design doc.** CI checks the design doc status is `implemented` or
+  `superseded` (never `draft`/`approved`); shipped sections
   migrated to `docs/architecture/feature.md` (or the repo's `docs/specs/{subsystem}/`);
   design doc shrunk to a pointer or deleted (issue link: `STRUCTURE.md` §Frontmatter
   statuses)
 - durable decisions promoted from the issue → the bible
 - prototypes: keep hifi if it's the living reference, else delete; spikes killed
 - regression tests required by AGENTS.md §Verification exist and are green
-- final handoff record by the current owner, mirrored to the issue, every section filled
-  (`None` when empty;
-  skill `handoff-continuity`)
+- **CI closing check: final handoff.** CI checks that the final handoff is authored by
+  the current owner, mirrored to the issue, and every required section is non-empty
+  (`None` when empty; skill `handoff-continuity`)
 
 Merge only when the checklist holds, then delete the branch, remote and local
 (`git branch -D` after a squash merge, once its records are mirrored), and remove its

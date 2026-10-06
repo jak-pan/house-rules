@@ -53,8 +53,8 @@ cargo test --release --workspace --all-features --no-fail-fast
 ```
 
 Zero warnings is the bar. The repo's architecture guard scripts, if any, run after
-structural changes. Env-mutating tests use `#[serial(env)]`; fixtures are synthetic and
-date-relative (no fixture rot).
+structural changes. Env-mutating tests use `#[serial(env)]`; test data follows
+AGENTS.md §Security. Fixtures are date-relative (no fixture rot).
 
 ## Config layering (default for Rust products)
 
