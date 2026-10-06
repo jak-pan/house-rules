@@ -34,6 +34,7 @@
 - Default to Git work-branch records with Git-host issues on a project board through `work-tracking`.
 - Use another tracker only when the workspace explicitly selects it.
 - Never maintain two writable trackers.
+- The workspace tracker file for items without a repository is the one exception (rules/delivery.md).
 
 ## Session start
 

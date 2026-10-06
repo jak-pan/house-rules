@@ -1224,8 +1224,9 @@ class InvariantsOnlyTest(unittest.TestCase):
     TRACKING_RULE = """**Track every deferred item.**
 
 - Make a work item in the same turn when you defer a requested outcome, an accepted finding or a promise to the operator.
-- Use an issue in the GitHub repository that owns the change.
-- If no repository owns it, add one entry to the workspace tracker file. The entry holds one item and its status.
+- Use the workspace's tracker. By default, that is an issue in the GitHub repository that owns the change.
+- If no repository exists for the item, add one entry to the workspace tracker file. The entry holds one item and its status.
+- That file is the one exception to the status-file and two-tracker rules.
 - Link the work item where you defer the work.
 - Do not write "later", "I will file" or "a follow-up covers" without that link.
 - Plans, documents, chat, reports, logs and unmerged branches record intent. They do not track work.
@@ -1236,12 +1237,13 @@ class InvariantsOnlyTest(unittest.TestCase):
     def test_approved_tracking_rule_is_exact(self):
         agents = (ROOT / "rules/delivery.md").read_text()
         self.assertEqual(agents.count(self.TRACKING_RULE), 1)
+        self.assertEqual(agents.count(self.RESTORED_TRACKING), 1)
         self.assertNotIn("Operator requests stay tracked until done", agents)
 
     # These clauses must remain verbatim under the operator's restoration decision.
     RESTORED_TRACKING = (
         '- A requested outcome or accepted finding that the session does not finish '
-        'becomes a work item in the repository that owns the change, before the session'
+        'becomes a work item in the tracker chosen above, before the session'
         ' ends, linked from wherever it was set aside.\n- That covers work that is '
         'deferred, "saved as a task", scoped out of another item, left as an audit gap,'
         ' a plan or migration step, or said to "belong to the other repository\'s '
@@ -1458,7 +1460,7 @@ class AuditRestorationTest(unittest.TestCase):
         text = (ROOT / 'rules/delivery.md').read_text()
         for clause in (
             '- A requested outcome or accepted finding that the session does not finish'
-            ' becomes a work item in the repository that owns the change, before the '
+            ' becomes a work item in the tracker chosen above, before the '
             'session ends, linked from wherever it was set aside.\n- That covers work '
             'that is deferred, "saved as a task", scoped out of another item, left as '
             'an audit gap, a plan or migration step, or said to "belong to the other '
