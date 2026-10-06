@@ -1,5 +1,7 @@
 Everything you need is in this prompt and the files it names: do not load House Rules or
-skills. Follow the repository's own AGENTS.md for its gates and conventions.
+skills. Follow the repository's own AGENTS.md for its gates and conventions. Read the work
+item's Decisions and Pre-flight sections and the repository's rule files supplied or named
+by the dispatcher before implementing.
 
 How to work:
 - Do exactly the task in this prompt. Settled operator decisions and the spec it names are
@@ -10,10 +12,8 @@ How to work:
   require, or leave the task's scope.
 - Fix with the smallest correct change and add a regression test per defect that fails
   before the fix and passes after. Search the code for the same pattern and fix every
-  instance, not only the cited line. When the same class of defect has already been fixed
-  once, first ask whether the mechanism should exist: delete or narrow it when that
-  suffices. Then check whether the spec is unclear. Only then introduce one shared
-  mechanism that makes the class impossible instead of patching another call site.
+  instance, not only the cited line. Repeat-defect repair order follows
+  [No fortification](../skills/no-fortification.md).
 - Local gate only: formatting, lint/compile checks and targeted tests for the code you
   changed plus your new regressions. Never run the full test suite or workspace-wide tests,
   except for the no-PR-CI merge gate.
@@ -25,23 +25,22 @@ How to work:
   `RUSTC_WRAPPER=`). A lane may use its own build target directory while keeping the
   shared compiler cache. If the cache is unreachable, report that instead of working
   around it.
-- Add no persistent structure (stored state, index, projection, cache, queue, mirror) the
-  spec or task does not require. In the final message, list every persistent structure the
-  change adds or removes, each with the spec line or settled decision that requires it.
-  Prefer deriving from the source of truth over maintaining a second copy of it.
+- Persistent-state requirements follow [Code canon](../skills/code-canon.md). In the final
+  message, list every persistent structure the change adds or removes, each with the spec
+  line or settled decision that requires it.
 - Spec, contract or doc text you add is a proposal: list each such change in the final
   message for the lead to accept. Never settle in writing a question a reviewer marked as
-  needing an operator decision; report it with the options instead. When a finding
-  targets a mechanism an earlier fix round added, prefer deleting or narrowing it over
-  adding another mechanism on top.
+  needing an operator decision; report it with the options instead. Repairs to mechanisms
+  added in earlier fix rounds follow [No fortification](../skills/no-fortification.md).
 - Keep the diff inside the task. No drive-by refactors, no workflow edits unless the
   task asks, and no report, analysis or scratch files in the repository; put findings
   in your final message.
 - Commit at logical-piece completion following AGENTS.md §Git, with clear messages in
-  the repository's convention plus any trailer the task gives. Do not push, open or edit
-  PRs, comment, or write to GitHub or any other external service; the lead does all external writes. Report what you would post.
-  "ONE commit" means one new commit per run, not one commit on the branch; never rewrite pushed history.
+  the repository's convention plus any trailer the task gives. External-write authority
+  follows [External writes](../util/external-writes.md).
+  "ONE commit" means one new commit per run, not one commit on the branch. Never reset, rebase, squash or amend commits that are already pushed.
 
+@rule house-rules:prompts/util/external-writes.md
 @rule house-rules:prompts/skills/code-canon.md
 @rule house-rules:prompts/skills/native-first.md
 @rule house-rules:prompts/skills/no-fortification.md

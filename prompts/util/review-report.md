@@ -16,7 +16,7 @@ VERDICT: APPROVE or REQUEST_CHANGES (REQUEST_CHANGES when any item is under Bloc
      its file:line; or "none written">
    - Introduced by this change: yes | no (pre-existing) | unknown
    - Confidence: high | medium | low (high = traced in the code; low = suspected, not traced)
-   - Smallest fix: <deletion or narrowing first when it suffices>
+   - Smallest fix: <apply No fortification for the repair order>
 2. [B2] ...
 
 ## Spec issues

@@ -91,8 +91,9 @@ load no other rules. Specialist dispatch follows
   quick reviews. The project may require two clean rounds for security-critical changes.
   Test scope:
   [`prompts/roles/reviewer.md`](../../prompts/roles/reviewer.md).
-- The fixer closes every blocking item from all reviewers in one run, following the
-  [worker pack](../../prompts/roles/implementer.md), with commit cadence from AGENTS.md §Git.
+- The fixer follows the [fixer role](../../prompts/roles/fixer.md) for accepted scope and
+  the [worker pack](../../prompts/roles/implementer.md) for implementation, with commit
+  cadence from AGENTS.md §Git.
   The next review names that commit or those commits and marks each prior blocker RESOLVED
   or NOT. A fixer never approves its own fix.
 - Finding disposition follows the [shared review bar](../../prompts/util/review-bar.md).
@@ -100,14 +101,15 @@ load no other rules. Specialist dispatch follows
 - **Hosted review bots.** Review threads from bots the host runs on the PR (for example
   GitHub Copilot) are reviewer input for the next fix round, judged by the same bar. Before
   merging, the lead replies to each with the fix or the reason it is not one, and resolves it.
-- **Review reassessment.** After two fix rounds on one PR, stop for a lead decision to
-  simplify or split and record why. Follow-ups are tracked before merging and never hold
+- **Review reassessment.** After three fix rounds on one PR, stop for a lead decision to
+  simplify or split and record why; at most three fix rounds run per PR. Follow-ups are
+  tracked before merging and never hold
   the merge; finding disposition follows the
   [shared review bar](../../prompts/util/review-bar.md).
   A slower reviewer's findings on an older head feed the next fix round; its fixer
   never pushes onto a head that moved. Merge eligibility has one home: §4.
-- **Repeat defects.** Use the worker pack's mechanism-first reassessment
-  ([prompts/roles/implementer.md](../../prompts/roles/implementer.md)); the general third-occurrence checkpoint
+- **Repeat defects.** Use the repair order in
+  [No fortification](../../prompts/skills/no-fortification.md); the general third-occurrence checkpoint
   remains AGENTS.md §Three-occurrence reassessment.
 - **No idle gaps.** A fix run pushes and starts its review in the same job; a review that
   needs a fix starts the fix in the same job. The lead intervenes only for decisions.

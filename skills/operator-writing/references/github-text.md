@@ -67,6 +67,10 @@ Rules:
 - One problem per issue. An audit with several findings numbers them; each fix PR names
   its finding number.
 - The first paragraph alone tells the reader what breaks.
+- The body states: what happens and its effect first; current behavior with file:line at
+  the commit SHA reviewed (linked as a full-SHA permalink); evidence (a command, test or
+  quoted line; say "From code reading" when untested); cause; acceptance criteria. Short
+  sentences.
 - A feature or follow-up issue replaces Reproduction with "Current behavior" and "Wanted
   behavior". It keeps Acceptance criteria.
 - Work-item sections (Scope, Decisions, Lane, Design; skill `work-tracking`) follow
