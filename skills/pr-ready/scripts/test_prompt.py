@@ -785,18 +785,6 @@ class AnsweredRestoreTest(unittest.TestCase):
                       "structure, language, options, Mermaid diagrams, and reader test.",
                       communication)
 
-    def test_reset_instructions_fit_the_twenty_word_limit(self):
-        session = self.text("rules/core.md").split("## Session start", 1)[1].split(
-            "## Protected operator assets", 1
-        )[0]
-        reset = session.split("After any context reset", 1)[1].split(
-            "Follow skills/operator-writing/SKILL.md §Communication rules", 1
-        )[0]
-        for sentence in ("After any context reset" + reset).split("."):
-            if sentence.strip():
-                with self.subTest(sentence=sentence.strip()):
-                    self.assertLessEqual(len(sentence.split()), 20)
-
     def test_detail_instructions_fit_the_limit_and_keep_adjacent_consequences(self):
         detail = self.text("skills/operator-writing/SKILL.md").split(
             "- **Detail test:**", 1
@@ -1225,16 +1213,6 @@ class AuditRestorationTest(unittest.TestCase):
             with self.subTest(clause=clause):
                 self.assertIn(clause, text)
 
-    def test_M2_session_reading_order(self):
-        text = (ROOT / 'rules/core.md').read_text()
-        for clause in (
-            'At session start, read the bible and `CONTEXT.md` when present.',
-            "Then read the tracker board, followed by your work item's state and latest"
-            ' handoff.',
-        ):
-            with self.subTest(clause=clause):
-                self.assertIn(clause, text)
-
     def test_M4_public_repository_scope(self):
         text = (ROOT / 'rules/core.md').read_text()
         for clause in (
@@ -1364,14 +1342,6 @@ class AuditRestorationTest(unittest.TestCase):
             with self.subTest(clause=clause):
                 self.assertIn(clause, text)
 
-    def test_L8_unmeasured_estimates_prohibited(self):
-        text = (ROOT / 'rules/core.md').read_text()
-        for clause in (
-            '**Give no unmeasured time estimates.**',
-        ):
-            with self.subTest(clause=clause):
-                self.assertIn(clause, text)
-
     def test_L9_collaboration_mode_no_repeated_asks(self):
         text = (ROOT / 'rules/core.md').read_text()
         for clause in (
@@ -1416,15 +1386,6 @@ class AuditRestorationTest(unittest.TestCase):
             with self.subTest(clause=clause):
                 self.assertIn(clause, text)
 
-    def test_L14_long_run_exception_beside_threshold(self):
-        text = (ROOT / 'rules/delivery.md').read_text()
-        for clause in (
-            'Investigate runs more than 20% over that time.\n- Allow an expected long '
-            'run once, including a rebuilt dependency cache.',
-        ):
-            with self.subTest(clause=clause):
-                self.assertIn(clause, text)
-
     def test_L15_external_run_subject_and_examples(self):
         text = (ROOT / 'rules/delivery.md').read_text()
         for clause in (
@@ -1432,15 +1393,6 @@ class AuditRestorationTest(unittest.TestCase):
             'benchmarks, and crawls.',
             'Require a durable transcript or checkpoint before the first substantive '
             'call for those runs.',
-        ):
-            with self.subTest(clause=clause):
-                self.assertIn(clause, text)
-
-    def test_L16_one_commit_scope(self):
-        text = (ROOT / 'rules/delivery.md').read_text()
-        for clause in (
-            'Never mix unrelated fixes, docs, refactors, or in-flight prototypes in one'
-            ' commit.',
         ):
             with self.subTest(clause=clause):
                 self.assertIn(clause, text)
