@@ -94,18 +94,22 @@ Issues, PR bodies, review comments, replies to review and commit messages use th
 
 ## Questions to the operator
 
-A question the operator must answer is a card, placed after the explanation:
+A question the operator must answer is a short block, placed after the explanation:
 
-| Row | Content |
-|---|---|
-| Type | Decision (choose, approve, accept a risk), design request (define intended behavior) or evidence request (provide a record). |
-| Why we ask | One or two sentences, each labelled as fact or assessment. |
-| The request | One direct question naming the concrete choices. |
-| How to answer | The exact answer format, plus how to answer "not decided", "need more information about X" or "not applicable because …". |
-| Done when | What changes after the answer. |
+> **N · Decision: one direct question naming the concrete choices?**
+> *Why:* one or two sentences, each marked (fact) or (assessment).
+> *Answer:* the exact reply words, for example `keep` or `remove`; "not decided", "need more
+> information about …" or "not applicable because …" also work.
+> *Then:* what changes after the answer.
 
-Work the agent's own team must do (tests, replays, verification) is never a question to
-the operator. List it as an internal task.
+- The type word is Decision (choose, approve, accept a risk), Design (define intended
+  behavior) or Evidence (provide a record).
+- Number questions 1, 2, 3 across the whole message, never 1a, 1b. Group them under plain
+  section labels (for example "General", then one label per topic) and keep counting
+  across sections.
+- The operator may answer several questions in one line, for example `1 keep, 2 yes`.
+- Work the agent's own team must do (tests, replays, verification) is never a question to
+  the operator. List it as an internal task.
 
 ## Checks before sending
 

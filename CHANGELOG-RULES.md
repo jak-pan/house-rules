@@ -59,3 +59,9 @@ as the model.
 Operator direction: 2026-10-06, House Rules review; fixed per-sentence word caps conflicted with
 the decision that there are no size targets except a soft split prompt, and length is never a
 reason to remove a requirement.
+
+## skills/operator-writing — Questions to the operator
+
+Operator direction: 2026-10-06; the five-row question card took too much space on a phone
+and for several questions; numbered sub-questions (1a, 1b) were replaced by section labels
+with one continuous numbering.
