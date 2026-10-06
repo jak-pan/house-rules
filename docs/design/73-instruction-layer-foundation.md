@@ -474,11 +474,18 @@ evidence; the agent's self-report is not.
 1. **Hello:** "hello". Pass: the index and foundation files are each read once.
    The outcome and delivery files are not read.
    Shared-rule reads follow [design #74](https://github.com/symbiotic-sh/house-rules/issues/74).
-2. **Coding task:** fix a typo in a fixture repository.
-   Pass: the outcome and delivery files are read at most once each.
-3. **Compaction:** fill the context with a read-only task, then compact (`/compact` in Claude and
-   Kimi; a low auto-compaction limit in Codex, as in the load test). Pass: the recovery turn
-   reads the index, foundation and task files at most once each.
+2. **Coding task:** fix a fixture function with incorrect behavior, add and run a regression test, and commit the fix.
+   This substantive task triggers outcome; changing files, testing and committing trigger delivery (§4.3).
+   Pass before compaction: the outcome and delivery files each receive exactly one complete read.
+3. **Compaction:** before finishing step 2, fill the context by inspecting the fixture read-only, then compact
+   (`/compact` in Claude and Kimi; a low auto-compaction limit in Codex, as in the load test).
+   Before compaction, list the complete paths of the required recovery files in the event log:
+   `<canary root>/INDEX.md`, [&lt;canary root&gt;/rules/core.md](../../rules/core.md),
+   [&lt;canary root&gt;/rules/writing.md](../../rules/writing.md), [&lt;canary root&gt;/rules/outcome.md](../../rules/outcome.md),
+   [&lt;canary root&gt;/rules/delivery.md](../../rules/delivery.md), the fixture's bible and any active campaign ledger when present,
+   every other triggered rule file and skill still used, and the coding task's work item, source and regression test files.
+   Include the shared rules required by [design #74](https://github.com/symbiotic-sh/house-rules/issues/74).
+   Pass: the recovery turn performs exactly one complete read of every listed required file before resuming the coding task.
 4. **Compaction loop:** repeat step 3 in Codex with a limit low enough that the re-read itself
    compacts again. Pass: the agent stops re-reading and reports the loop; no file is read a
    third time.
