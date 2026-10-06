@@ -240,10 +240,22 @@ def verify(root, home, findings, selected):
             elif exists and not install and name in skills:
                 findings.append(f"same-name shadowing conflict: {path}")
 
-    for name in ("core", "outcome", "delivery"):
-        path = root / f"rules/{name}.md"
+    for path in always_load(root, findings):
         if not is_file(path):
             findings.append(f"missing rule file: {path}")
+
+
+def always_load(root, findings):
+    """Rule files the index (AGENTS.md "Always load") requires, so the check follows the index."""
+    index = root / "AGENTS.md"
+    if not is_file(index):
+        findings.append(f"missing index: {index}")
+        return []
+    section = index.read_text(encoding="utf-8").split("## Always load", 1)
+    links = re.findall(r"\]\((rules/[^)]+\.md)\)", section[1].split("\n## ", 1)[0]) if len(section) == 2 else []
+    if not links:
+        findings.append(f"index lists no always-load rule files: {index}")
+    return [root / link for link in links]
 
 
 def main(argv=None):
