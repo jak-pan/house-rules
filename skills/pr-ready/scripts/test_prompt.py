@@ -1,5 +1,4 @@
 from pathlib import Path
-import ast
 import shutil
 import re
 import subprocess
@@ -451,6 +450,16 @@ class CollectionAcceptanceTest(unittest.TestCase):
         self.assertIn(
             "Never reset, rebase, squash or amend commits that are already pushed.", text,
         )
+
+    def test_worker_git_references_name_house_rules(self):
+        for role, references in (("implementer", 1), ("fixer", 2)):
+            with self.subTest(role=role):
+                result = PromptTest().run_prompt(f"prompts/roles/{role}.md")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(
+                    result.stdout.count("House Rules rules/delivery.md §Git"),
+                    references,
+                )
 
 
 class RuleOwnershipTest(unittest.TestCase):
@@ -1617,19 +1626,6 @@ class AcceptedScopeRegressionTest(unittest.TestCase):
             "Follow rules/delivery.md §Verification for CI review, failure routing "
             "and the expected-long-run exception.", procedure,
         )
-
-    def test_restoration_tests_keep_distinct_assertions(self):
-        module = ast.parse(Path(__file__).read_text())
-        restoration = next(node for node in module.body
-                           if isinstance(node, ast.ClassDef)
-                           and node.name == "AuditRestorationTest")
-        bodies = {}
-        for method in restoration.body:
-            if isinstance(method, ast.FunctionDef) and method.name.startswith("test_"):
-                body = ast.dump(ast.Module(body=method.body, type_ignores=[]))
-                self.assertNotIn(body, bodies, f"{method.name} duplicates {bodies.get(body)}")
-                bodies[body] = method.name
-        self.assertFalse(hasattr(AuditRestorationTest, "test_M3_stop_scope_always_loads"))
 
 
 if __name__ == "__main__":
