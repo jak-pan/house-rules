@@ -63,9 +63,9 @@ The compiler keeps single-file and standard-input expansion. The compiler gains 
 ```text
 skills/pr-ready/scripts/prompt.py [--rev COMMIT [--repo DIR]] [--list] [FILE]
 skills/pr-ready/scripts/prompt.py --rev COMMIT [--repo DIR] [--list]
-    [--role NAME] [--lens NAME] [--include PATH]... [--task FILE]...
+    [--role NAME] [--lens NAME] [--include PATH]... [--task FILE [--task-source NAME]]...
     (--target DIR [--target-rev COMMIT] | --no-target)
-    [--omit-shared-rules] [--out FILE] [--manifest FILE]
+    [--omit-shared-rules] [--out DIR | --manifest FILE]
 ```
 
 - `--rev COMMIT` reads House Rules files from that commit. Legacy single-file and standard-input expansion can still read the working tree without this option. Dispatchers use `--rev` for every worker prompt, including lane review panels.
@@ -73,18 +73,21 @@ skills/pr-ready/scripts/prompt.py --rev COMMIT [--repo DIR] [--list]
 - `--role NAME` selects `prompts/roles/NAME.md`. `--lens NAME` selects `prompts/lenses/NAME.md`. Each name must match `[a-z0-9-]+`.
 - `--include PATH` adds a House Rules repository-relative file. Repeated options retain command-line order.
 - `--task FILE` adds local task text without expanding it. Repeated options retain command-line order.
+- `--task-source NAME` gives the immediately preceding `--task` a logical source identifier, such as `symbiotic-sh/house-rules#77` or a caller-chosen name. It defaults to `inline`. It requires an immediately preceding `--task` and must never contain a machine path (lead decision L1).
 - `--target DIR` selects a target Git checkout. `--target-rev COMMIT` selects its rules revision, defaulting to its `HEAD`. `--no-target` declares that the pack has no target. Pack mode requires exactly one target choice.
 - `--omit-shared-rules` omits includes whose House Rules repository-relative paths are under `rules/`. The dispatcher uses this option only for workers whose normal sessions already load the shared rules. The manifest records each omitted path. Warden and specialists without the foundation receive shared-rule includes by default.
-- `--out FILE` writes pack bytes instead of standard output. `--manifest FILE` writes the manifest and requires `--rev`.
+- `--out DIR` publishes `pack.txt` and `manifest.json` together in a new directory. It requires pack mode and the destination must not exist. Without `--out`, pack bytes go to standard output. `--manifest FILE` optionally writes the manifest in standard-output mode and requires `--rev`. The two output options are mutually exclusive.
 - An entry file or standard-input text cannot be combined with pack part options. `--omit-shared-rules` is a pack-mode option.
-- A failure returns exit 2 and one standard-error line. A failure writes no standard output, pack file or manifest file. Output files use temporary names and become final only after successful compilation and writing.
+- A failure returns exit 2 and one standard-error line. A compilation failure writes no output. In file-output mode, the compiler writes the complete pack and manifest into one temporary sibling directory on the destination filesystem, then publishes them with one directory rename. A failed write or rename publishes neither file. Standard-output mode is best effort: a failed output write exits nonzero, and the caller discards all output, including any manifest, from a nonzero run (lead decision L3).
 - The compiler uses only the Python standard library. The compiler supports Python 3.9 through `/usr/bin/python3`.
 
 The shared-rule option is the proposed way for one role file to serve normal lane sessions and Warden reviewers. The [role-pack design, issue #74](https://github.com/symbiotic-sh/house-rules/issues/74), owns which shared rules belong under `rules/`. That design keeps session-only instructions separate from role includes. This compiler omits only explicit shared-rule paths; the compiler does not infer rule meaning from prose.
 
 ### Reading from the commit
 
-With `--rev`, the compiler resolves `COMMIT^{commit}` once through `git rev-parse --verify`. The compiler records the resolved full commit id. The compiler lists the tree once with `git ls-tree -rz --full-tree`. The compiler reads blobs through one `git cat-file --batch` process.
+Every House Rules and target Git revision, tree and blob read must use Git's native `--no-replace-objects` option (or `GIT_NO_REPLACE_OBJECTS=1`). This requirement covers revision resolution, path validation, blob reads, compiler self-check and dispatcher extraction of the pinned compiler. Replacement refs must not change compiled bytes or recorded provenance.
+
+With `--rev`, the compiler resolves `COMMIT^{commit}` once through `git --no-replace-objects rev-parse --verify`. The compiler records the resolved full commit id. It reads only requested paths, feeding `<commit>:<path>` to one long-lived `git --no-replace-objects cat-file --batch` process per source repository as each include is discovered (lead decision L2). It validates each requested path's mode with a path-specific `git --no-replace-objects ls-tree -z <commit> -- <path>` lookup and checks the exact returned path. It never enumerates the whole tree. For K requested paths, native Git supplies K path lookups and one batch process for blob contents; the compiler adds include ordering and manifest records without processing unrelated tree entries.
 
 A valid path names a regular file with mode `100644` or `100755`. A symlink, submodule or directory fails compilation. Empty paths, NUL bytes, section references, absolute paths and `..` components fail compilation. An omitted shared-rule include must still name a valid file at the selected commit. A missing shared rule must not disappear silently.
 
@@ -94,7 +97,7 @@ The compiler never reads the working tree for rule text in commit mode. Uncommit
 
 The compiler compares its running file bytes with `COMMIT:skills/pr-ready/scripts/prompt.py`. A mismatch fails with `prompt: compiler differs from <short id>; run the compiler from that commit`. This check pins the assembly code as well as the rule text.
 
-A dispatcher can run a matching compiler in any clone containing the pin. A dispatcher can also extract `COMMIT:skills/pr-ready/scripts/prompt.py` into the durable run folder and pass `--repo`. Compiler extraction does not require a separate pinned checkout. The extracted compiler must still pass the self-check.
+A dispatcher can run a matching compiler in any clone containing the pin. A dispatcher can also extract `COMMIT:skills/pr-ready/scripts/prompt.py` into the durable run folder using `git --no-replace-objects show COMMIT:skills/pr-ready/scripts/prompt.py` and pass `--repo`. Compiler extraction does not require a separate pinned checkout. The extracted compiler must still pass the self-check.
 
 ### Pack layout and include-once
 
@@ -117,13 +120,13 @@ A role that repeats an include remains a source error caught by the role test. E
 
 ### Task text is data
 
-Task text is inserted without expansion or editing, apart from the part-ending newline rule. A task line matching include syntax fails with `prompt: include line in task file <name>; use --lens or --include`. The dispatcher supplies lenses and extra rules through compiler options. Task text copied from a work item cannot pull in rule files.
+Task text is inserted literally without expansion or editing, apart from the part-ending newline rule. Standalone include lines are allowed and remain literal text; the compiler does not scan tasks to reject them (lead decision L4). The dispatcher supplies lenses and extra rules through compiler options. Task text copied from a work item cannot pull in rule files.
 
 The dispatcher writes the work item's Decisions and Pre-flight sections into the task file. The compiler adds no separate work-item part. A capacity retry supplies the resume note as a second task file. Each attempt gets its own pack and manifest.
 
 ### Target repository rules
 
-The compiler reads the target's rules from its selected commit through Git. The compiler picks exactly one source:
+The compiler reads the target's rules from its selected commit through Git with replacement refs disabled, using the requested-path reader described above. The compiler picks exactly one source:
 
 1. If `<target>/.agents/rules.md` exists, include that file. Do not read `<target>/AGENTS.md`.
 2. Otherwise, if `<target>/AGENTS.md` exists and is not a loader, include that file unchanged.
@@ -146,7 +149,7 @@ The [role-pack design, issue #74](https://github.com/symbiotic-sh/house-rules/is
 
 ### Manifest
 
-The manifest is one JSON object with sorted keys and a trailing newline. Object ids, byte counts and hashes in this example are placeholders. Paths inside the manifest are repository-relative to their named source; they are not machine paths.
+The manifest is one JSON object with sorted keys and a trailing newline. Object ids, byte counts and hashes in this example are placeholders. File paths inside the manifest are repository-relative to their named source; they are not machine paths. A task's `source` is a logical identifier rather than its input file path (lead decision L1).
 
 ```json
 {
@@ -165,7 +168,7 @@ The manifest is one JSON object with sorted keys and a trailing newline. Object 
   "parts": [
     {"kind": "role", "path": "prompts/roles/reviewer.md"},
     {"kind": "lens", "path": "prompts/lenses/correctness-security.md"},
-    {"bytes": 83, "kind": "task", "sha256": "<task hash>", "source": "<run>/task.txt"}
+    {"bytes": 83, "kind": "task", "sha256": "<task hash>", "source": "symbiotic-sh/house-rules#77"}
   ],
   "skipped_repeats": [],
   "target": null
@@ -174,7 +177,7 @@ The manifest is one JSON object with sorted keys and a trailing newline. Object 
 
 `files` records included House Rules files in first-include order. Each file entry records its blob id and byte count. `parts` records the requested part order. A skipped repeat records its path and the 1-based part number. `omitted_shared_rules` lists distinct omitted paths in first-encounter order. An empty omission list means all shared-rule includes were expanded.
 
-Task files are local inputs rather than Git blobs. Each task entry records its supplied path, byte count and SHA-256 hash. `pack.sha256` hashes the exact output bytes. The pack header contains only the revision because the pack cannot contain its own hash.
+Task files are local inputs rather than Git blobs. Each task entry records its logical source identifier, byte count and SHA-256 hash, in the existing requested part order. The source is an issue reference, `inline` or a caller-chosen name, never a machine path (lead decision L1). `pack.sha256` hashes the exact output bytes. The pack header contains only the revision because the pack cannot contain its own hash.
 
 The target record uses a file-source shape or a no-rules shape. Values are placeholders. The file-source path is relative to the target commit; the source identifies either the target rules file or the target instruction file:
 
@@ -260,13 +263,16 @@ Pack size depends on the selected role, extra files, target rules and task text.
 Implementation tests belong in [skills/pr-ready/scripts/test_prompt.py](../../skills/pr-ready/scripts/test_prompt.py). Each test uses a small local Git fixture with a compiler copy. Each subprocess has a fixed short timeout.
 
 1. Commit-built output stays identical after an included working-tree file changes or the clone checks out another branch. A file present only as an untracked file fails as missing at the pin.
-2. The manifest records the resolved House Rules commit. Each included blob matches `git rev-parse <commit>:<path>`. The pack hash matches the output bytes.
+2. The manifest records the resolved House Rules commit. Each included blob matches `git --no-replace-objects rev-parse <commit>:<path>`. The pack hash matches the output bytes.
 3. Include-once preserves first-include order across role, lens and extra-file parts. The manifest records repeats. Include cycles still fail.
 4. Every role compiles with no repeated includes in both shared-rule modes. Normal-session mode omits `rules/` includes and records the omissions. Default mode includes the shared rules once. An invalid omitted-rule path still fails.
-5. An include line in task text, a symlink entry, a mismatched compiler, a missing commit, a manifest without `--rev`, or pack mode without `--rev` returns exit 2 with one error line and no outputs.
-6. Pack parts and separators match the declared order. Legacy single-file and standard-input output has no revision header. Task bytes and manifest hashes agree with the part-ending newline rule.
+5. A symlink entry, a mismatched compiler, a missing commit, a manifest without `--rev`, or pack mode without `--rev` returns exit 2 with one error line and no outputs.
+6. Pack parts and separators match the declared order. Legacy single-file and standard-input output has no revision header. Task bytes and manifest hashes agree with the part-ending newline rule. A standalone include line in a task remains literal and does not read the named rule. Task sources cover an issue reference, a caller-chosen name and the `inline` default; no machine input path reaches the manifest.
 7. Target fixtures cover `<target>/.agents/rules.md`, a non-loader `<target>/AGENTS.md`, a canonical renamed-index loader with and without a target-rule pointer, no target instruction file, and an uncommitted target-rule edit. The target manifest records the selected commit and blob. House Rules' own pointer selects `house-rules/.agents/rules.md`, not `house-rules/INDEX.md`.
 8. Pack mode without exactly one target choice fails with exit 2. The compiler tests run under `/usr/bin/python3` with Python 3.9.
+9. One bounded replacement-ref case uses small House Rules and target fixtures. Install replacement commits, trees and blobs in turn, including the compiler blob and one selected rule blob in each repository. Extract the compiler with replacements disabled. Compile before and after each replacement; pack bytes, resolved revisions, blob ids and manifest hashes must stay identical. Record Git invocations and check that every revision, tree and blob read, including compiler extraction, uses native replacement protection. Each subprocess has a fixed short timeout.
+10. Requested-path reads use one long-lived batch process per source repository and no whole-tree enumeration. A fixture with an unrelated file records Git requests and confirms that only requested paths are read.
+11. A compilation failure produces no output. File-output failures while writing either artifact or renaming the directory leave no published destination. Success publishes both files together. An existing destination fails without overwriting it. A standard-output write failure returns nonzero; the caller discards all output from that run.
 
 The lane runner's canary test runs after switching assembly:
 
@@ -302,6 +308,10 @@ Legacy single-file expansion remains available to existing callers. Normal sessi
 - **2026-10-07 — Index and pointers:** `DECISION` The operator chose renaming the House Rules index to `house-rules/INDEX.md`. Global, managed-repository and House Rules pointer files use the same shape with installation paths adjusted. The smaller-core design owns the rename and pointer text; this design updates loader detection.
 
 - **2026-10-07 — Warden review boundary:** `DECISION` The operator kept Warden reviewers read-only, with no builds or tests and no network except the model provider. Continuous integration owns builds and tests. Warden posts reviews; Mac lane scripts start local fixers. The role-pack design owns the reviewer setup.
+- **2026-10-07 — Lead decision L1, task provenance:** `DECISION` The lead chose a logical task-source identifier, such as `symbiotic-sh/house-rules#77`, `inline` or a caller-chosen name, never a machine path. Keep the existing task order, byte count and hash.
+- **2026-10-07 — Lead decision L2, tree reading:** `DECISION` The lead chose reading only requested paths through one long-lived `git cat-file --batch` process, fed `<commit>:<path>` for each include as it is discovered. No whole-tree enumeration.
+- **2026-10-07 — Lead decision L3, failure contract:** `DECISION` The lead chose no output on compilation failure. File output publishes the pack and manifest together by writing both into one temporary directory and renaming that directory once. Standard-output mode is best effort: a failed write exits nonzero, and the caller discards any output from a nonzero run.
+- **2026-10-07 — Lead decision L4, literal task includes:** `DECISION` The lead allowed literal include lines in tasks. Task text is inserted literally and never expanded. Remove the task scan that rejects standalone include lines and its rejection acceptance case.
 
 ## Open points
 
