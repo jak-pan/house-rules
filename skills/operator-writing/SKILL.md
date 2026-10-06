@@ -65,6 +65,9 @@ Example: not "Fix rounds are capped at three." but "A pull request gets at most 
   After that, the lead simplifies or splits the change within approved authority.
   Routine work continues. Changes outside approved authority require your decision."
 
+Decisions use skill `decision-brief` for their full content; this skill sets how all of it
+is written.
+
 ## GitHub text
 
 Issues, PR bodies, review comments, replies to review and commit messages use the forms in

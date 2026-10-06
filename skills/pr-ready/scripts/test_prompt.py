@@ -1658,6 +1658,8 @@ class AlwaysLoadedWritingTest(unittest.TestCase):
             ("They should know what happened, why it matters and what to do, in that order.", general, operator),
             ("This skill combines a controlled language (ASD-STE100, applied at about 80 %) "
              "with an explanation-first structure and a reader test.", operator, general),
+            ("Decisions use skill `decision-brief` for their full content; "
+             "this skill sets how all of it is written.", operator, general),
         ):
             with self.subTest(sentence=sentence):
                 self.assertEqual(owner.count(sentence), 1)
