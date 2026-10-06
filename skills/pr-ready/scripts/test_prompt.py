@@ -1143,6 +1143,7 @@ class RuleIndexTest(unittest.TestCase):
             "This file is its index.",
             "- Repository instructions and explicit operator choices override House Rules when they conflict.",
             "- Both stay subject to the host instruction hierarchy, permissions, access, and approval controls.",
+            "- A repository override may tighten or loosen any House Rules rule, including a security rule, and names the rule it changes.",
             "At session start and after every reset or compaction, read these files in full:",
         }
         section = ""
@@ -1156,6 +1157,9 @@ class RuleIndexTest(unittest.TestCase):
                     self.assertRegex(line, r"^- \[[^]]+\]\(rules/(?:core|outcome|delivery|writing)\.md\)$")
                 else:
                     self.assertRegex(line, r"^- [^:]+: load \[[^]]+\]\([^)]+\)\.$")
+
+    def test_repository_overrides_may_tighten_or_loosen_and_name_the_rule(self):
+        self.assertIn("- A repository override may tighten or loosen any House Rules rule, including a security rule, and names the rule it changes.\n", (ROOT / "AGENTS.md").read_text())
 
     def test_index_loads_every_skill_and_rule_file_with_resolving_relative_links(self):
         index = (ROOT / "AGENTS.md").read_text()

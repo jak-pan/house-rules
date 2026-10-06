@@ -5,6 +5,7 @@ This file is its index.
 
 - Repository instructions and explicit operator choices override House Rules when they conflict.
 - Both stay subject to the host instruction hierarchy, permissions, access, and approval controls.
+- A repository override may tighten or loosen any House Rules rule, including a security rule, and names the rule it changes.
 
 ## Always load
 
