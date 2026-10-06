@@ -1,0 +1,2 @@
+{"type":"session_meta","payload":{"id":"agent-session","originator":"codex_exec"}}
+{"timestamp":"2026-01-01T00:00:00Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Synthetic agent task."}]}}

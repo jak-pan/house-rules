@@ -1,0 +1,9 @@
+{"type":"user","origin":{"kind":"human"},"sessionId":"claude-session","timestamp":"2026-01-01T00:00:00Z","message":{"role":"user","content":"Use clear labels."}}
+{"type":"assistant","message":{"content":"Synthetic assistant response."}}
+{"type":"user","origin":{"kind":"peer"},"message":{"content":"Synthetic peer request."}}
+{"type":"user","message":{"content":"Unknown origin is not human."}}
+{"type":"user","origin":{"kind":"human"},"isSidechain":true,"message":{"content":"Synthetic sidechain request."}}
+{"type":"user","origin":{"kind":"human"},"isMeta":true,"message":{"content":"Synthetic meta entry."}}
+{"type":"user","origin":{"kind":"human"},"message":{"content":"<task-notification>Synthetic notification.</task-notification>"}}
+{"type":"user","origin":{"kind":"human"},"message":{"content":"<teammate-message>Synthetic peer message.</teammate-message>"}}
+{"type":"user","origin":{"kind":"human"},"sessionId":"claude-session","timestamp":"2026-01-01T00:00:01Z","message":{"role":"user","content":[{"type":"text","text":"Keep all text."},{"type":"image","source":{"type":"base64","data":""}},{"type":"text","text":"Including this line."}]}}
