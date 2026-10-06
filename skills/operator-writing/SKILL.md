@@ -111,26 +111,28 @@ A question the operator must answer is a short block, placed after the explanati
 - Work the agent's own team must do (tests, replays, verification) is never a question to
   the operator. List it as an internal task.
 
-Example with two sections:
+Example with two sections. Section labels stay outside the quotes; each question is its
+own quote. Every line inside a question ends with a backslash, so GitHub files and comments
+show it as a separate line:
 
-> **General**
->
-> **1 · Decision: approve the writing-rules PR so it can merge?**
-> *Why:* (fact) The PR restores the writing rules removed without a decision.
-> *Answer:* `approve`, or the edits you want.
+**General**
+
+> **1 · Decision: approve the writing-rules PR so it can merge?**\
+> *Why:* (fact) The PR restores the writing rules removed without a decision.\
+> *Answer:* `approve`, or the edits you want.\
 > *Then:* the PR merges, and the rules apply from the next message.
->
-> **Warden updates**
->
-> **2 · Decision: run House Rules updates from a timer or inside the review loop?**
+
+**Warden updates**
+
+> **2 · Decision: run House Rules updates from a timer or inside the review loop?**\
 > *Why:* (fact) A stuck fetch inside the review loop delays reviews for up to 120 seconds.
-> (assessment) A timer removes that delay and adds no new code path.
-> *Answer:* `timer` or `loop`.
+> (assessment) A timer removes that delay and adds no new code path.\
+> *Answer:* `timer` or `loop`.\
 > *Then:* the next fix commit implements the chosen option.
->
-> **3 · Evidence: send the error text from the failed install?**
-> *Why:* (fact) The install log on the host ends before the error.
-> *Answer:* paste the text, or `not available`.
+
+> **3 · Evidence: send the error text from the failed install?**\
+> *Why:* (fact) The install log on the host ends before the error.\
+> *Answer:* paste the text, or `not available`.\
 > *Then:* the cause goes into the install issue.
 
 The operator answers all three in one line: `1 approve, 2 timer, 3 not available`.
