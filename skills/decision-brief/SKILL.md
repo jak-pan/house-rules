@@ -18,7 +18,7 @@ most common failure: a term, a mechanism or a side effect the reader cannot see.
 | Size | Shape |
 |---|---|
 | One or two decisions in chat | The per-decision block below, plus a short glossary of only the terms it uses and a one-line answer format. |
-| Three or more decisions, or any decision that changes a design | A Markdown document with the full structure below ([rules/writing.md §Format](../../rules/writing.md#format)), sent to the operator as a file they can open, never only a local path. |
+| Three or more decisions, or any decision that changes a design | A Markdown document with the full structure below ([rules/session-writing.md §Format](../../rules/session-writing.md#format)), sent to the operator as a file they can open, never only a local path. |
 | A follow-up asking for depth on one decision | That decision's block again, expanded, with a diagram of the data or flow it concerns. Keep its ID. |
 
 ## Explaining on request

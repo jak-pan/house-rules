@@ -51,13 +51,8 @@ containment needs no design approval. Until the operator approves, the design st
 contradicts a recorded plan, another design, or another repository's roadmap names the
 contradiction and resolves it in the same approval. Boundary: this governs approval of the
 design record; implementation inside an approved P0/P1 design follows the normal autonomy
-rules. Use the priority definitions below.
+rules. Use [priority labels](../../rules/priority-labels.md).
 P2/P3 may skip the doc but still need a plan note in the issue body.
-
-- Classify P0 as active severe harm requiring immediate containment.
-- Classify P1 as material changes to architecture, user data, security, or compatibility.
-- Classify P2 as bounded feature, fix, or review work.
-- Classify P3 as low-impact maintenance.
 
 ## 3. Prototype (UX-heavy features only)
 

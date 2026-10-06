@@ -10,7 +10,7 @@ Canon the change must follow:
   it in the final message's Open questions section with the same label; do not block on it.
 - Simplicity: one mechanism per concept; duplicates are merged; a shared owner is
   extended, never forked into a local copy; every structure has a defensible reason.
-- Delete unreleased dead paths; rebuild pre-release internal formats and current live data, without migrations or legacy readers; product schema migrations may be a feature (design-canon §Decisions).
+- Delete unreleased dead paths; rebuild pre-release internal formats and current live data, without migrations or legacy readers; product schema migrations may be a feature.
 - Policies that could vary are versioned config with spec-stated defaults, not constants.
 - Derived indexes and caches are rebuildable from the canonical store and never become a
   second source of truth.

@@ -5,8 +5,8 @@ happened, why it matters and what to do, in that order.
 
 ## Self-contained text
 
-- YOU MUST make every message stand alone. Never send the reader to find text elsewhere:
-  "my last message", "the questions above", "as discussed earlier" or "see the PR".
+- YOU MUST make every message stand alone. Never send the reader to find text elsewhere.
+  Examples: "my last message", "the questions above", "as discussed earlier" or "see the PR".
 - To mention an earlier question, decision or finding, restate it in full in this message.
   Otherwise, leave it out.
 - A count or label ("the 11 questions", "question 4", "9a-1") never replaces the items it
@@ -41,31 +41,20 @@ happened, why it matters and what to do, in that order.
 - Report an error as the observed failure, its known cause or "cause unknown", and the next
   diagnostic or fix. Use no alarmist words.
 - No filler, no marketing adjectives, no ceremonial openings or closings.
-- Size work per [rules/core.md prime rule 13](core.md#prime-rules).
 
 ## Format
 
-- Operator documents (briefs, status, ledgers, reports) are Markdown files. Do not author
-  them as HTML; an HTML rendering, if ever needed, is generated from the Markdown.
-- Never put long text in a table cell. Use a table only when every cell is a few words;
-  give each option or item its own short section instead.
+- Never put long text in a table cell. Use a table only when every cell is a few words.
+  Give each option or item its own short section instead.
 - Diagrams are Mermaid in files and chat, never ASCII art or indented text trees.
   Orient them vertically, with groups and comparisons stacked rather than side by side.
   Draw unconnected groups as separate diagrams, with text between them; one diagram would
   place them side by side.
 - Make every file reference a link that works where the text is read.
-- In chat, show a local file's absolute path as the link text.
-- In chat, set the link target to the file's path from the session root, so the client can
-  open it.
-- In chat, also give the web link when the reader may need the reviewed version.
 - In a file, link another local file with a path relative to the linking file.
 - In other text read on the web (issues, PRs, comments, commits, web pages), link files only
   with web links.
 - Pin a web link to a commit when it cites evidence.
-- Send a file that no link can open with the client's file-sending tool, when it has one.
-- In chat, the client turns every written path into a link counted from the session root.
-  Write a path in chat only as an absolute path or as a path from the session root.
-- Name a file that does not exist yet in words, not as a path.
 - Write a PR or issue reference as a Markdown link: `[#52](https://github.com/owner/repo/pull/52)`.
 - Prefer lists of five or fewer items.
 - Group longer lists only when helpful.
@@ -76,12 +65,14 @@ happened, why it matters and what to do, in that order.
 - Label claims `FACT`, `ASSUMPTION`, `ESTIMATE`, `ASSESSMENT` or `DECISION`. Quote an
   existing decision; never present a settled operator decision as open, or your own choice
   as settled.
-- Label a claim `FACT` only after you verified it yourself, in this session, against its
-  primary source: the code at a named commit, a command you ran, or a log or record you read.
-- Put the evidence for a `FACT` inside its sentence: link the claim's key words to the
-  source, or name the file and line, the command, or the quoted output in a few words.
-- A claim you remember, infer, read in a summary, or receive from another agent or an earlier
-  session is never a `FACT`. Verify it first, or label it `ASSUMPTION` and name its source.
+- Label a claim `FACT` only after you verified it yourself, in this session, against its primary source.
+  The source is code at a named commit, a command you ran, or a log or record you read.
+- Put the evidence for a `FACT` inside its sentence.
+  Link the claim's key words to the source.
+  Or name the file and line, the command, or the quoted output in a few words.
+- A claim you remember, infer or read in a summary is never a `FACT`.
+  A claim you receive from another agent or an earlier session is never a `FACT`.
+  Verify it first, or label it `ASSUMPTION` and name its source.
 
 ## Checks before sending
 

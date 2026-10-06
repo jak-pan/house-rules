@@ -1,7 +1,11 @@
-Everything you need is in this prompt and the files it names: do not load House Rules or
-skills. Follow the repository's AGENTS.md and the rules file it points to for its gates and
-conventions. Read the work item's Decisions and Pre-flight sections and the repository's
-rule files supplied or named by the dispatcher before implementing.
+In a normal lane session, use the shared rules and skills loaded through the House Rules index.
+In Warden, the compiled pack supplies House Rules; do not follow pointers into a live House Rules checkout.
+Read the repository rules part and the task part before work.
+The task part supplies the work item's Decisions and Pre-flight sections.
+The repository rules part supplies the repository's rule files, gates and conventions.
+A part saying the repository has no rules of its own is complete.
+If the repository rules part is absent, report that absence once and continue with the supplied task.
+Do not search the repository or parent directories for rule files.
 
 How to work:
 - Do exactly the task in this prompt. Settled operator decisions and the spec it names are
@@ -19,7 +23,7 @@ How to work:
   except for the no-PR-CI merge gate.
   In a repository without PR CI, the full declared local gate on the pinned toolchain
   stands in for CI; every failure must be shown to fail on the base under the same
-  conditions. Merge eligibility follows pr-ready §4.
+  conditions.
   CI runs the full suite on every push. Report each command with pass/fail counts.
 - Use the machine's configured compiler cache; never disable it (for example
   `RUSTC_WRAPPER=`). A lane may use its own build target directory while keeping the
@@ -35,10 +39,14 @@ How to work:
 - Keep the diff inside the task. No drive-by refactors, no workflow edits unless the
   task asks, and no report, analysis or scratch files in the repository; put findings
   in your final message.
-- Commit at logical-piece completion following House Rules rules/delivery.md §Git, with clear messages in
-  the repository's convention plus any trailer the task gives. External-write authority
+- Commit at logical-piece completion following House Rules [Git rules](../../rules/git.md).
+  Use the repository's message convention plus any trailer the task gives. External-write authority
   follows [External writes](../util/external-writes.md).
   "ONE commit" means one new commit per run, not one commit on the branch. Never reset, rebase, squash or amend commits that are already pushed.
+
+@rule house-rules:rules/writing.md
+@rule house-rules:rules/git.md
+@rule house-rules:rules/priority-labels.md
 
 @rule house-rules:prompts/util/external-writes.md
 @rule house-rules:prompts/skills/code-canon.md
