@@ -141,3 +141,9 @@ parallel runs.
 Operator direction: 2026-10-06, House Rules audit; repositories may tighten or loosen House
 Rules, security included, and keep only their overrides. The rule moves here from each
 repository's AGENTS.md, which becomes a loader.
+
+## rules/writing.md — Format (chat link text, file-relative links)
+
+Operator direction: 2026-10-06, after a planned file and a file-relative path written in chat
+both rendered as dead links (the operator tested each link); relative-to-file links apply
+to every file, not only repository files.
