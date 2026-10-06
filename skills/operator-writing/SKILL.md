@@ -106,7 +106,7 @@ the operator. List it as an internal task.
   For each limit, stop, failure or change, state what it means for the reader.
   Use the same or the next sentence.
   Include what is changed or unchanged, who acts, and what happens next.
-  Example: not "Fix rounds are capped at three." but "A PR gets at most three fix rounds.
+  Example: not "Fix rounds are capped at three." but "A pull request gets at most three fix rounds.
   After that, the lead simplifies or splits the change within approved authority.
   Routine work continues. Changes outside approved authority require your decision."
   Cut only what the reader does not need.

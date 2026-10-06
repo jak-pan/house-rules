@@ -604,6 +604,14 @@ class AnsweredRestoreTest(unittest.TestCase):
     def text(self, path):
         return " ".join((ROOT / path).read_text().split())
 
+    def test_progress_example_explains_pull_request(self):
+        detail = self.text("skills/operator-writing/SKILL.md").split(
+            "- **Detail test:**", 1
+        )[1].split("Decisions use skill", 1)[0]
+        example = detail.split("Example:", 1)[1]
+        self.assertNotRegex(example, r"\bPR\b")
+        self.assertIn("A pull request gets at most three fix rounds.", example)
+
     def test_progress_example_preserves_operator_decisions(self):
         detail = self.text("skills/operator-writing/SKILL.md").split(
             "- **Detail test:**", 1
