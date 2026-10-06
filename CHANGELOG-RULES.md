@@ -118,7 +118,7 @@ Operator direction: 2026-10-06, House Rules review; fixed per-sentence word caps
 the decision that there are no size targets except a soft split prompt, and length is never a
 reason to remove a requirement.
 
-## skills/operator-writing — Questions to the operator
+## rules/session-writing.md — Questions to the operator
 
 Operator direction: 2026-10-06; the five-row question card took too much space on a phone
 and for several questions; numbered sub-questions (1a, 1b) were replaced by section labels
@@ -154,7 +154,7 @@ Operator direction: 2026-10-06, House Rules audit; repositories may tighten or l
 Rules, security included, and keep only their overrides. The rule moves here from each
 repository's AGENTS.md, which becomes a loader.
 
-## rules/writing.md — Format (chat link text, file-relative links)
+## rules/session-writing.md — Format (chat link text) and rules/writing.md — Format (file-relative links)
 
 Operator direction: 2026-10-06, after a planned file and a file-relative path written in chat
 both rendered as dead links (the operator tested each link); relative-to-file links apply
@@ -170,8 +170,20 @@ memory; the mode had been removed, and the claim reached an operator decision.
 Operator direction: 2026-10-06; footnotes and source lists were harder to read than the claim
 with its evidence linked or named inside the sentence.
 
-## skills/operator-writing/SKILL.md — Questions to the operator (answer prompt)
+## rules/session-writing.md — Questions to the operator (answer prompt)
 
 Operator direction: 2026-10-06; the three-item answer list took five lines of height in chat
 and appeared under reminders that held no question. The prompt is now a short label with a
 monospace code-block example, shown only under a fully written question list.
+
+## Shared-rule owners and complete worker packs
+
+Operator direction: 2026-10-07, recorded in
+[complete worker role packs §10](docs/design/74-complete-worker-packs.md#10-decisions).
+Writing with claim labels, Git rules and priority labels each have one shared owner under `rules/`.
+Normal lane sessions load those owners through the index and retain their session rules and skills.
+Warden packs include the shared owners directly and exclude session-only writing and lane procedures.
+The session variant omits the declared shared includes while preserving role instructions.
+Live session rules remain separate from the named-commit role prompt.
+Warden reviewers remain read-only, contact only the model provider and run no builds or tests.
+The Warden service posts reviews for local lanes to read.

@@ -25,7 +25,7 @@ Ask only questions that remain unanswered and affect outcome, operations, or aut
 - Which collaboration mode applies (rules/core.md §Autonomy)?
 - Is the default issue/branch/PR workflow suitable (skill `work-tracking`), does the
   repository have a Git host, and what delivery authority is actually recorded
-  (rules/delivery.md §Git)?
+  (rules/git.md)?
 
 Ask per skill `operator-protocol` §Decisions. Do not add hypothetical infrastructure
 questions to a small script or analysis.

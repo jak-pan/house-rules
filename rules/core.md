@@ -202,7 +202,7 @@
 - Report host safety controls that block launch.
 - Do not work around those controls.
 - Follow `operator-protocol` §Decisions for establishing collaboration mode.
-- Follow `design-flow` §2 for priority definitions.
+- Follow [priority labels](priority-labels.md).
 - Follow `pr-ready` §4 to finish landing approved changes.
 
 ## Security

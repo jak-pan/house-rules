@@ -47,7 +47,7 @@ updates itself; agents load it as its own Skill and MCP server, not as part of H
   unassign on the host.
 - Agents that share one host account tell lanes apart by the `Agent` trailer: an issue
   assigned to your login whose latest claim names another agent is taken.
-- Priority (design-flow §2) is a `P0`–`P3` label; dependencies are the host's
+- Priority ([priority labels](../../rules/priority-labels.md)) is a `P0`–`P3` label; dependencies are the host's
   blocked-by links.
 
 ## The Git record

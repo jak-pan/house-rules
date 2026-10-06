@@ -2,7 +2,7 @@
 
 Title: `<area>: <observable wrong behavior> [when <trigger>]`, in plain words.
 
-Labels: one priority label (`P0`–`P3`, skill `work-tracking`) and one type label (`bug`,
+Labels: one priority label ([priority labels](../../rules/priority-labels.md)) and one type label (`bug`,
 `enhancement`, `documentation`) where the repository defines them.
 
 ```markdown
@@ -41,8 +41,7 @@ Rules:
 - The first paragraph alone tells the reader what breaks.
 - A feature or follow-up issue replaces Reproduction with "Current behavior" and "Wanted
   behavior". It keeps Acceptance criteria.
-- Work-item sections (Scope, Decisions, Lane, Design; skill `work-tracking`) follow
-  Acceptance criteria when the item has them.
+- Work-item sections (Scope, Decisions, Lane, Design) follow Acceptance criteria when the item has them.
 
 Example:
 

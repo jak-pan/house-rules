@@ -51,7 +51,7 @@ Verification invariant: rules/delivery.md §Verification. Local work follows
 - Open PRs as drafts (`gh pr create --draft`) while work is in progress; mark them ready
   (`gh pr ready`) only once the local gate passes. Ready means "review this": a server-side
   review gate reviews each new head of a ready PR and ignores drafts. Draft status does
-  not change the complete-fix push rule in rules/delivery.md §Git.
+  not change the complete-fix push rule in rules/git.md.
 - Push; wait for CI to finish green on the exact head commit.
 - On a CI failure, reproduce only the failing tests locally. Before attributing a failure
   to the change, compare it against the default branch under the same conditions.
@@ -69,8 +69,9 @@ External repositories always get local review rounds (skill `upstream-contributi
 **Review bar.** [`prompts/util/review-bar.md`](../../prompts/util/review-bar.md) holds the bar;
 the [reviewer role](../../prompts/roles/reviewer.md) includes the review
 canon: correctness and security, cost and design, code quality, waste as a blocking class, and
-the House Rules a reviewer enforces. It is inlined into every reviewer prompt, so reviewers
-load no other rules. Specialist dispatch follows
+the House Rules a reviewer enforces. Default reviewer packs include the shared rules.
+Packs compiled with `--session` receive shared rules through the live House Rules index.
+Specialist dispatch follows
 [Optional lenses](references/review-lenses.md#optional-lenses).
 
 - Give the reviewer the spec sections, previous review and round task as needed
@@ -97,7 +98,7 @@ load no other rules. Specialist dispatch follows
   [`prompts/roles/reviewer.md`](../../prompts/roles/reviewer.md).
 - The fixer follows the [fixer role](../../prompts/roles/fixer.md) for accepted scope and
   the [worker pack](../../prompts/roles/implementer.md) for implementation, with commit
-  cadence from rules/delivery.md §Git.
+  cadence from rules/git.md.
   The next review names that commit or those commits and marks each prior blocker RESOLVED
   or NOT. A fixer never approves its own fix.
 - Finding disposition follows the [shared review bar](../../prompts/util/review-bar.md).
@@ -159,5 +160,5 @@ load no other rules. Specialist dispatch follows
   `agent-lanes` §Lane cleanup).
 
 - When all reviewer families approve, CI passes, and deployment is documented routine procedure, finish landing.
-- Merge within rules/delivery.md §Git delivery authority, deploy, verify after deployment, then report changes.
+- Merge within rules/git.md delivery authority, deploy, verify after deployment, then report changes.
 - Do not hand routine landing steps to the operator.

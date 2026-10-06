@@ -6,6 +6,8 @@ import sys
 import tempfile
 import unittest
 
+import prompt
+
 
 SCRIPT = Path(__file__).with_name("prompt.py")
 ROOT = SCRIPT.parents[3]
@@ -165,6 +167,174 @@ class PromptTest(unittest.TestCase):
                 self.assertNotRegex(path.read_text(), r"(?m)^@rule ")
 
 
+class CompleteWorkerPackTest(unittest.TestCase):
+    def run_prompt(self, *args, text="", script=SCRIPT):
+        if script != SCRIPT:
+            return PromptTest.run_prompt(self, *args, text=text, script=script)
+        entry = next((arg for arg in args if not arg.startswith("--")), None)
+        result, used = prompt.expand(text, file=entry, session="--session" in args)
+        output = "".join(path + "\n" for path in used) if "--list" in args else result
+        return subprocess.CompletedProcess(args, 0, output, "")
+
+    fixture = PromptTest.fixture
+    assert_failure = PromptTest.assert_failure
+    shared = ("rules/writing.md", "rules/git.md", "rules/priority-labels.md")
+
+    def test_stdin_role_text_has_the_same_loading_header_as_file_input(self):
+        for role in sorted((ROOT / "prompts/roles").glob("*.md")):
+            for session in (False, True):
+                args = ("--session",) if session else ()
+                with self.subTest(role=role.stem, session=session):
+                    result = PromptTest.run_prompt(self, *args, text=role.read_text())
+                    expected = self.run_prompt(*args, role.relative_to(ROOT).as_posix())
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertTrue(result.stdout.startswith(
+                        "Loading path: session" if session else "Loading path: compiled shared rules"))
+                    self.assertEqual(result.stdout, expected.stdout)
+
+    def test_both_loading_paths_preserve_roles_and_every_review_lens(self):
+        for role in sorted((ROOT / "prompts/roles").glob("*.md")):
+            for session in (False, True):
+                args = ("--session",) if session else ()
+                entry = str(role.relative_to(ROOT))
+                with self.subTest(role=role.stem, session=session):
+                    result = self.run_prompt(*args, entry)
+                    used = self.run_prompt(*args, "--list", entry)
+                    self.assertIn("Loading path: session" if session else
+                                  "Loading path: compiled shared rules", result.stdout)
+                    self.assertIn(role.read_text().splitlines()[0], result.stdout)
+                    for owner in self.shared:
+                        self.assertEqual(used.stdout.splitlines().count(owner), 0 if session else 1)
+                        self.assertEqual(result.stdout.count((ROOT / owner).read_text()),
+                                         0 if session else 1)
+                    self.assertNotIn("rules/session-writing.md", used.stdout)
+                    self.assertNotIn("skills/agent-lanes/", used.stdout)
+        for lens in sorted((ROOT / "prompts/lenses").glob("*.md")):
+            source = ("@rule house-rules:prompts/roles/reviewer.md\n"
+                      f"@rule house-rules:{lens.relative_to(ROOT).as_posix()}\n")
+            for session in (False, True):
+                with self.subTest(lens=lens.stem, session=session):
+                    args = ("--session",) if session else ()
+                    result = self.run_prompt(*args, text=source)
+                    self.assertEqual(result.stdout.count(lens.read_text()), 1)
+                    for owner in self.shared:
+                        self.assertEqual(result.stdout.count((ROOT / owner).read_text()),
+                                         0 if session else 1)
+
+    def test_session_omits_only_declared_includes_and_still_rejects_missing_owners(self):
+        root, script = self.fixture()
+        (root / "rules").mkdir()
+        for owner in self.shared:
+            path = root / owner
+            path.write_text(f"{owner}\n")
+        (root / "rules/other.md").write_text("Other rule\n")
+        source = "".join(f"@rule house-rules:{owner}\n" for owner in self.shared)
+        source += "@rule house-rules:rules/other.md\n"
+        result = self.run_prompt("--session", text=source, script=script)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "Loading path: session; shared rules come from the live "
+                         "House Rules index.\n\nOther rule\n")
+        used = self.run_prompt("--session", "--list", text=source, script=script)
+        self.assertEqual(used.stdout, "rules/other.md\n")
+        for owner in self.shared:
+            path = root / owner
+            content = path.read_text()
+            path.unlink()
+            for args in ((), ("--session",), ("--session", "--list")):
+                with self.subTest(owner=owner, args=args):
+                    self.assert_failure(self.run_prompt(*args, text=source, script=script), owner)
+            path.write_text(content)
+
+    def test_rule_citations_resolve_through_pack_or_declared_session_owners(self):
+        index = (ROOT / "AGENTS.md").read_text().split("## Always load", 1)[1].split("## Load when", 1)[0]
+        declared = set(re.findall(r"\((rules/[^)]+)\)", index))
+        self.assertTrue(set(self.shared).issubset(declared))
+        # Resolve links at their source; compiled text does not retain source directories.
+        for role in (ROOT / "prompts/roles").glob("*.md"):
+            for session in (False, True):
+                args = ("--session",) if session else ()
+                used = self.run_prompt(*args, "--list", str(role.relative_to(ROOT)))
+                expanded = set(used.stdout.splitlines())
+                available = expanded | (declared if session else set())
+                for name in expanded:
+                    path = ROOT / name
+                    text = path.read_text()
+                    targets = set(re.findall(r"rules/[a-z-]+\.md", text))
+                    for target in re.findall(r"\[[^]]+\]\(([^)#]+)(?:#[^)]*)?\)", text):
+                        if re.match(r"[a-zA-Z][a-zA-Z0-9+.-]*:", target):
+                            continue
+                        resolved = (path.parent / target).resolve()
+                        if resolved.is_relative_to(ROOT):
+                            targets.add(str(resolved.relative_to(ROOT)))
+                    for target in targets:
+                        with self.subTest(role=role.stem, session=session, source=name, target=target):
+                            self.assertIn(target, available)
+                            self.assertTrue((ROOT / target).is_file())
+
+    def test_shared_rule_text_has_one_owner_and_session_instructions_stay_separate(self):
+        samples = {
+            "rules/writing.md": ("Support claims with evidence.",
+                                 "Label claims `FACT`, `ASSUMPTION`, `ESTIMATE`, `ASSESSMENT` or `DECISION`."),
+            "rules/git.md": ("Stage explicit files.", "Never use `git add -A`.",
+                             "Agents push to our own fork only after local review rounds "
+                             "that apply the same rules as Warden."),
+            "rules/priority-labels.md": tuple(f"Classify P{i} as" for i in range(4)),
+            "rules/session-writing.md": ("Questions the operator must answer come after the explanation.",
+                                         "In chat, show a local file's absolute path as the link text."),
+        }
+        for owner, sentences in samples.items():
+            for sentence in sentences:
+                owners = [str(p.relative_to(ROOT)) for folder in ("rules", "skills", "prompts")
+                          for p in (ROOT / folder).rglob("*.md")
+                          if sentence in " ".join(p.read_text().split())]
+                with self.subTest(sentence=sentence):
+                    self.assertEqual(owners, [owner])
+        for role in (ROOT / "prompts/roles").glob("*.md"):
+            result = self.run_prompt(str(role.relative_to(ROOT)))
+            self.assertNotIn("Questions the operator must answer", result.stdout)
+            self.assertNotIn("In chat, show a local file", result.stdout)
+
+    def test_all_roles_use_supplied_parts_and_checker_has_its_own_identity(self):
+        for role in (ROOT / "prompts/roles").glob("*.md"):
+            result = self.run_prompt(str(role.relative_to(ROOT)))
+            for clause in ("repository rules part", "task part", "work item's Decisions and Pre-flight",
+                           "has no rules of its own", "report that absence once"):
+                with self.subTest(role=role.stem, clause=clause):
+                    self.assertIn(clause, result.stdout)
+            self.assertNotIn("do not load House Rules", result.stdout)
+            self.assertNotIn("Follow the repository's AGENTS.md", result.stdout)
+            self.assertNotIn("rule files supplied or named", result.stdout)
+        checker = (ROOT / "prompts/roles/checker.md").read_text()
+        self.assertTrue(checker.startswith("You are the CHECKER"))
+        self.assertNotIn("You are the TRIAGER", checker)
+
+    def test_review_boundaries_and_worker_merge_gate_survive_both_variants(self):
+        for session in (False, True):
+            args = ("--session",) if session else ()
+            reviewer = self.run_prompt(*args, "prompts/roles/reviewer.md")
+            self.assertIn("Warden reviewers run no builds or tests.", reviewer.stdout)
+            self.assertIn("read-only", reviewer.stdout)
+            self.assertIn("model provider", reviewer.stdout)
+            self.assertIn("at most one targeted test", reviewer.stdout)
+            for role in ("implementer", "fixer"):
+                result = self.run_prompt(*args, f"prompts/roles/{role}.md")
+                self.assertIn("In a repository without PR CI", result.stdout)
+                self.assertIn("full declared local gate on the pinned toolchain", result.stdout)
+                self.assertNotIn("Merge eligibility follows pr-ready", result.stdout)
+
+    def test_cost_definition_reaches_all_three_roles_once(self):
+        owner = ROOT / "prompts/util/cost-defect.md"
+        self.assertTrue(owner.is_file())
+        definition = owner.read_text()
+        self.assertIn("A cost defect is work per operation", definition)
+        self.assertNotIn("A cost defect is work per operation",
+                         (ROOT / "prompts/util/triage-classes.md").read_text())
+        for role in ("reviewer", "triager", "checker"):
+            for args in ((), ("--session",)):
+                result = self.run_prompt(*args, f"prompts/roles/{role}.md")
+                self.assertEqual(result.stdout.count(definition), 1)
+
+
 class CollectionAcceptanceTest(unittest.TestCase):
     def test_collection_is_at_repository_root(self):
         self.assertTrue((ROOT / "prompts/README.md").is_file())
@@ -258,14 +428,14 @@ class CollectionAcceptanceTest(unittest.TestCase):
                 self.assertNotIn("3–6 line body", prompt.stdout)
 
     def test_role_prompts_include_only_files_warden_stages(self):
-        # Warden stages only prompts/ and skills/pr-ready/ from the qualified commit; an include
-        # outside them fails Warden's preparation (2026-10-06: every triager failed this way).
+        # Warden stages only prompts/, rules/ and skills/pr-ready/ from the qualified commit; an
+        # include outside them fails Warden's preparation (2026-10-06: every triager failed this way).
         for role in sorted((ROOT / "prompts/roles").glob("*.md")):
             with self.subTest(role=role.name):
                 includes = PromptTest().run_prompt("--list", f"prompts/roles/{role.name}")
                 self.assertEqual(includes.returncode, 0, includes.stderr)
                 for path in includes.stdout.split():
-                    self.assertTrue(path.startswith(("prompts/", "skills/pr-ready/")), path)
+                    self.assertTrue(path.startswith(("prompts/", "rules/", "skills/pr-ready/")), path)
 
     def test_triager_and_checker_include_only_the_issue_form(self):
         form_path = "prompts/util/issue-form.md"
@@ -312,7 +482,8 @@ class CollectionAcceptanceTest(unittest.TestCase):
                 self.assertEqual(text.count(sentence), 1)
 
     def test_triage_uses_live_cost_definition_and_fix_exception_once(self):
-        text = (ROOT / "prompts/util/triage-classes.md").read_text()
+        text = ((ROOT / "prompts/util/cost-defect.md").read_text() +
+                (ROOT / "prompts/util/triage-classes.md").read_text())
         for sentence in (
             "A cost defect is work per operation that grows with stored data where "
             "an index or native filter should bound it, extra storage or native calls "
@@ -467,7 +638,7 @@ class CollectionAcceptanceTest(unittest.TestCase):
                 result = PromptTest().run_prompt(f"prompts/roles/{role}.md")
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(
-                    result.stdout.count("House Rules rules/delivery.md §Git"),
+                    result.stdout.count("House Rules [Git rules](../../rules/git.md)"),
                     references,
                 )
 
@@ -498,7 +669,7 @@ class RuleOwnershipTest(unittest.TestCase):
         self.assertIn("never becomes a follow-up or starts another fix round", design)
         self.assertIn("unless it is security, data loss, a cost defect or a design finding", classes)
         self.assertIn("Design disposition takes precedence over class and severity rules", classes)
-        self.assertIn("triage-classes.md", self.text("prompts/util/cost-and-design.md"))
+        self.assertIn("cost-defect.md", self.text("prompts/util/cost-and-design.md"))
         for role in ("triager", "checker", "reviewer"):
             result = PromptTest().run_prompt(f"prompts/roles/{role}.md")
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -521,7 +692,7 @@ class RuleOwnershipTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 expanded = " ".join(result.stdout.split())
                 self.assertIn("work item's Decisions and Pre-flight", expanded)
-                self.assertIn("repository's rule files", expanded)
+                self.assertIn("repository rules part", expanded)
                 self.assertNotRegex(result.stdout, r"handoff/\d{4}-\d{2}-\d{2}")
 
     def test_canon_reports_settled_decision_disagreement_by_role(self):
@@ -598,7 +769,7 @@ class RuleOwnershipTest(unittest.TestCase):
     def test_work_sizing_belongs_to_prime_rule_13(self):
         for path, target in (
             ("skills/decision-brief/SKILL.md", "../../rules/core.md#prime-rules"),
-            ("rules/writing.md", "core.md#prime-rules"),
+            ("rules/session-writing.md", "core.md#prime-rules"),
             (
                 "skills/operator-writing/references/github-text.md",
                 "../../../rules/core.md#prime-rules",
@@ -753,7 +924,7 @@ class RuleOwnershipTest(unittest.TestCase):
         self.assertIn("targeted tests", gate)
         self.assertIn("Never run the full test suite or workspace-wide tests", gate)
         self.assertRegex(gate, r"except.*no-PR-CI")
-        self.assertIn("Merge eligibility follows pr-ready §4.", gate)
+        self.assertNotIn("Merge eligibility follows pr-ready §4.", gate)
 
     def test_test_discipline_heading_and_references_do_not_collide(self):
         canon = (self.root / "prompts/skills/test-discipline.md").read_text()
@@ -955,7 +1126,7 @@ class AnsweredRestoreTest(unittest.TestCase):
         self.assertIn("Do not rely only on programmatic assertions.", rules)
 
     def test_fix_commit_cadence_and_complete_push(self):
-        rules = self.text("rules/delivery.md")
+        rules = self.text("rules/git.md")
         self.assertIn("Push each fixer’s work once, after the complete fix.", rules)
         self.assertIn("Never push mid-fix.", rules)
         self.assertNotIn("one commit per round", self.text("skills/pr-ready/SKILL.md"))
@@ -985,11 +1156,14 @@ class AnsweredRestoreTest(unittest.TestCase):
         rules = self.text("skills/upstream-contribution/SKILL.md")
         self.assertIn("A fork counts as its parent, where its PRs, issues and "
                       "comments land.", rules)
+        self.assertIn("../../rules/git.md", rules)
+        git = self.text("rules/git.md")
         self.assertIn("Agents push to our own fork only after local review rounds "
-                      "that apply the same rules as Warden.", rules)
+                      "that apply the same rules as Warden.", git)
+        self.assertNotIn("Agents push to our own fork", rules)
 
     def test_one_commit_topic_exception(self):
-        rules = self.text("rules/delivery.md")
+        rules = self.text("rules/git.md")
         self.assertIn("Keep each commit one logical chunk.", rules)
         self.assertIn("Never mix unrelated fixes, docs, refactors, or in-flight prototypes in one commit.", rules)
         self.assertIn("Keep one topic per commit unless one larger task requires them together.", rules)
@@ -1078,12 +1252,15 @@ class InvariantsOnlyTest(unittest.TestCase):
 
     def test_each_invariant_sentence_fits_twenty_words(self):
         agents = "\n".join((ROOT / path).read_text() for path in
-                           ("rules/core.md", "rules/outcome.md", "rules/delivery.md"))
+                           ("rules/core.md", "rules/outcome.md", "rules/delivery.md",
+                            "rules/git.md", "rules/priority-labels.md", "rules/writing.md",
+                            "rules/session-writing.md"))
         agents += "\n" + (ROOT / "STRUCTURE.md").read_text().split(
             "## Layout\n", 1)[1].split("```", 1)[0]
         agents += "\n" + (ROOT / "skills/operator-writing/SKILL.md").read_text().split(
             "## Communication rules\n", 1)[1].split("## Structure", 1)[0]
         agents = agents.replace(self.TRACKING_RULE, "").replace(self.RESTORED_TRACKING, "")
+        agents = re.sub(r"(?ms)^(`{3,})[^\n]*\n.*?^\1\s*$", "", agents)
         agents = re.sub(r"(?m)^#.*$", "", agents)
         blocks = re.split(r"\n\s*\n|\n(?=\s*(?:[-*]|\d+\.)\s)", agents)
         for block in blocks:
@@ -1136,7 +1313,7 @@ class InvariantsOnlyTest(unittest.TestCase):
             "skills/pr-ready/SKILL.md": (
                 "When all reviewer families approve, CI passes, and deployment is documented "
                 "routine procedure, finish landing.",
-                "Merge within rules/delivery.md §Git delivery authority, deploy, verify after deployment, "
+                "Merge within rules/git.md delivery authority, deploy, verify after deployment, "
                 "then report changes.",
                 "Do not hand routine landing steps to the operator.",
             ),
@@ -1166,7 +1343,7 @@ class RuleIndexTest(unittest.TestCase):
                 continue
             with self.subTest(line=line):
                 if section == "Always load":
-                    self.assertRegex(line, r"^- \[[^]]+\]\(rules/(?:core|outcome|delivery|writing)\.md\)$")
+                    self.assertRegex(line, r"^- \[[^]]+\]\(rules/(?:core|outcome|delivery|writing|git|priority-labels|session-writing)\.md\)$")
                 else:
                     self.assertRegex(line, r"^- [^:]+: load \[[^]]+\]\([^)]+\)\.$")
 
@@ -1177,6 +1354,7 @@ class RuleIndexTest(unittest.TestCase):
         index = (ROOT / "AGENTS.md").read_text()
         targets = re.findall(r"\[[^]]+\]\(([^)]+)\)", index)
         required = {"rules/core.md", "rules/outcome.md", "rules/delivery.md", "rules/writing.md",
+                    "rules/git.md", "rules/priority-labels.md", "rules/session-writing.md",
                     "STRUCTURE.md", "PREFERENCES.md"}
         required.update(str(path.relative_to(ROOT))
                         for path in (ROOT / "skills").glob("*/SKILL.md"))
@@ -1417,10 +1595,9 @@ class AuditRestorationTest(unittest.TestCase):
                 self.assertIn(clause, text)
 
     def test_L17_parallel_reference_target(self):
-        text = (ROOT / 'rules/delivery.md').read_text()
+        text = (ROOT / 'rules/git.md').read_text()
         for clause in (
-            'under rules/outcome.md §Resource envelopes and §Parallel work in this '
-            'file.',
+            'Keep spawning authority separate from delivery authority within the approved resource envelope.',
         ):
             with self.subTest(clause=clause):
                 self.assertIn(clause, text)
@@ -1495,8 +1672,8 @@ class AuditRestorationTest(unittest.TestCase):
 
     def test_implementer_reads_loader_and_rules_for_gates_and_conventions(self):
         text = ' '.join((ROOT / 'prompts/roles/implementer.md').read_text().split())
-        self.assertIn("Follow the repository's AGENTS.md and the rules file it points to "
-                      'for its gates and conventions.', text)
+        self.assertIn("The repository rules part supplies the repository's rule files, gates and conventions.", text)
+        self.assertNotIn("Follow the repository's AGENTS.md", text)
 
     def test_L23_reference_convention(self):
         text = (ROOT / 'rules/core.md').read_text()
@@ -1528,7 +1705,7 @@ class AuditRestorationTest(unittest.TestCase):
 
     def test_L26_landing_reference(self):
         for path, clause in (
-            ("skills/work-tracking/SKILL.md", "Priority (design-flow §2)"),
+            ("skills/work-tracking/SKILL.md", "../../rules/priority-labels.md"),
             ("skills/design-flow/SKILL.md", "A P0 or P1 design (§2)"),
             ("skills/operator-protocol/SKILL.md", "policy changes follow rules/core.md §Operator correction."),
             ("skills/operator-protocol/SKILL.md", "rules/outcome.md, and rules/delivery.md for authority."),
@@ -1571,7 +1748,8 @@ class AuditRestorationTest(unittest.TestCase):
         index = (ROOT / "AGENTS.md").read_text()
         always = index.split("## Always load\n", 1)[1].split("## Load when", 1)[0]
         self.assertIn("At session start and after every reset or compaction, read these files in full:", always)
-        self.assertEqual(re.findall(r"\((rules/[^)]+)\)", always), ["rules/core.md", "rules/outcome.md", "rules/delivery.md", "rules/writing.md"])
+        self.assertEqual(re.findall(r"\((rules/[^)]+)\)", always), ["rules/core.md", "rules/outcome.md", "rules/delivery.md", "rules/writing.md",
+                        "rules/git.md", "rules/priority-labels.md", "rules/session-writing.md"])
 
 
 class AcceptedScopeRegressionTest(unittest.TestCase):
@@ -1620,7 +1798,7 @@ class AcceptedScopeRegressionTest(unittest.TestCase):
         self.assertIn("An urgent safety stop takes precedence", handoff)
 
     def test_ready_instruction_is_required_only_for_externally_owned_repositories(self):
-        delivery = (ROOT / "rules/delivery.md").read_text()
+        delivery = (ROOT / "rules/git.md").read_text()
         self.assertIn(
             "For externally owned repositories, never push upstream, open pull "
             "requests/issues, or comment until the operator says ready.", delivery,
@@ -1731,8 +1909,9 @@ class AlwaysLoadedWritingTest(unittest.TestCase):
         for skill in ("operator-writing", "decision-brief", "reasoning-moves"):
             with self.subTest(skill=skill):
                 text = (ROOT / f"skills/{skill}/SKILL.md").read_text()
-                self.assertIn("../../rules/writing.md#claim-labels", text)
-        questions = (ROOT / "skills/operator-writing/SKILL.md").read_text().split(
+                self.assertIn("../../rules/" + ("session-writing.md#questions-to-the-operator"
+                              if skill == "operator-writing" else "writing.md#claim-labels"), text)
+        questions = (ROOT / "rules/session-writing.md").read_text().split(
             "## Questions to the operator", 1)[1]
         self.assertIn("`FACT` or `ASSESSMENT`", questions)
         self.assertNotRegex(questions, r"`(?:fact|assessment)`")

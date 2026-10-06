@@ -102,4 +102,4 @@ must exist and be satisfying.
 ## Docs
 
 - Two tiers: one clean system map for high-level understanding + deep dives per feature.
-- Doc sweeps after design changes (same-commit rule: rules/delivery.md §Git).
+- Doc sweeps after design changes (same-commit rule: rules/git.md).
