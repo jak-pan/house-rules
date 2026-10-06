@@ -507,7 +507,7 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
                 self.assertEqual(code, 0, err)
                 for entry in ("source: Cargo.toml", "source: CMakeLists.txt", "test: tests/test_core.py", "docs: docs/guide.md"):
                     self.assertIn(entry, out)
-                self.assertIn("declared gates in AGENTS.md", out)
+                self.assertIn("declared gates in AGENTS.md and the rules file it points to", out)
                 self.assertNotIn("cargo test", out)
                 self.assertNotIn("ctest", out)
                 self.assertNotIn("pytest", out)

@@ -606,7 +606,7 @@ def brief(repo, args, base, status, update_note):
     out.append("\n## Changed files by kind")
     out.extend(f"- {kind(path)}: {display(path)} (+{added}/-{removed})" for added, removed, path in files)
     out.extend(["\n## Local gate",
-                "Use the repository's declared gates in AGENTS.md, or its CI workflow when none are declared.",
+                "Use the repository's declared gates in AGENTS.md and the rules file it points to, or its CI workflow when none are declared.",
                 "Select targeted tests for the changed source and test files above, including every new regression."])
     if args.command == "fix":
         out.extend(["\n## Reviews to address", *args.reviews] if args.reviews else ["\n## Reviews to address", "(none supplied)"])

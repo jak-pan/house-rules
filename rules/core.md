@@ -13,7 +13,8 @@
 - A bare §X refers to the same file.
 - The tracker is the organization/repository-defined work-management system.
 - A work item is one tracked unit of work, defaulting to a work branch and its issue.
-- The bible is the repository's `AGENTS.md`, including settled local decisions and execution choices.
+- The bible is the repository's `.agents/rules.md`, including settled local decisions, execution choices, repository rules and overrides.
+- The repository's `AGENTS.md` points to it.
 - Edit or prune bible entries only with the change explained in the commit.
 - A campaign ledger is a long-running goal’s tried, result, and verdict record.
 - A handoff is the immutable continuation record.

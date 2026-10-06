@@ -1453,13 +1453,40 @@ class AuditRestorationTest(unittest.TestCase):
     def test_L22_terms_and_bible_edit_condition(self):
         text = (ROOT / 'rules/core.md').read_text()
         for clause in (
-            "The bible is the repository's `AGENTS.md`, including settled local "
-            'decisions and execution choices.',
+            "The bible is the repository's `.agents/rules.md`, including settled local "
+            'decisions, execution choices, repository rules and overrides.',
+            "The repository's `AGENTS.md` points to it.",
             'Edit or prune bible entries only with the change explained in the commit.',
             'The tracker is the organization/repository-defined work-management system.',
         ):
             with self.subTest(clause=clause):
                 self.assertIn(clause, text)
+
+    def test_managed_repository_loader_points_to_the_bible(self):
+        core = (ROOT / 'rules/core.md').read_text()
+        self.assertIn("The bible is the repository's `.agents/rules.md`", core)
+        structure = (ROOT / 'STRUCTURE.md').read_text()
+        loader = structure.split('## Managed repository loader\n', 1)[1]
+        self.assertEqual(loader.split('```markdown\n', 1)[1].split('```', 1)[0], (
+            '# AGENTS.md\n'
+            'This repository is managed by [House Rules](<House Rules URL>). '
+            'Read House Rules `AGENTS.md` first and follow it.\n'
+            "This repository's own rules are in [.agents/rules.md](.agents/rules.md).\n"
+        ))
+        for clause in (
+            'Tool files (`CLAUDE.md`, `GEMINI.md`, `.cursorrules`, '
+            '`.github/copilot-instructions.md`) contain only a pointer to `AGENTS.md`, '
+            'apart from content a tool manager writes and owns.',
+            'A managed repository without its own rules omits the third line.',
+            'An unmanaged repository keeps a normal `AGENTS.md`; House Rules does not govern it.',
+        ):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, ' '.join(loader.split()))
+
+    def test_implementer_reads_loader_and_rules_for_gates_and_conventions(self):
+        text = ' '.join((ROOT / 'prompts/roles/implementer.md').read_text().split())
+        self.assertIn("Follow the repository's AGENTS.md and the rules file it points to "
+                      'for its gates and conventions.', text)
 
     def test_L23_reference_convention(self):
         text = (ROOT / 'rules/core.md').read_text()

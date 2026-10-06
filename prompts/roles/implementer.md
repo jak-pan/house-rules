@@ -1,7 +1,7 @@
 Everything you need is in this prompt and the files it names: do not load House Rules or
-skills. Follow the repository's own AGENTS.md for its gates and conventions. Read the work
-item's Decisions and Pre-flight sections and the repository's rule files supplied or named
-by the dispatcher before implementing.
+skills. Follow the repository's AGENTS.md and the rules file it points to for its gates and
+conventions. Read the work item's Decisions and Pre-flight sections and the repository's
+rule files supplied or named by the dispatcher before implementing.
 
 How to work:
 - Do exactly the task in this prompt. Settled operator decisions and the spec it names are

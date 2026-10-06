@@ -9,10 +9,10 @@ Follow [rules/delivery.md §Layout](rules/delivery.md#layout) for layout invaria
 
 ```
 repo/
-├── AGENTS.md                      # the bible: repository rules, settled decisions, execution choices
+├── AGENTS.md                      # managed-repository loader; unmanaged repos keep normal instructions
+├── .agents/rules.md               # the bible: repository rules, settled decisions, execution choices
 ├── CONTEXT.md                     # project purpose, acceptance, stack, overrides with reasons
-├── CLAUDE.md                      # Claude Code instructions; preserve existing content; import
-│                                  #   AGENTS.md only if /memory shows this version does not load it
+├── CLAUDE.md                      # pointer to AGENTS.md; preserve tool-manager-owned content
 ├── .claude/rules/<name>.md        # optional, Claude-only: path-scoped rules (frontmatter paths:)
 ├── docs/
 │   ├── SYSTEM-MAP.md              # ONE high-level system map (skill design-canon §Docs)
@@ -42,6 +42,22 @@ repo/
 ├── .debug-session/                # gitignored: logs, screenshots, debug reports
 └── .tmp/                          # gitignored: scratch; lane targets only without a worktree
 ```
+
+## Managed repository loader
+
+A managed repository uses exactly this `AGENTS.md`:
+
+```markdown
+# AGENTS.md
+This repository is managed by [House Rules](<House Rules URL>). Read House Rules `AGENTS.md` first and follow it.
+This repository's own rules are in [.agents/rules.md](.agents/rules.md).
+```
+
+Tool files (`CLAUDE.md`, `GEMINI.md`, `.cursorrules`,
+`.github/copilot-instructions.md`) contain only a pointer to `AGENTS.md`, apart from
+content a tool manager writes and owns.
+A managed repository without its own rules omits the third line.
+An unmanaged repository keeps a normal `AGENTS.md`; House Rules does not govern it.
 
 ## Naming rules
 
