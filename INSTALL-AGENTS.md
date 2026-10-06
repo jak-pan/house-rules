@@ -273,16 +273,19 @@ cache as the source.
 Use the Python 3.9 or later standard-library sync script from the permanent checkout:
 
 ```sh
-python3 <HOUSE_RULES_ROOT>/scripts/sync.py  # update checkout and report installation drift
+python3 "<HOUSE_RULES_ROOT>/scripts/sync.py"  # update checkout and report installation drift
 ```
 
 On a clean default-branch checkout, the script fetches the default branch and runs
-`git pull --ff-only origin <default-branch>` when there are remote updates and no local
-commits ahead of the remote. Dirty, detached, non-default, ahead and diverged checkouts
-are reported and never pulled. It then checks every configured home's managed block, missing or stale Skill links, owned links to
+`git merge --ff-only --no-overwrite-ignore <fetched-revision>` when there are remote
+updates and no local commits ahead of the remote. The merge uses the captured fetched
+revision and aborts if incoming tracked paths would overwrite ignored local files.
+Dirty, detached, non-default, ahead and diverged checkouts are reported and never updated.
+It then checks every configured home's managed block, missing or stale Skill links, owned links to
 removed Skills, and same-name entries in the other scanned Skill folders. Git and
-filesystem errors reach the caller. Exit codes are 0 for no findings, 1 for reported
-drift or conflicts, and 2 for an error.
+filesystem errors reach the caller. Findings collected before a verification error are
+retained, and the summary identifies incomplete coverage. Exit codes are 0 for no
+findings, 1 for reported drift or conflicts, and 2 for an error.
 
 The scheduled run reports drift; an agent repairs it by following §3, including the
 no-write plan in §2 and the verification in §5. The script does not modify instruction
@@ -294,7 +297,9 @@ Only present product homes are selected from the baseline locations in §1, resp
 homes must be existing absolute directories. An existing default
 Codex directory without `config.toml` or `auth.json` is an error. Extra homes go in
 the gitignored `custom/sync.env`, one assignment per home; repeat keys for several
-homes. Values are absolute paths, optionally shell-quoted, with `#` comments allowed.
+homes. Values are absolute paths parsed with POSIX shell quoting, with `#` comments
+allowed. Use single quotes for paths containing backslashes, including Windows drive
+and UNC paths; unquoted or double-quoted backslashes can be consumed as escapes.
 The script parses these assignments as data; it never executes shell code or expands
 variables. Extra homes must exist, and extra Codex homes must meet §1's identification
 rule. Without this file, only the baseline homes are checked.
@@ -304,6 +309,13 @@ CODEX_HOME="<EXTRA_CODEX_HOME>"
 CODEX_HOME="<ANOTHER_CODEX_HOME>"
 CLAUDE_CONFIG_DIR="<EXTRA_CLAUDE_HOME>"
 KIMI_CODE_HOME="<EXTRA_KIMI_HOME>"
+```
+
+For native Windows homes, preserve backslashes with single quotes:
+
+```sh
+CODEX_HOME='C:\Users\example\.codex-extra'
+CODEX_HOME='\\server\share\.codex-extra'
 ```
 
 Verification honors Codex's override file and follows instruction symlinks. The

@@ -50,7 +50,7 @@ def git(root, *args):
 
 
 def update(root):
-    """Never pull dirty, non-default, ahead or diverged checkouts."""
+    """Never update dirty, non-default, ahead or diverged checkouts."""
     if git(root, "status", "--porcelain", "--untracked-files=all"):
         return ["checkout is dirty; not pulled"]
     branch = git(root, "branch", "--show-current")
@@ -73,7 +73,7 @@ def update(root):
     if ahead:
         return [f"checkout is {'diverged' if behind else 'ahead'}; not pulled"]
     if behind:
-        print(git(root, "pull", "--ff-only", "origin", default))
+        print(git(root, "merge", "--ff-only", "--no-overwrite-ignore", revision))
     return []
 
 
@@ -192,15 +192,15 @@ def skill_folders(selected, home):
     return sorted(folders)
 
 
-def verify(root, home):
+def verify(root, home, findings, selected):
+    """Collect results in caller-owned lists so a later error cannot discard them."""
     block = template(root)
-    selected = homes(root, home)
+    selected.extend(homes(root, home))
     roots = ownership_roots(root)
     skills = {path.name: path for path in children(root / "skills")
               if is_dir(path) and is_file(path / "SKILL.md")}
     if ".system" in skills:
         raise ValueError(".system is reserved; cannot install a House Rules skill there")
-    findings = []
     instructions = {instruction_file(key, product_home) for key, product_home in selected}
     for path in (home / "AGENTS.md", home / "CLAUDE.md"):
         if path not in instructions and present(path) and MARKERS.search(
@@ -239,7 +239,6 @@ def verify(root, home):
                 findings.append(f"{reason}: {path}")
             elif exists and not install and name in skills:
                 findings.append(f"same-name shadowing conflict: {path}")
-    return findings, selected
 
 
 def main(argv=None):
@@ -250,20 +249,26 @@ def main(argv=None):
     failed = False
     findings = []
     selected = []
+    verification_complete = False
     # A failed checkout update must not prevent checking the installed homes.
-    for operation in (lambda: (update(root), []), lambda: verify(root, Path.home())):
+    for name, operation in (
+            ("update", lambda: findings.extend(update(root))),
+            ("verification", lambda: verify(root, Path.home(), findings, selected))):
         try:
-            reports, checked = operation()
-            findings.extend(reports)
-            selected.extend(checked)
+            operation()
         except (OSError, ValueError, RecursionError, subprocess.CalledProcessError) as error:
             failed = True
             print(f"ERROR: {error}", file=sys.stderr)
             if isinstance(error, subprocess.CalledProcessError):
                 print(error.stderr, file=sys.stderr)
+        else:
+            if name == "verification":
+                verification_complete = True
     for message in findings:
         print(f"REPORT: {message}")
-    print(f"{len(selected)} homes checked; {len(findings)} findings; "
+    coverage = ("homes checked" if verification_complete else
+                "homes selected; verification incomplete")
+    print(f"{len(selected)} {coverage}; {len(findings)} findings; "
           f"{time.monotonic() - started:.3f}s")
     return 2 if failed else 1 if findings else 0
 

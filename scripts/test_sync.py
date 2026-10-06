@@ -7,6 +7,8 @@ import io
 import json
 import os
 from pathlib import Path
+import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -96,8 +98,11 @@ class SyncTests(unittest.TestCase):
         self.commit(self.origin, ["skills/new/SKILL.md"])
         with mock.patch.object(sync, "git", wraps=sync.git) as calls:
             code, out, err = self.invoke()
-        self.assertTrue(any(call.args[1:] == ("pull", "--ff-only", "origin", "main")
+        revision = self.git(self.origin, "rev-parse", "HEAD")
+        self.assertTrue(any(call.args[1:] == ("merge", "--ff-only", "--no-overwrite-ignore", revision)
                             for call in calls.call_args_list))
+        self.assertEqual(sum("fetch" in call.args for call in calls.call_args_list), 1)
+        self.assertFalse(any("pull" in call.args for call in calls.call_args_list))
         self.assertEqual(code, 1, out + err)
         self.assertEqual(self.git(self.root, "rev-parse", "HEAD"),
                          self.git(self.origin, "rev-parse", "HEAD"))
@@ -109,6 +114,65 @@ class SyncTests(unittest.TestCase):
     def test_compaction_wording_is_the_authoritative_template(self):
         self.assertIn("At session start and after every context compaction or reset, read "
                       f"`{self.root}/AGENTS.md`.", sync.template(self.root))
+
+    def test_update_preserves_ignored_files_colliding_with_incoming_paths(self):
+        path = "custom/INDEX.md"
+        self.write(self.root / path, "Machine-local index\n")
+        self.write(self.origin / path, "Incoming tracked file\n")
+        self.git(self.origin, "add", "--force", "--", path)
+        self.git(self.origin, "commit", "-m", "Add colliding path")
+        head = self.git(self.root, "rev-parse", "HEAD")
+        code, out, err = self.invoke()
+        self.assertEqual((self.root / path).read_text(), "Machine-local index\n")
+        self.assertEqual(self.git(self.root, "rev-parse", "HEAD"), head)
+        self.assertEqual(code, 2, out + err)
+        self.assertIn("ERROR:", err)
+        self.assertIn("missing block", out)
+        self.assertIn("3 homes checked", out)
+
+    def test_later_verification_errors_preserve_earlier_findings(self):
+        real_read, real_scan = Path.read_bytes, os.scandir
+        for operation in ("read", "scan"):
+            with self.subTest(operation=operation):
+                def read(path):
+                    if operation == "read" and path == self.codex / "AGENTS.md":
+                        raise PermissionError("fixture instruction read denied")
+                    return real_read(path)
+
+                def scan(path):
+                    if operation == "scan" and Path(path) == self.claude / "skills":
+                        raise PermissionError("fixture skill scan denied")
+                    return real_scan(path)
+
+                self.write(self.codex / "AGENTS.md", "Local rules\n")
+                (self.claude / "skills").mkdir(exist_ok=True)
+                with mock.patch.object(Path, "read_bytes", autospec=True, side_effect=read), \
+                        mock.patch.object(os, "scandir", side_effect=scan):
+                    code, out, err = self.invoke()
+                self.assertEqual(code, 2, out + err)
+                self.assertIn(f"REPORT: missing block: {self.claude / 'CLAUDE.md'}", out)
+                self.assertIn("verification incomplete", out)
+                self.assertIn("3 homes selected", out)
+                self.assertNotIn("homes checked", out)
+                self.assertIn(f"{1 if operation == 'read' else 4} findings", out)
+                failure = "instruction read" if operation == "read" else "skill scan"
+                self.assertIn(f"fixture {failure} denied", err)
+
+    def test_documented_windows_homes_preserve_backslashes(self):
+        text = (REPO / "INSTALL-AGENTS.md").read_text(encoding="utf-8")
+        values = [r"C:\Users\example\.codex-extra", r"\\server\share\.codex-extra"]
+        for value in values:
+            with self.subTest(value=value):
+                line = f"CODEX_HOME='{value}'"
+                self.assertTrue(line in text, f"missing quoted example: {line}")
+                self.assertEqual(shlex.split(line, comments=True), [f"CODEX_HOME={value}"])
+
+    def test_documented_sync_command_quotes_source_paths_with_spaces(self):
+        text = (REPO / "INSTALL-AGENTS.md").read_text(encoding="utf-8")
+        command = re.search(r"^python3 .*scripts/sync\.py.*$", text, re.M).group()
+        root = "/opt/House Rules"
+        self.assertEqual(shlex.split(command.replace("<HOUSE_RULES_ROOT>", root), comments=True),
+                         ["python3", f"{root}/scripts/sync.py"])
 
     def test_bad_configuration_and_invalid_codex_home_fail_visibly(self):
         for text in ("UNKNOWN=/example\n", 'CODEX_HOME="relative"\n', "CODEX_HOME=$(false)\n"):
@@ -201,7 +265,7 @@ class SyncTests(unittest.TestCase):
             code, out, err = self.invoke()
         self.assertEqual(code, 1, err)
         self.assertIn("dirty", out)
-        self.assertFalse(any("pull" in call.args for call in calls.call_args_list))
+        self.assertFalse(any(call.args[1] in ("pull", "merge") for call in calls.call_args_list))
 
     def changed_during_fetch(self, mutation):
         self.write(self.origin / "remote", "fixture")
@@ -223,7 +287,7 @@ class SyncTests(unittest.TestCase):
             code, out, err = self.invoke()
         self.assertEqual(code, 1, out + err)
         self.assertIn("changed during update", out)
-        self.assertFalse(any("pull" in call.args for call in calls.call_args_list))
+        self.assertFalse(any(call.args[1] in ("pull", "merge") for call in calls.call_args_list))
 
     def test_rechecks_cleanliness_after_fetch(self):
         self.changed_during_fetch("dirty")
@@ -248,7 +312,7 @@ class SyncTests(unittest.TestCase):
         with mock.patch.object(sync, "git", side_effect=git) as calls:
             code, out, err = self.invoke()
         self.assertEqual(code, 1, out + err)
-        self.assertFalse(any("pull" in call.args for call in calls.call_args_list))
+        self.assertFalse(any(call.args[1] in ("pull", "merge") for call in calls.call_args_list))
 
     def test_named_home_instruction_duplicates_are_reported(self):
         self.install_fixture()
@@ -483,7 +547,7 @@ class SyncTests(unittest.TestCase):
             code, out, err = self.invoke()
         self.assertEqual(code, 1, err)
         self.assertIn("dirty", out)
-        self.assertFalse(any("pull" in call.args for call in calls.call_args_list))
+        self.assertFalse(any(call.args[1] in ("pull", "merge") for call in calls.call_args_list))
         self.assertIn("3 homes checked", out)
 
     def test_diverged_and_ahead_checkouts_are_reported_and_never_pulled(self):
@@ -496,7 +560,7 @@ class SyncTests(unittest.TestCase):
             code, out, err = self.invoke()
         self.assertEqual(code, 1, err)
         self.assertIn("diverged", out)
-        self.assertFalse(any("pull" in call.args for call in calls.call_args_list))
+        self.assertFalse(any(call.args[1] in ("pull", "merge") for call in calls.call_args_list))
 
     def test_receipt_and_skill_scan_errors_reach_caller(self):
         directory = self.root / "custom/installations"
