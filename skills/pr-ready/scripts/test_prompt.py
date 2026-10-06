@@ -1460,7 +1460,7 @@ class AuditRestorationTest(unittest.TestCase):
         text = (ROOT / 'rules/delivery.md').read_text()
         for clause in (
             '- A requested outcome or accepted finding that the session does not finish'
-            ' becomes a work item in the repository that owns the change, before the '
+            ' becomes a work item in the tracker chosen above, before the '
             'session ends, linked from wherever it was set aside.\n- That covers work '
             'that is deferred, "saved as a task", scoped out of another item, left as '
             'an audit gap, a plan or migration step, or said to "belong to the other '
