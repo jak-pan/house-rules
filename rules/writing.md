@@ -49,12 +49,13 @@ happened, why it matters and what to do, in that order.
 - In chat, set the link target to the file's path from the session root, so the client can
   open it.
 - In chat, also give the web link when the reader may need the reviewed version.
-- In a repository file, link another file of the same repository with a path relative to
-  the linking file.
+- In a file, link another local file with a path relative to the linking file.
 - In other text read on the web (issues, PRs, comments, commits, web pages), link files only
   with web links.
 - Pin a web link to a commit when it cites evidence.
 - Send a file that no link can open with the client's file-sending tool, when it has one.
+- Name a file that does not exist yet in words, not as a path; the client turns a path into
+  a link that cannot open.
 - Write a PR or issue reference as a Markdown link: `[#52](https://github.com/owner/repo/pull/52)`.
 - Prefer lists of five or fewer items.
 - Group longer lists only when helpful.
