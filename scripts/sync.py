@@ -2,6 +2,7 @@
 """Report or repair House Rules installations; see INSTALL-AGENTS.md §6."""
 
 import argparse
+import errno
 import hashlib
 import json
 import os
@@ -249,20 +250,22 @@ def plan(root, home):
         if path not in instructions and present(path) and MARKERS.search(
                 path.read_bytes().decode("utf-8")):
             conflicts.append(f"duplicate home-level managed block: {path}")
+    instruction_targets = {}
     for path in sorted(instructions):
         if path.is_symlink() and not path.is_file():
             conflicts.append(f"instruction symlink has no regular target: {path}")
             continue
         target = path.resolve()
         check_protected(target, selected)
+        instruction_targets.setdefault(target, {})[str(path)] = precondition(path)
+    for target, aliases in instruction_targets.items():
         before = precondition(target)
-        instruction_before = precondition(path)
         text = target.read_bytes().decode("utf-8") if target.exists() else ""
         markers = list(MARKERS.finditer(text))
         if markers and (len(markers) != 2 or markers[0].group(2) != "begin" or
                         markers[1].group(2) != "end" or
                         markers[0].group(1) != markers[1].group(1)):
-            conflicts.append(f"malformed or multiple managed blocks: {path}")
+            conflicts.append(f"malformed or multiple managed blocks: {target}")
             continue
         if markers:
             start, end = markers[0].start(), markers[1].end()
@@ -275,7 +278,7 @@ def plan(root, home):
         if changed != text:
             actions.append({"path": str(target), "kind": "block", "reason": reason,
                             "content": changed, "before": before, "original": text,
-                            "instruction": str(path), "instruction_before": instruction_before})
+                            "instructions": aliases})
     for folder, install in skill_folders(selected, home):
         check_protected(folder, selected)
         entries = {path.name: path for path in children(folder)} if folder.exists() else {}
@@ -309,11 +312,12 @@ def check_action(action, root):
     if precondition(path) != action["before"]:
         raise ValueError(f"destination changed since planning: {path}")
     if action["kind"] == "block":
-        instruction = Path(action["instruction"])
-        if (precondition(instruction) != action["instruction_before"] or
-                instruction.resolve() != path or
-                (path.read_bytes().decode("utf-8") if present(path) else "") != action["original"]):
-            raise ValueError(f"instructions changed since planning: {instruction}")
+        for alias, before in action["instructions"].items():
+            instruction = Path(alias)
+            if precondition(instruction) != before or instruction.resolve() != path:
+                raise ValueError(f"instructions changed since planning: {instruction}")
+        if (path.read_bytes().decode("utf-8") if present(path) else "") != action["original"]:
+            raise ValueError(f"instructions changed since planning: {path}")
     elif present(path):
         roots, copies = ownership(root)
         if not owned(path, roots, copies) or (action["copy_hash"] is not None and
@@ -427,8 +431,16 @@ def repair(root, actions, selected, roots, block):
             check_action(action, root)
             check_protected(path, selected)
             if path.is_dir() and not path.is_symlink():
-                # Standard-library move falls back to copying across filesystems.
-                shutil.move(str(path), change["backup"])
+                try:
+                    os.rename(path, change["backup"])
+                except OSError as error:
+                    if error.errno != errno.EXDEV:
+                        raise
+                    shutil.copytree(path, change["backup"], symlinks=True)
+                    # Copying must finish before the final source check and removal.
+                    check_action(action, root)
+                    check_protected(path, selected)
+                    shutil.rmtree(path)
             if action["kind"] == "block":
                 atomic_text(path, action["content"], mode, selected=selected,
                             preserve=path if present(path) else None,

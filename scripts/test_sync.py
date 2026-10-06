@@ -176,6 +176,52 @@ class SyncTests(unittest.TestCase):
         self.assertIn(sync.template(self.root), target.read_text())
         self.assertEqual((self.codex / "AGENTS.md").read_text(), "Inactive rules\n")
 
+    def test_shared_instruction_target_is_fixed_once_and_skill_repairs_complete(self):
+        target = self.codex / "AGENTS.md"
+        alias = self.kimi / "AGENTS.md"
+        self.write(target, "Shared operator rules\n")
+        alias.symlink_to(target)
+        actions, *_ = sync.plan(self.root, self.home)
+        self.assertEqual(len([action for action in actions if action["kind"] == "block"
+                              and action["path"] == str(target)]), 1)
+        self.clean()
+        self.assertTrue(alias.is_symlink())
+        self.assertEqual(target.read_text(), "Shared operator rules\n\n" +
+                         sync.template(self.root) + "\n")
+        for folder in (self.claude / "skills", self.home / ".agents/skills"):
+            self.assertEqual((folder / "sample").resolve(), self.root / "skills/sample")
+        for key, home, instruction in (("CODEX_HOME", self.codex, target),
+                                       ("KIMI_CODE_HOME", self.kimi, alias)):
+            inventory = json.loads(sync.inventory_path(self.root, key, home).read_text())
+            self.assertEqual(inventory["instruction_file"], str(instruction))
+            self.assertEqual(inventory["status"], "verified")
+            changes = [change for change in inventory["changes"] if change["kind"] == "block"]
+            self.assertEqual(len(changes), 1)
+            self.assertEqual(changes[0]["path"], str(target))
+        self.assertEqual(self.invoke()[0], 0)
+
+    def test_shared_instruction_alias_drift_is_refused(self):
+        target = self.codex / "AGENTS.md"
+        alias = self.kimi / "AGENTS.md"
+        foreign = self.home / "foreign.md"
+        self.write(target, "Shared operator rules\n")
+        self.write(foreign, "Foreign rules\n")
+        alias.symlink_to(target)
+        real_plan = sync.plan
+
+        def changed_plan(*args):
+            result = real_plan(*args)
+            alias.unlink()
+            alias.symlink_to(foreign)
+            return result
+
+        with mock.patch.object(sync, "plan", side_effect=changed_plan):
+            code, _, err = self.invoke(True)
+        self.assertEqual(code, 2, err)
+        self.assertIn("changed since planning", err)
+        self.assertEqual(target.read_text(), "Shared operator rules\n")
+        self.assertEqual(foreign.read_text(), "Foreign rules\n")
+
     def test_legacy_markers_migrate_without_losing_surrounding_bytes(self):
         for family in ("forge", "groundwork"):
             with self.subTest(family=family):
@@ -603,6 +649,43 @@ class SyncTests(unittest.TestCase):
         self.assertTrue(copied.is_symlink())
         backups = list((self.root / "custom/backups").rglob("SKILL.md"))
         self.assertEqual([path.read_text() for path in backups], ["Owned copy\n"])
+
+    def test_cross_filesystem_backup_preserves_edits_before_source_removal(self):
+        for name in ("sample", "removed"):
+            with self.subTest(name=name):
+                copied = self.claude / "skills" / name
+                self.write(copied / "SKILL.md", "Original owned copy\n")
+                self.receipt({"copies": {str(copied): sync.copy_hash(copied)}})
+                real_rename, real_copytree = os.rename, shutil.copytree
+
+                def rename(source, destination, *args, **kwargs):
+                    if Path(source) == copied:
+                        raise OSError(errno.EXDEV, "cross-device fixture")
+                    return real_rename(source, destination, *args, **kwargs)
+
+                def copytree(source, destination, *args, **kwargs):
+                    result = real_copytree(source, destination, *args, **kwargs)
+                    if Path(source) == copied:
+                        self.write(copied / "SKILL.md", "Edited during backup\n")
+                    return result
+
+                with mock.patch.object(os, "rename", side_effect=rename), \
+                        mock.patch.object(shutil, "copytree", side_effect=copytree):
+                    code, _, err = self.invoke(True)
+                self.assertEqual(code, 2, err)
+                self.assertIn("changed since planning", err)
+                self.assertFalse(copied.is_symlink())
+                self.assertEqual((copied / "SKILL.md").read_text(), "Edited during backup\n")
+                backups = list((self.root / "custom/backups").rglob(f"{name}/SKILL.md"))
+                self.assertEqual([path.read_text() for path in backups], ["Original owned copy\n"])
+                receipts = [json.loads(path.read_text()) for path in
+                            (self.root / "custom/installations/runs").iterdir()]
+                failed = next(receipt for receipt in receipts if any(
+                    change["path"] == str(copied) for change in receipt["changes"]))
+                self.assertTrue(failed["status"].startswith("partial failure:"))
+                change = next(change for change in failed["changes"] if change["path"] == str(copied))
+                self.assertEqual(change["outcome"], "planned")
+                self.assertTrue(Path(change["backup"]).is_dir())
 
     def test_fix_now_10_hidden_untracked_files_prevent_pull(self):
         self.git(self.root, "config", "status.showUntrackedFiles", "no")
