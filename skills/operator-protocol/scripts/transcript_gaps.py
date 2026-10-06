@@ -33,7 +33,9 @@ def object_field(record, key):
 
 def text_content(content, tool=None):
     if isinstance(content, str):
-        return strip_injected(content, tool) if tool else content
+        if tool and re.match(r"(?:# AGENTS\.md instructions|<[A-Za-z0-9_-]+)", content.lstrip()):
+            return ""
+        return content
     if not isinstance(content, list):
         raise TranscriptError("human message content must be text or content blocks")
     texts = []
@@ -49,32 +51,6 @@ def text_content(content, tool=None):
         elif block.get("type") not in ("image", "input_image", "tool_result"):
             raise TranscriptError("unsupported human content block")
     return "\n".join(texts)
-
-
-def strip_injected(text, tool):
-    tags = ("task-notification", "teammate-message", "subagent_notification")
-    if tool == "codex":
-        tags += ("environment_context", "user_instructions", "turn_aborted", "skill")
-    envelopes = r"<(?P<tag>" + "|".join(tags) + r")(?:\s[^<>]*)?>"
-    if tool == "codex":
-        envelopes += (r"|# AGENTS\.md instructions for [^\n]+\n[ \t\n]*"
-                      r"<(?P<instructions>INSTRUCTIONS)>")
-    parts = []
-    position = 0
-    for opening in re.finditer(envelopes, text):
-        if opening.start() < position:
-            continue
-        tag = opening.group(opening.lastgroup)
-        tokens = re.compile(r"(?<!`)(?:<" + tag + r"(?:\s[^<>]*)?>|</" + tag + r">)(?!`)")
-        depth = 1
-        for token in tokens.finditer(text, opening.end()):
-            depth += -1 if token.group().startswith("</") else 1
-            if depth == 0:
-                parts.append(text[position:opening.start()])
-                position = token.end()
-                break
-    parts.append(text[position:])
-    return "".join(parts)
 
 
 def human_message(record, tool, session):

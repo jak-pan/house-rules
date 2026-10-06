@@ -97,6 +97,7 @@ without advancing the marker. Newly created state directories are mode 0700; fil
 Claude requires `origin.kind: human` and excludes meta entries, sidechains, peers and
 notifications. Codex uses user `response_item` messages, not their duplicate event log;
 it excludes exec/subagent sessions and injected rule/context/notification blocks.
+Whole-part filtering also drops human text starting with an opening tag after leading whitespace.
 Kimi excludes slash commands. Its history stores only text: a missing timestamp stays
 null and `session` is the history-file stem, not a conversation ID. The compare prompt
 reports that missing provenance rather than guessing.

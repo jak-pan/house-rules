@@ -8,6 +8,8 @@ import sys
 import tempfile
 import unittest
 
+import transcript_gaps
+
 
 SCRIPT = Path(__file__).with_name("transcript_gaps.py")
 FIXTURES = SCRIPT.parent / "fixtures"
@@ -236,64 +238,74 @@ class TranscriptGapsTest(unittest.TestCase):
         self.assertEqual(Path(result.stdout.strip()).parent,
                          self.root / "user-state/house-rules/transcript-gaps")
 
-    def test_injected_blocks_do_not_discard_human_blocks_in_same_item(self):
+    def test_injected_parts_are_dropped_whole(self):
+        parts = [
+            "# AGENTS.md instructions",
+            "# AGENTS.md instructions for /example\n<INSTRUCTIONS>rules</INSTRUCTIONS>`",
+            "<environment_context>rules</environment_context>`",
+            "<turn_aborted>guidance",
+            "<subagent_notification>completion",
+            "<recommended_plugins>plugins",
+            "<goal_context>goal",
+            "<codex_delegation>delegation",
+            "<skill>context",
+            "<task-notification>notification",
+            '<teammate-message teammate_id="example">notification',
+            "<future_tag-123>context",
+            "<123>context",
+            "<_context>context",
+            "<-context>context",
+        ]
+        for tool in ("codex", "claude"):
+            for part in parts:
+                with self.subTest(tool=tool, part=part):
+                    self.assertEqual(transcript_gaps.text_content(part, tool), "")
+                    self.assertEqual(transcript_gaps.text_content(" \t\n" + part, tool), "")
+
+    def test_human_parts_are_kept_whole_unchanged(self):
+        parts = [
+            " \tKeep whitespace.\n",
+            "Explain <environment_context>rules</environment_context>.",
+            "Keep # AGENTS.md instructions literally.",
+            "`<skill>context</skill>`",
+            "<",
+            "< 3 examples are enough.",
+            "</environment_context> is a closing tag.",
+        ]
+        for tool in ("codex", "claude"):
+            for part in parts:
+                with self.subTest(tool=tool, part=part):
+                    self.assertEqual(transcript_gaps.text_content(part, tool), part)
+
+    def test_human_part_starting_with_opening_tag_is_dropped(self):
+        for tool in ("codex", "claude"):
+            with self.subTest(tool=tool):
+                self.assertEqual(transcript_gaps.text_content(
+                    "<example>Use this literal example in the documentation.</example>", tool), "")
+
+    def test_injected_parts_do_not_discard_human_parts_in_same_item(self):
         paths = {
             "claude": self.fixture("claude.jsonl", self.home / ".claude/projects/project/session.jsonl"),
             "codex": self.fixture("codex.jsonl", self.home / ".codex/sessions/session.jsonl"),
         }
         self.assertEqual(self.run_script().returncode, 0)
-        expected = []
+        human = " \tKeep <environment_context>literal tags</environment_context>.\n"
         for tool, path in paths.items():
-            envelopes = [f"<{tag}>injected</{tag}>" for tag in
-                         ("task-notification", "teammate-message", "subagent_notification")]
-            envelopes.append('<teammate-message teammate_id="example">injected</teammate-message>')
+            content = [{"type": "input_text" if tool == "codex" else "text", "text": text}
+                       for text in ("\n<recommended_plugins>injected", human,
+                                    "# AGENTS.md instructions", "Keep this too.")]
+            record = {"timestamp": "2026-01-01T00:00:02Z"}
             if tool == "codex":
-                envelopes.extend(f"<{tag}>injected</{tag}>" for tag in
-                                 ("environment_context", "user_instructions", "turn_aborted", "skill"))
-                envelopes.append("# AGENTS.md instructions for /example\n\n"
-                                 "<INSTRUCTIONS>injected</INSTRUCTIONS>")
-            for envelope in list(envelopes):
-                tag = envelope.split("<", 1)[1].split(">", 1)[0].split()[0]
-                for quote in ("`", "``"):
-                    for token in (f"<{tag}>", f"</{tag}>"):
-                        envelopes.append(envelope.replace(
-                            "injected", f"Use {quote}{token}{quote} for injected rules.\n"
-                            "Synthetic generated rule.\n"))
-                envelopes.append(envelope.replace(
-                    "injected", f"injected <{tag}>example <{tag}>nested example</{tag}></{tag}>\n"
-                    f"<{tag}>another example</{tag}>\nSynthetic generated rule after the example."))
-            cases = []
-            for envelope in envelopes:
-                cases.extend([
-                    (envelope, None),
-                    (envelope + "Report failed checks.", "Report failed checks."),
-                    ("Keep this." + envelope + "Report failed checks.",
-                     "Keep this.Report failed checks."),
-                    (envelope + "Keep between." + envelope + "Keep after.",
-                     "Keep between.Keep after."),
-                    ([{"type": "text", "text": envelope},
-                      {"type": "text", "text": "Keep the human block."}], "Keep the human block."),
-                    ([{"type": "text", "text": envelope + "Keep this block."}], "Keep this block."),
-                ])
-                unmatched = envelope.split("injected")[0] + "Keep literal tokens."
-                cases.append((unmatched, unmatched))
-            cases.append(("<skillful>Keep similar tokens.</skillful>",
-                          "<skillful>Keep similar tokens.</skillful>"))
+                record.update(type="response_item", payload={
+                    "type": "message", "role": "user", "content": content})
+            else:
+                record.update(type="user", origin={"kind": "human"},
+                              sessionId="claude-session", message={"content": content})
             with path.open("a") as stream:
-                for content, text in cases:
-                    record = {"timestamp": "2026-01-01T00:00:02Z"}
-                    if tool == "codex":
-                        record.update(type="response_item", payload={
-                            "type": "message", "role": "user", "content": content})
-                    else:
-                        record.update(type="user", origin={"kind": "human"},
-                                      sessionId="claude-session", message={"content": content})
-                    stream.write(json.dumps(record) + "\n")
-                    if text is not None:
-                        expected.append(text)
+                stream.write(json.dumps(record) + "\n")
         result = self.run_script()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual([r["text"] for r in self.rows()], expected)
+        self.assertEqual([r["text"] for r in self.rows()], [human + "\nKeep this too."] * 2)
 
     def test_codex_interruption_and_skill_context_are_excluded(self):
         path = self.home / ".codex/sessions/session.jsonl"
