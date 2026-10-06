@@ -69,8 +69,9 @@ External repositories always get local review rounds (skill `upstream-contributi
 **Review bar.** [`prompts/util/review-bar.md`](../../prompts/util/review-bar.md) holds the bar;
 the [reviewer role](../../prompts/roles/reviewer.md) includes the review
 canon: correctness and security, cost and design, code quality, waste as a blocking class, and
-the House Rules a reviewer enforces. It is inlined into every reviewer prompt, so reviewers
-load no other rules. Specialist dispatch follows
+the House Rules a reviewer enforces. Default reviewer packs include the shared rules.
+Packs compiled with `--session` receive shared rules through the live House Rules index.
+Specialist dispatch follows
 [Optional lenses](references/review-lenses.md#optional-lenses).
 
 - Give the reviewer the spec sections, previous review and round task as needed
