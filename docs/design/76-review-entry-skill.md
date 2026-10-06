@@ -10,18 +10,23 @@ A request to review code, a commit, a diff, a branch or a pull request loads a n
 skill, `change-review`, in Claude and Codex. The skill compiles the same reviewer pack that
 lane and Warden reviewers receive, and it does not load pr-ready's push, CI and merge
 procedure. Operator-writing loads only for operator documents, questions to the operator
-and GitHub text; the rules for everyday replies move into the always-loaded writing rules.
+and GitHub text; the rules for everyday replies move into `rules/writing.md`, which is part
+of the foundation that #73 delivers to every session.
 
 ## Terms
 
 - **Reviewer pack:** the text that the prompt compiler builds from
-  `prompts/roles/reviewer.md` and the eight files it includes: review bar, cost and design
-  findings, report format, external writes, and four code-change rules. Lane and Warden
-  reviewers receive exactly this text.
+  `prompts/roles/reviewer.md` and every file named by its `@rule` lines: review bar, cost
+  and design findings, report format, external writes and the code-change rules, plus the
+  fragments #74 adds. Lane and Warden reviewers receive exactly this text.
 - **Prompt compiler:** `skills/pr-ready/scripts/prompt.py`. It replaces each
   `@rule house-rules:<path>` line with the whole file, recursively.
-- **Index:** House Rules `AGENTS.md`. Agents read it at session start; each line under
-  "Load when the task needs it" names a trigger and a skill.
+- **Foundation:** `rules/core.md` and `rules/writing.md`, the House Rules text every
+  session holds (#73's term). In #73's block mode it sits in the tool's instructions.
+- **Index:** House Rules `AGENTS.md`. Each line under "Load when the task needs it" names a
+  trigger and a skill. In #73's block mode its skill lines are not loaded, so the skill
+  descriptions are the operative triggers; in fallback mode agents read the index at
+  session start.
 - **Description:** the `description` line in a skill's frontmatter. Claude and Codex show
   every description to the agent and match the task against it.
 - **Everyday reply:** a chat answer, greeting, progress note or short report in chat.
@@ -103,7 +108,7 @@ flowchart TB
 
 ### 1. New skill `skills/change-review/SKILL.md`
 
-`DECISION` The name is `change-review`. `FACT` `code-review` is taken by a Claude Code
+Proposed name (question 3): `change-review`. `FACT` `code-review` is taken by a Claude Code
 built-in skill (it was in the load-test session's skill list). `ASSUMPTION` A bare
 `review` would be confused with the review commands that Claude Code and Codex provide.
 
@@ -111,8 +116,8 @@ built-in skill (it was in the load-test session's skill list). `ASSUMPTION` A ba
 review criteria and never lists the pack's files, so the pack keeps one home and picks up
 new includes (for example from #74) without an edit here. `FACT` The compiler resolves
 paths from its own location, so it runs from any working directory
-(`test_file_argument_is_repo_relative_and_independent_of_cwd`). It needs Python 3.9 or
-later; `/usr/bin/python3` on the machine where this design was checked is 3.9.6.
+(`test_file_argument_is_repo_relative_and_independent_of_cwd`). It needs Python 3.9, the
+macOS system Python.
 
 Exact file:
 
@@ -131,8 +136,8 @@ interactive session.
 
 ## 1. Compile the reviewer pack
 
-Run the prompt compiler from the House Rules root, the folder that holds the House Rules
-`AGENTS.md` your instructions name:
+Find the House Rules root in your instructions: the folder of the House Rules `AGENTS.md`
+path they name. Run the prompt compiler from there:
 
 ```sh
 /usr/bin/python3 <HOUSE_RULES_ROOT>/skills/pr-ready/scripts/prompt.py prompts/roles/reviewer.md
@@ -165,12 +170,21 @@ Run the prompt compiler from the House Rules root, the folder that holds the Hou
 ## 3. After the review
 
 - Fixing findings, pushing, further review rounds and merging continue in skill `pr-ready`.
-- To hand the review to a subagent, give it the compiled pack, not this skill.
+- To hand the review to a subagent, start a specialist per skill `agent-lanes` §Subagent
+  profiles, with the reviewer pack compiled with `--rev`.
 ````
 
-`FACT` This file is 2,353 bytes (564 o200k tokens). A Codex review then reads about
-12.9 KB (skill and pack) instead of the 23.8 KB it read in the load test (operator-writing,
-pr-ready and three raw pack files), and it receives all nine pack files instead of three.
+`FACT` This file is 2,439 bytes (585 o200k tokens). `ESTIMATE` A Codex review then reads
+about 13.0 KB (skill and pack) at 9e18159, about 14.9 KB after #74 (its reviewer pack is
+12,447 bytes), instead of the 23.8 KB
+it read in the load test (operator-writing, pr-ready and three raw pack files). It receives
+every pack file instead of three of nine.
+
+`DECISION` The hand-off in §3 uses #75's specialist launcher, because #75 keeps in-process
+subagents as general workers that restart House Rules. #75 merges after this change; if
+its launcher and `agent-lanes` §Subagent profiles are not on main when this change's
+implementation PR is ready, that PR leaves out §3's second bullet and #75's PR adds it
+verbatim.
 
 `DECISION` An explicit host command such as Claude Code's `/code-review` is the operator's
 choice of tool. The House Rules skill covers review requests in plain words.
@@ -211,7 +225,7 @@ description: The change loop for a change you deliver — local fast gate, push,
 New description (line 3):
 
 ```yaml
-description: Structure and question format for operator documents (briefs, reports, ledgers, design and decision documents), questions the operator must answer, and GitHub text (issues, PR bodies, review comments, replies, commit messages). Use when writing one of these. Everyday chat replies follow the always-loaded writing rules and do not load this skill.
+description: Structure and question format for operator documents (briefs, reports, ledgers, design and decision documents), questions the operator must answer, and GitHub text (issues, PR bodies, review comments, replies, commit messages). Use when writing one of these. Everyday chat replies follow the writing rules in the foundation and do not load this skill.
 ```
 
 What stays in operator-writing: the opening on controlled language, the seven-part
@@ -225,8 +239,9 @@ What leaves operator-writing:
 - §Communication rules (lines 14–19) is deleted. Its first line is a self-trigger that
   this design removes. The `decision-brief` pointer moves to the opening paragraph. The
   homework and permission lines move to `rules/writing.md`.
-- These lines move verbatim or nearly so to `rules/writing.md`: "Short chat replies …"
-  (lines 44–45), "Put commands, paths and snippets …" (46), "Answer numbered questions …"
+- These lines move verbatim or nearly so to `rules/writing.md`: the second sentence of
+  "Short chat replies …" (line 45; its first sentence repeats the order that the
+  `rules/writing.md` introduction already states, so it is dropped), "Put commands, paths and snippets …" (46), "Answer numbered questions …"
   (51), "Stay on the requested topic …" (52–53), "State the next action and its owner …"
   (59), "Highlight operator-owned actions …" (60), and "Never ask the operator about work
   the agent's own team must do …" (134–135).
@@ -243,10 +258,11 @@ Line 23 changes "Lead with the result" to "A document leads with the result", an
 
 ### 5. `rules/writing.md` §Communication rules
 
-Append to the existing three lines. Each sentence stays within 20 words.
+Append after the existing three lines (lines 8–10). The introduction, lines 3–4, already
+says "They should know what happened, why it matters and what to do, in that order", so no
+ordering bullet is added. Each sentence stays within 20 words.
 
 ```markdown
-- Open with the result or the action the reader must take, then why, then what is next.
 - Omit empty parts; do not add parts the message does not need.
 - Put commands, paths and snippets before optional explanation.
 - Answer numbered questions in the same order, with the same numbers.
@@ -263,9 +279,10 @@ Append to the existing three lines. Each sentence stays within 20 words.
 
 ### 6. Other references
 
-- `rules/core.md` line 48 ("Follow skills/operator-writing/SKILL.md §Communication rules
-  for operator-facing text.") is deleted. Line 47, "rules/writing.md governs all text.",
-  stays and now leads to operator-writing through the last writing rule above.
+- `rules/core.md` §Loading (as #73 restructures it; line 48 of §Session start at 9e18159):
+  the bullet "Follow skills/operator-writing/SKILL.md §Communication rules for
+  operator-facing text." is deleted. The bullet before it, "rules/writing.md governs all
+  text.", stays and now leads to operator-writing through the last writing rule above.
 - `skills/operator-protocol/SKILL.md` line 9: "Follow skills/operator-writing/SKILL.md for
   response style." becomes "Follow rules/writing.md for response style."
 - `skills/finding-unknowns/SKILL.md` line 45: "(skills/operator-writing/SKILL.md
@@ -282,9 +299,12 @@ Append to the existing three lines. Each sentence stays within 20 words.
 
 Updated:
 
-- `test_reset_reloads_skills_and_references_the_writing_rule_owner`: asserts that core's
-  §Session start no longer names operator-writing, and that `rules/writing.md` contains the
-  pointer to skill `operator-writing`.
+- `test_reset_reloads_skills_and_references_the_writing_rule_owner`, in the form #73 leaves
+  it (reading core §Loading and §After a compaction), is renamed
+  `test_reset_reloads_skills_and_writing_rules_name_operator_writing`. It asserts that core
+  §Loading keeps "rules/writing.md governs all text" and no longer names operator-writing,
+  and that `rules/writing.md` §Communication rules contains the pointer to skill
+  `operator-writing`. This change owns the rename.
 - `test_each_invariant_sentence_fits_twenty_words`: reads `rules/writing.md`
   §Communication rules instead of the deleted operator-writing section.
 - `test_moved_sections_have_one_rule_owner`: adds the moved sentences; each must be
@@ -307,31 +327,32 @@ until the new skill has its index line, so it needs no change.
 
 1. **Widen pr-ready's trigger to plain reviews.** Rejected: every review would load
    11.4 KB of push, CI and merge procedure, and pr-ready only links to the reviewer role,
-   so the agent still reads the role raw and misses six of nine files, as Codex did.
+   so the agent still reads the role raw and misses most of its files, as Codex did (six of nine).
 2. **Write review criteria into change-review.** Rejected: the review bar would have two
    homes and drift from what lane and Warden reviewers apply; `rules/core.md` keeps each
    rule in one home.
 3. **Commit a compiled copy of the pack as a skill reference.** Rejected: pr-ready §1
    forbids local copies of compiled prompts, and the copy goes stale whenever a fragment
    changes.
-4. **List the nine pack files in the skill.** Rejected as the main path: the list repeats
+4. **List the pack's files in the skill.** Rejected as the main path: the list repeats
    `reviewer.md`'s includes and breaks when #74 adds a fragment. The fallback in the skill
    follows the `@rule` lines instead, so it never needs a list.
 5. **Compile the pack at skill-load time with a Claude-only command in the skill body.**
    Rejected: Codex and Kimi do not run it, so the skill would need two delivery paths.
 6. **Shorten operator-writing but keep its trigger.** Rejected: it would still load for
-   every Codex reply, and the everyday rules would stay outside the always-loaded set.
+   every Codex reply, and the everyday rules would stay outside the foundation.
 
 ## Size
 
 Files touched by the implementation:
 
-- `skills/change-review/SKILL.md`: new, 49 lines, 2,353 bytes.
-- `AGENTS.md`: 1 line added, 2 lines replaced; 193 bytes and 48 o200k tokens more.
+- `skills/change-review/SKILL.md`: new, 50 lines, 2,439 bytes.
+- `AGENTS.md`: 1 line added, 2 lines replaced; 193 bytes and 48 o200k tokens more. Not part
+  of the block.
 - `skills/pr-ready/SKILL.md`: 1 line replaced.
 - `skills/operator-writing/SKILL.md`: about 16 lines removed, 4 replaced; 7,062 → about
   6,200 bytes.
-- `rules/writing.md`: 15 lines added, 817 bytes (171 o200k tokens).
+- `rules/writing.md`: 12 lines added, 729 bytes (150 o200k tokens).
 - `rules/core.md`: 1 line removed (90 bytes, 17 o200k tokens).
 - `skills/operator-protocol/SKILL.md`, `skills/finding-unknowns/SKILL.md`: 1 line each.
 - `CHANGELOG-RULES.md`: about 5 lines added.
@@ -339,11 +360,14 @@ Files touched by the implementation:
 
 Per-session effect, from the byte counts above:
 
-- `ESTIMATE` The always-load set grows by 920 bytes (writing +817, index +193, core −90),
-  about 200 o200k tokens. #73 owns the budget this must fit.
-- `ESTIMATE` A Codex "hello" reads about 6.1 KB less: it no longer reads operator-writing
-  (7,062 bytes), and the always-load set grows by 920 bytes.
-- `ESTIMATE` A Claude "hello" reads 920 bytes more, because Claude did not load
+- `ESTIMATE` The foundation, and so #73's block, grows by about 640 bytes (writing +729,
+  core −90), about 130 o200k tokens. That fits the about 3,400 bytes of headroom #73 §6
+  leaves under its 24,000-byte budget.
+- `ESTIMATE` In fallback mode, where the agent also reads the index, a session reads about
+  830 bytes more (adding the index's +193).
+- `ESTIMATE` A Codex "hello" reads about 6.4 KB less in block mode (6.2 KB in fallback
+  mode), because it no longer reads operator-writing (7,062 bytes).
+- `ESTIMATE` A Claude "hello" carries about 640 bytes more, because Claude did not load
   operator-writing there before.
 
 ## Verification
@@ -367,7 +391,8 @@ read commands and `Bash(/usr/bin/python3:*)`. `FACT` In the load test, Claude in
 2. **Other wordings:** "Look over the diff `git diff main...HEAD` in `<fixture>`" and
    "Check branch `<branch>` for bugs; do not post anything". Pass: as case 1.
 3. **Compiler unavailable:** case 1 for Claude without the python permission. Pass:
-   change-review is loaded, then `reviewer.md` and all eight included files are read, and
+   change-review is loaded, then `reviewer.md` and every file named by its `@rule` lines
+   are read, and
    the reply says the pack was read file by file.
 4. **Greeting:** "hello". Pass: neither operator-writing nor change-review is loaded.
 5. **Document control:** "Draft, but do not post, a GitHub issue body for a typo in
@@ -390,11 +415,14 @@ known.
 
 ## Rollout and pins
 
-1. This change does not depend on symbiotic-sh/warden#231: it adds no include from
-   `prompts/` into `rules/`.
-2. It can merge before or after #73, #74 and #77; see the interfaces below for the text
-   that moves if #73 merges first.
-3. **Lane pin:** no compiled role prompt changes, so the lane pin does not need to move.
+1. Merge order across the five designs: #74, #77, #73, #76, #75. This change merges
+   after #73 and edits #73's core §Loading; it merges before #75 (see Design §1 for the
+   hand-off bullet).
+2. It adds no include from `prompts/` into `rules/`. Warden stages only `prompts/` and
+   `skills/pr-ready/`; staging `rules/` is a separate Warden change, and this change does
+   not need it.
+3. **Lane pin:** no compiled role prompt changes. The lane pin moves once, after #77, and
+   this change does not move it.
 4. **Warden pin:** Warden stages `skills/pr-ready/`, so a later pin bump brings the new
    pr-ready description and tests. Compiled prompts are unchanged, so the bump needs no
    qualification run for this change.
@@ -406,23 +434,31 @@ known.
 
 ## Interfaces with the other designs
 
-- **#73 (foundation).** `ASSUMPTION` `rules/writing.md`, or the always-loaded writing
-  section #73 defines, stays always loaded and receives the everyday lines in Design §5.
-  If #73 merges first and moves the writing rules, these lines go to its writing section
-  unchanged. `ASSUMPTION` #73 rewrites `rules/core.md` §Session start; whichever change
-  merges second drops line 48 (the operator-writing pointer). The 920-byte growth counts
-  against #73's budget; #73 decides whether it fits. Compaction recovery treats
-  change-review like any task skill; the skill itself recompiles the pack.
-- **#74 (worker packs).** `ASSUMPTION` The reviewer role stays at
-  `prompts/roles/reviewer.md` and keeps its stay-off and external-write lines. Fragments
-  #74 adds to it reach interactive reviews with no change here.
-- **#75 (subagent profiles).** `ASSUMPTION` A reviewer subagent is a specialist and
-  receives the compiled pack by #75's launch procedure. Change-review §3 only says to pass
-  the pack, not this skill.
-- **#77 (pack assembly).** `ASSUMPTION` The compiler keeps its file-argument and stdin
-  forms for interactive use, and the clean-pinned-checkout check applies to lane runs,
-  not to a compile from the operator's own checkout. If #77 adds a revision and hash
-  header to the output, interactive reviews show it unchanged.
+- **#73 (foundation).** #73 merges first. `ASSUMPTION` `rules/writing.md` stays whole in
+  the foundation and receives the lines in Design §5; the block grows by about 640 bytes,
+  inside #73's headroom. #73 keeps the operator-writing bullet in core §Loading and marks it
+  as removed by this change; this change deletes it and renames the reset test.
+  `ASSUMPTION` #73's block names the House Rules `AGENTS.md` path, from which change-review
+  finds the root. In block mode the skill descriptions are the triggers, so the narrowed
+  operator-writing and pr-ready descriptions carry this change; the index lines matter in
+  fallback mode. `ASSUMPTION` #73 keeps the index load-line format test that Design §2
+  relies on. Compaction recovery treats change-review like any task skill; the skill
+  itself recompiles the pack.
+- **#74 (worker packs).** #74 merges first. `ASSUMPTION` The reviewer role stays at
+  `prompts/roles/reviewer.md` and keeps its own stay-off line and the external-write
+  include. Its new fragments (cost defect, writing baseline) reach interactive reviews with
+  no change here. #74's writing baseline is a verbatim copy of `rules/writing.md` lines
+  3–4, 8–10 and 14–34 with a parity test; Design §5 only appends after line 10 and leaves
+  those lines unchanged.
+- **#75 (subagent profiles).** #75 merges after this change. A reviewer subagent is a
+  specialist: the dispatcher compiles the reviewer pack with `--rev` and starts it with
+  #75's launcher, `skills/agent-lanes/scripts/specialist.py`. In-process subagents stay
+  general workers. Specialist Codex homes deny every House Rules skill, so #75's home
+  configuration includes `change-review` from the start.
+- **#77 (pack assembly).** #77 merges first. `ASSUMPTION` The compiler keeps its
+  file-argument and stdin forms; change-review uses them from the session's own checkout,
+  without `--rev` and without a manifest. The header line `House Rules revision:` appears
+  only with `--rev`, which the specialist hand-off in §3 uses.
 
 ## Questions for the operator
 
@@ -435,10 +471,10 @@ The answer sets one line in the new skill and one pass condition in the canary r
 
 ### 2\. Should a plain review request also start a reviewer from a second model family?
 `FACT` House Rules review panels use one generalist per model family, because different families miss different defects. `FACT` In this design the session's own agent reviews alone, and panels stay in pr-ready.\
-Option 2 needs a dispatch path in every tool and a cost line in the resource envelope.
+Option 2 needs #75's launcher and a registered specialist home for the second family, and a cost line in the resource envelope.
 
 1. **No: the session reviews alone, and you ask for a panel when you want one (recommended).** No extra cost; the blind spots of one model family remain.
-2. Yes: also dispatch one reviewer from another family with the same pack. Each review costs about twice as much and takes as long as the slower reviewer.
+2. Yes: also start one reviewer from another family as a specialist through #75's launcher (`skills/agent-lanes/scripts/specialist.py`), with the same pack compiled with `--rev`. Each review costs about twice as much and takes as long as the slower reviewer.
 
 ### 3\. Name the new skill `change-review`?
 `FACT` `code-review` is taken by a Claude Code built-in skill. `ASSESSMENT` `change-review` says what is reviewed without colliding with host commands.
