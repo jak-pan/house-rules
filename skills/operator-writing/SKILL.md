@@ -14,7 +14,7 @@ reader test.
 ## Language
 
 - One fact per sentence. Prefer short sentences; split one that carries more than one fact.
-  Length is never a reason to drop content, and sentence length is never counted or tested.
+  Length is never a reason to drop content.
 - Active voice, simple tense. Name who does what.
 - One term per concept. Define it once at first use, then never use a synonym.
 - No unexplained acronyms, internal labels or IDs as a replacement for meaning. An ID may
@@ -110,6 +110,30 @@ A question the operator must answer is a short block, placed after the explanati
 - The operator may answer several questions in one line, for example `1 keep, 2 yes`.
 - Work the agent's own team must do (tests, replays, verification) is never a question to
   the operator. List it as an internal task.
+
+Example with two sections:
+
+> **General**
+>
+> **1 · Decision: approve the writing-rules PR so it can merge?**
+> *Why:* (fact) The PR restores the writing rules removed without a decision.
+> *Answer:* `approve`, or the edits you want.
+> *Then:* the PR merges, and the rules apply from the next message.
+>
+> **Warden updates**
+>
+> **2 · Decision: run House Rules updates from a timer or inside the review loop?**
+> *Why:* (fact) A stuck fetch inside the review loop delays reviews for up to 120 seconds.
+> (assessment) A timer removes that delay and adds no new code path.
+> *Answer:* `timer` or `loop`.
+> *Then:* the next fix commit implements the chosen option.
+>
+> **3 · Evidence: send the error text from the failed install?**
+> *Why:* (fact) The install log on the host ends before the error.
+> *Answer:* paste the text, or `not available`.
+> *Then:* the cause goes into the install issue.
+
+The operator answers all three in one line: `1 approve, 2 timer, 3 not available`.
 
 ## Checks before sending
 
