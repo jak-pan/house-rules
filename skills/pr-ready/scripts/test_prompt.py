@@ -1713,8 +1713,7 @@ class AlwaysLoadedWritingTest(unittest.TestCase):
                           .split("## Checks before sending", 1)[0].split())
         for requirement in (
             "Label a claim `FACT` only after you verified it yourself, in this session, against its primary source",
-            "Mark the evidence for each `FACT` with a footnote letter right after the claim",
-            "End the text with the footnotes",
+            "Put the evidence for a `FACT` inside its sentence",
             "is never a `FACT`. Verify it first, or label it `ASSUMPTION` and name its source.",
         ):
             with self.subTest(requirement=requirement):
