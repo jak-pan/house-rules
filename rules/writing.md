@@ -69,13 +69,14 @@ happened, why it matters and what to do, in that order.
   as settled.
 - Label a claim `FACT` only after you verified it yourself, in this session, against its
   primary source: the code at a named commit, a command you ran, or a log or record you read.
-- Mark the evidence for each `FACT` with a footnote number right after the claim, written as
-  a superscript digit such as ¹, with no brackets.
-- End the text with the footnotes: one line per number, starting with the same superscript
-  digit, then the link, the command, or the quoted line.
-- Number footnotes in order of first use, and reuse a number when a later claim cites the
-  same source.
-- Write footnote numbers as superscript digits (¹ ² ³), not Markdown footnote syntax; they
+- Mark the evidence for each `FACT` with a footnote letter right after the claim, written as
+  a superscript letter such as ᵃ, with no brackets. Letters never clash with the numbered
+  questions and options.
+- End the text with the footnotes: one line per letter, starting with the same superscript
+  letter, then the link, the command, or the quoted line.
+- Assign letters in order of first use (ᵃ ᵇ ᶜ ᵈ ᵉ ᶠ ᵍ ʰ ⁱ ʲ ᵏ ˡ ᵐ ⁿ ᵒ ᵖ ʳ ˢ ᵗ ᵘ ᵛ ʷ ˣ ʸ ᶻ; Unicode
+  has no superscript q), and reuse a letter when a later claim cites the same source.
+- Write footnote letters as these Unicode characters, not Markdown footnote syntax; they
   render the same in chat and on GitHub.
 - A claim you remember, infer, read in a summary, or receive from another agent or an earlier
   session is never a `FACT`. Verify it first, or label it `ASSUMPTION` and name its source.
