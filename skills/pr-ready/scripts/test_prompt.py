@@ -54,6 +54,24 @@ class PromptTest(unittest.TestCase):
         for duplicate in ("only FIX-NOW items block", "new mechanism", "nitpicks are dropped"):
             self.assertNotIn(duplicate, role.read_text())
 
+    def test_triager_reconciles_before_filing_with_one_prompt_owner(self):
+        result = self.run_prompt("prompts/roles/triager.md")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        requirements = (
+            'Reconcile before filing: before listing an item under "## Issues to file", '
+            'check the lists the dispatcher supplies: open issues, open PRs, '
+            'PRs merged in the last 7 days, and issues already filed for this PR.',
+            'When one of them already covers the finding, write "Already tracked as #N", '
+            '"Fixed by #N" or "Being fixed in #N" in place of a new issue.',
+            'If no list is supplied, the triager says so in one line and files as usual.',
+        )
+        for sentence in requirements:
+            with self.subTest(sentence=sentence):
+                self.assertEqual(result.stdout.count(sentence), 1)
+                owners = [path for path in (ROOT / "prompts").rglob("*.md")
+                          if sentence in path.read_text()]
+                self.assertEqual(owners, [ROOT / "prompts/util/triage-classes.md"])
+
     def test_stdin_preserves_whole_files_titles_and_newlines(self):
         root, script = self.fixture()
         (root / "child.md").write_bytes(b"Title\r\n\r\nBody")
