@@ -39,3 +39,8 @@ At session start and after every reset or compaction, read these files in full:
 - Writing or reviewing specs, design documents, or system maps: load [spec-writing](skills/spec-writing/SKILL.md).
 - Dependency defects, upstream reports or fixes, or maintainer feedback: load [upstream-contribution](skills/upstream-contribution/SKILL.md).
 - Creating, claiming, handing off, closing, coordinating, or checking tracked work: load [work-tracking](skills/work-tracking/SKILL.md).
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-agents-a54f`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

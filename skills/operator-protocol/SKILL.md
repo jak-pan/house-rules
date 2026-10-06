@@ -1,6 +1,6 @@
 ---
 name: operator-protocol
-description: Interpret operator instructions, report progress, and handle decisions within the chosen collaboration mode. Use when answering a status request, interpreting steering (yes, continue, stop, a numbered reply), reporting progress on long-running work, or escalating a decision.
+description: Interpret operator instructions, report progress, and handle decisions within the chosen collaboration mode. Use when answering a status request, interpreting steering (yes, continue, stop, a numbered reply), reporting progress on long-running work, or escalating a decision. [HRD-skills-operator-protocol-fdd6]
 license: MIT
 ---
 
@@ -119,3 +119,8 @@ runner receives batch, whole prompt, optional decisions path and rules checkout 
 arguments; choose its native model invocation locally, and save reports only in the
 state directory. Configure scheduler failure reporting locally. A failed comparison
 leaves its batch available for a manual rerun. Keep installed schedules untracked.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-operator-protocol-fdd6`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

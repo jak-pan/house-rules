@@ -64,6 +64,8 @@ def main(argv=None):
         print("prompt: " + " ".join(str(exc).splitlines()), file=sys.stderr)
         return 2
     output = "".join(path + "\n" for path in used) if args.list else result
+    if not args.list:  # debug round: report what the compiler included
+        output += "\nHR-COMPILER: `HRC-compiler-prompt-py-10ac` prompt.py compiled this prompt from: " + ", ".join(used or ["stdin"]) + "\n"
     sys.stdout.buffer.write(output.encode("utf-8"))
     return 0
 

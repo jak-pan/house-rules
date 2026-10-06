@@ -1,6 +1,6 @@
 ---
 name: failure-forensics
-description: Investigate observed failures, regressions, incorrect results, and unexpected performance with evidence and cheap distinguishing probes. Use when diagnosing a concrete symptom; ordinary explanatory questions do not require this workflow.
+description: Investigate observed failures, regressions, incorrect results, and unexpected performance with evidence and cheap distinguishing probes. Use when diagnosing a concrete symptom; ordinary explanatory questions do not require this workflow. [HRD-skills-failure-forensics-691e]
 license: MIT
 ---
 
@@ -89,3 +89,8 @@ Routine navigation searches do not need this check.
 Report the symptom, supported cause or causes, evidence, fix or next probe, and remaining
 uncertainty in a cohesive account. Distinguish an unresolved investigation from a
 confirmed repair, and record reusable findings in the work item.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-failure-forensics-691e`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

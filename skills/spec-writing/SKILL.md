@@ -1,6 +1,6 @@
 ---
 name: spec-writing
-description: How to write specs, design docs, and system maps that pass the "buildable by a mid-level engineer without questions" bar — shape, worked examples, decision records, naming, and the reality-sweep that precedes writing. Use when writing or reviewing any spec, design doc, system map, or architecture document.
+description: How to write specs, design docs, and system maps that pass the "buildable by a mid-level engineer without questions" bar — shape, worked examples, decision records, naming, and the reality-sweep that precedes writing. Use when writing or reviewing any spec, design doc, system map, or architecture document. [HRD-skills-spec-writing-637f]
 license: MIT
 ---
 
@@ -85,3 +85,8 @@ If the specified mechanism seems wrong mid-build, escalate per skill `operator-p
 the deviation per skill `design-flow` §5. Requirement removals and spec edits that match
 existing code follow `design-flow` §Design changes; critique these rather than ratifying
 the implementation in the spec. Never silently implement a reduced version.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-spec-writing-637f`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

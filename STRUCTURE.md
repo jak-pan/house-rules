@@ -105,3 +105,8 @@ and safe to lose.
   superseded = replaced by a newer design)
 - Spike: `open → promoted | killed` (in SPIKE.md verdict; review and cleanup: skill
   `design-flow` §Spikes)
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-structure-9270`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

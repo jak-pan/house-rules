@@ -35,3 +35,8 @@ List every changed file or section you reviewed and anything you could not revie
 Write "None." under an empty heading. Number items within each heading; the bracketed label
 (B1, S1, F1, N1) is unique in the report. One finding per item: never merge two mechanisms
 into one item, and never repeat one finding under two headings.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-prompts-util-review-report-5409`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

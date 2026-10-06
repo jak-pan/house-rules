@@ -1,6 +1,6 @@
 ---
 name: upstream-contribution
-description: Contributing reports or fixes to externally owned repositories — prove the defect against unmodified upstream, sweep existing issues and PRs, fix and review locally over several rounds, carry a local patch meanwhile, post only when the operator says ready, and follow through until the patch can be dropped. Use when a dependency bug or gap blocks us, before filing or commenting upstream, and when handling maintainer feedback.
+description: Contributing reports or fixes to externally owned repositories — prove the defect against unmodified upstream, sweep existing issues and PRs, fix and review locally over several rounds, carry a local patch meanwhile, post only when the operator says ready, and follow through until the patch can be dropped. Use when a dependency bug or gap blocks us, before filing or commenting upstream, and when handling maintainer feedback. [HRD-skills-upstream-contribution-1951]
 license: MIT
 ---
 
@@ -89,3 +89,8 @@ operator-approval reminder; preparing a brief posts nothing.
 Watch the thread. Handle maintainer feedback with the same local review loop before
 pushing again. Once merged and released, bump the pin and drop the local patch. If it
 is rejected, decide whether to keep the patch or redesign, and record why.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-upstream-contribution-1951`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

@@ -1,6 +1,6 @@
 ---
 name: design-flow
-description: Feature lifecycle — spec/architecture design, lofi/hifi prototyping, spikes, implementation, and closeout (design doc migrates to architecture/spec, the PR merge closes the issue). Use when starting a feature, writing a spec or design doc, prototyping UX, running a spike, or closing a finished feature/PR.
+description: Feature lifecycle — spec/architecture design, lofi/hifi prototyping, spikes, implementation, and closeout (design doc migrates to architecture/spec, the PR merge closes the issue). Use when starting a feature, writing a spec or design doc, prototyping UX, running a spike, or closing a finished feature/PR. [HRD-skills-design-flow-3ea2]
 license: MIT
 ---
 
@@ -129,3 +129,8 @@ findings filed into the owning issue; a campaign (multi-day target push) gets it
 issue + ledger. Experiments never bypass the lifecycle by mutating `src/` directly "just to
 test" — levers go behind flags, spikes go to `prototypes/spikes/`, and anything that
 survives gets a design doc like everything else.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-design-flow-3ea2`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

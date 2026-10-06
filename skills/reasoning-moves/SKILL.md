@@ -1,6 +1,6 @@
 ---
 name: reasoning-moves
-description: Proportional reasoning checkpoints for complex changes, experiments, investigations, and evidence-based reports. Use when assumptions, causal claims, or verification need a deliberate check; scale to the task without relying on model-tier labels.
+description: Proportional reasoning checkpoints for complex changes, experiments, investigations, and evidence-based reports. Use when assumptions, causal claims, or verification need a deliberate check; scale to the task without relying on model-tier labels. [HRD-skills-reasoning-moves-0e2a]
 license: MIT
 ---
 
@@ -70,3 +70,8 @@ selected collaboration mode come from rules/core.md; these checkpoints do not re
   Preserve the original evidence and explain changed interpretations.
 - Apply rules/outcome.md §Three-occurrence reassessment before repeating the same failure
   class again. Reconsider the mechanism and scope, not just the next patch.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-reasoning-moves-0e2a`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

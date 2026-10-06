@@ -1,6 +1,6 @@
 ---
 name: goal-loop
-description: Run autonomous iteration toward an explicit measurable target or acceptance checklist. Use when the operator sets such a target, including overnight work and "do not stop" mandates. The loop remains bound to the operator's outcome and approved resource envelope; a supporting subproblem cannot become the goal.
+description: Run autonomous iteration toward an explicit measurable target or acceptance checklist. Use when the operator sets such a target, including overnight work and "do not stop" mandates. The loop remains bound to the operator's outcome and approved resource envelope; a supporting subproblem cannot become the goal. [HRD-skills-goal-loop-087a]
 license: MIT
 ---
 
@@ -77,3 +77,8 @@ These conditions pause the affected loop, not unrelated primary work.
 Sub-step completion, "should I continue?", context pressure (write a handoff per skill
 `handoff-continuity`; the loop continues in the successor session), a single failed
 attempt, nightfall.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-goal-loop-087a`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

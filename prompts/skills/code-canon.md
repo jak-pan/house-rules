@@ -25,3 +25,8 @@ Canon the change must follow:
   that shows them.
 - Rust: no `unwrap()` in library code; `thiserror` in libraries, `anyhow` only in binaries
   and never on hot paths; public items carry `///` docs.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-prompts-skills-code-canon-3727`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

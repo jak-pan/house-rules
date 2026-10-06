@@ -134,3 +134,8 @@
 - Re-anchor before relative-path writes.
 - Verify no nested duplicate directories after bulk file creation.
 - Always use absolute paths for file-tool reads, edits, writes, and searches.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-rules-delivery-2a9f`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

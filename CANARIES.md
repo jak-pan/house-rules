@@ -1,0 +1,100 @@
+# Load canaries (debug round)
+
+Each code appears only in the file it names.
+
+- `HRC-agents-a54f`: AGENTS.md
+- `HRC-changelog-rules-4a6b`: CHANGELOG-RULES.md
+- `HRC-custom-index-example-c49e`: CUSTOM-INDEX.example.md
+- `HRC-install-agents-dd37`: INSTALL-AGENTS.md
+- `HRC-notice-5333`: NOTICE.md
+- `HRC-preferences-aeed`: PREFERENCES.md
+- `HRC-readme-b335`: README.md
+- `HRC-structure-9270`: STRUCTURE.md
+- `HRC-prompts-readme-185e`: prompts/README.md
+- `HRC-prompts-lenses-concurrency-restarts-60ba`: prompts/lenses/concurrency-restarts.md
+- `HRC-prompts-lenses-correctness-security-aac8`: prompts/lenses/correctness-security.md
+- `HRC-prompts-lenses-design-spec-abab`: prompts/lenses/design-spec.md
+- `HRC-prompts-lenses-design-f961`: prompts/lenses/design.md
+- `HRC-prompts-lenses-durability-0116`: prompts/lenses/durability.md
+- `HRC-prompts-lenses-frontend-5c60`: prompts/lenses/frontend.md
+- `HRC-prompts-lenses-generalist-a-7c77`: prompts/lenses/generalist-a.md
+- `HRC-prompts-lenses-generalist-b-30ce`: prompts/lenses/generalist-b.md
+- `HRC-prompts-lenses-generalist-c-2bd7`: prompts/lenses/generalist-c.md
+- `HRC-prompts-lenses-performance-2fb6`: prompts/lenses/performance.md
+- `HRC-prompts-lenses-security-618e`: prompts/lenses/security.md
+- `HRC-prompts-lenses-spec-waste-9e84`: prompts/lenses/spec-waste.md
+- `HRC-prompts-lenses-spec-7d43`: prompts/lenses/spec.md
+- `HRC-prompts-lenses-ux-90ca`: prompts/lenses/ux.md
+- `HRC-prompts-lenses-waste-d855`: prompts/lenses/waste.md
+- `HRC-prompts-roles-checker-3bb8`: prompts/roles/checker.md
+- `HRC-prompts-roles-fixer-f076`: prompts/roles/fixer.md
+- `HRC-prompts-roles-implementer-6c6a`: prompts/roles/implementer.md
+- `HRC-prompts-roles-reviewer-4efb`: prompts/roles/reviewer.md
+- `HRC-prompts-roles-triager-2fea`: prompts/roles/triager.md
+- `HRC-prompts-skills-code-canon-3727`: prompts/skills/code-canon.md
+- `HRC-prompts-skills-native-first-44a9`: prompts/skills/native-first.md
+- `HRC-prompts-skills-no-fortification-1ca0`: prompts/skills/no-fortification.md
+- `HRC-prompts-skills-test-discipline-8c80`: prompts/skills/test-discipline.md
+- `HRC-prompts-util-cost-and-design-e1ab`: prompts/util/cost-and-design.md
+- `HRC-prompts-util-external-writes-09a6`: prompts/util/external-writes.md
+- `HRC-prompts-util-issue-report-b9a2`: prompts/util/issue-report.md
+- `HRC-prompts-util-review-bar-9985`: prompts/util/review-bar.md
+- `HRC-prompts-util-review-report-5409`: prompts/util/review-report.md
+- `HRC-prompts-util-transcript-gaps-3dfa`: prompts/util/transcript-gaps.md
+- `HRC-prompts-util-triage-classes-4fbd`: prompts/util/triage-classes.md
+- `HRC-rules-core-b7e7`: rules/core.md
+- `HRC-rules-delivery-2a9f`: rules/delivery.md
+- `HRC-rules-outcome-5753`: rules/outcome.md
+- `HRD-skills-agent-lanes-b13d`: description of skills/agent-lanes/SKILL.md
+- `HRC-skills-agent-lanes-b13d`: skills/agent-lanes/SKILL.md
+- `HRD-skills-audit-report-authoring-524d`: description of skills/audit-report-authoring/SKILL.md
+- `HRC-skills-audit-report-authoring-524d`: skills/audit-report-authoring/SKILL.md
+- `HRC-skills-audit-report-authoring-references-domain-lenses-67c4`: skills/audit-report-authoring/references/domain-lenses.md
+- `HRC-skills-audit-report-authoring-references-report-contract-7c67`: skills/audit-report-authoring/references/report-contract.md
+- `HRD-skills-bench-discipline-ad46`: description of skills/bench-discipline/SKILL.md
+- `HRC-skills-bench-discipline-ad46`: skills/bench-discipline/SKILL.md
+- `HRC-skills-bench-discipline-references-retrieval-evals-6500`: skills/bench-discipline/references/retrieval-evals.md
+- `HRD-skills-ci-build-optimization-dc04`: description of skills/ci-build-optimization/SKILL.md
+- `HRC-skills-ci-build-optimization-dc04`: skills/ci-build-optimization/SKILL.md
+- `HRC-skills-ci-build-optimization-references-build-test-overlap-e527`: skills/ci-build-optimization/references/build-test-overlap.md
+- `HRD-skills-decision-brief-83a0`: description of skills/decision-brief/SKILL.md
+- `HRC-skills-decision-brief-83a0`: skills/decision-brief/SKILL.md
+- `HRD-skills-design-canon-949b`: description of skills/design-canon/SKILL.md
+- `HRC-skills-design-canon-949b`: skills/design-canon/SKILL.md
+- `HRD-skills-design-flow-3ea2`: description of skills/design-flow/SKILL.md
+- `HRC-skills-design-flow-3ea2`: skills/design-flow/SKILL.md
+- `HRD-skills-experiment-planning-3936`: description of skills/experiment-planning/SKILL.md
+- `HRC-skills-experiment-planning-3936`: skills/experiment-planning/SKILL.md
+- `HRD-skills-failure-forensics-691e`: description of skills/failure-forensics/SKILL.md
+- `HRC-skills-failure-forensics-691e`: skills/failure-forensics/SKILL.md
+- `HRD-skills-finding-unknowns-31bd`: description of skills/finding-unknowns/SKILL.md
+- `HRC-skills-finding-unknowns-31bd`: skills/finding-unknowns/SKILL.md
+- `HRD-skills-goal-loop-087a`: description of skills/goal-loop/SKILL.md
+- `HRC-skills-goal-loop-087a`: skills/goal-loop/SKILL.md
+- `HRD-skills-handoff-continuity-88d6`: description of skills/handoff-continuity/SKILL.md
+- `HRC-skills-handoff-continuity-88d6`: skills/handoff-continuity/SKILL.md
+- `HRD-skills-operator-protocol-fdd6`: description of skills/operator-protocol/SKILL.md
+- `HRC-skills-operator-protocol-fdd6`: skills/operator-protocol/SKILL.md
+- `HRD-skills-operator-writing-335c`: description of skills/operator-writing/SKILL.md
+- `HRC-skills-operator-writing-335c`: skills/operator-writing/SKILL.md
+- `HRC-skills-operator-writing-references-github-issue-form-696d`: skills/operator-writing/references/github-issue-form.md
+- `HRC-skills-operator-writing-references-github-text-549d`: skills/operator-writing/references/github-text.md
+- `HRD-skills-pr-ready-d791`: description of skills/pr-ready/SKILL.md
+- `HRC-skills-pr-ready-d791`: skills/pr-ready/SKILL.md
+- `HRC-skills-pr-ready-references-guards-605e`: skills/pr-ready/references/guards.md
+- `HRC-skills-pr-ready-references-preparer-6b52`: skills/pr-ready/references/preparer.md
+- `HRC-skills-pr-ready-references-review-lenses-ff82`: skills/pr-ready/references/review-lenses.md
+- `HRC-skills-pr-ready-references-review-prompt-2bd1`: skills/pr-ready/references/review-prompt.md
+- `HRD-skills-project-bootstrap-37d5`: description of skills/project-bootstrap/SKILL.md
+- `HRC-skills-project-bootstrap-37d5`: skills/project-bootstrap/SKILL.md
+- `HRD-skills-reasoning-moves-0e2a`: description of skills/reasoning-moves/SKILL.md
+- `HRC-skills-reasoning-moves-0e2a`: skills/reasoning-moves/SKILL.md
+- `HRD-skills-rust-canon-2e87`: description of skills/rust-canon/SKILL.md
+- `HRC-skills-rust-canon-2e87`: skills/rust-canon/SKILL.md
+- `HRD-skills-spec-writing-637f`: description of skills/spec-writing/SKILL.md
+- `HRC-skills-spec-writing-637f`: skills/spec-writing/SKILL.md
+- `HRD-skills-upstream-contribution-1951`: description of skills/upstream-contribution/SKILL.md
+- `HRC-skills-upstream-contribution-1951`: skills/upstream-contribution/SKILL.md
+- `HRD-skills-work-tracking-3760`: description of skills/work-tracking/SKILL.md
+- `HRC-skills-work-tracking-3760`: skills/work-tracking/SKILL.md
+- `HRC-compiler-prompt-py-10ac`: added by skills/pr-ready/scripts/prompt.py to every compiled prompt

@@ -1,6 +1,6 @@
 ---
 name: project-bootstrap
-description: Establish a new project's purpose, stack, collaboration mode, and delivery policy using the overridable House Rules defaults. Use when bootstrapping a project or deliberately revisiting its foundation; skip routine work in an established project.
+description: Establish a new project's purpose, stack, collaboration mode, and delivery policy using the overridable House Rules defaults. Use when bootstrapping a project or deliberately revisiting its foundation; skip routine work in an established project. [HRD-skills-project-bootstrap-37d5]
 license: MIT
 ---
 
@@ -46,3 +46,8 @@ add Node merely to run scripts. Each uses the same issue-tracking default unless
 Implement the authorized bootstrap scope. Stack defaults do not authorize migrations,
 paid services, publication, or unrelated components. Load experiment-planning only for
 an actual study.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-project-bootstrap-37d5`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

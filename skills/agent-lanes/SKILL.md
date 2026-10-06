@@ -1,6 +1,6 @@
 ---
 name: agent-lanes
-description: Parallel multi-agent orchestration — lane ownership, non-colliding file sets, worktrees, build output inside worktrees, lane cleanup, GPU serialization, subagent git limits, cross-repo etiquette. Use when fanning out subagents, workflows, teammates, or background jobs.
+description: Parallel multi-agent orchestration — lane ownership, non-colliding file sets, worktrees, build output inside worktrees, lane cleanup, GPU serialization, subagent git limits, cross-repo etiquette. Use when fanning out subagents, workflows, teammates, or background jobs. [HRD-skills-agent-lanes-b13d]
 license: MIT
 ---
 
@@ -89,3 +89,8 @@ git worktree remove <wt> && git branch -D <branch>; git worktree prune
   path, dashboard link.
 - **Handoff on saturation.** A lane near context limits writes a handoff and dies; a fresh
   agent with a handoff beats a saturated one every time (skill `handoff-continuity`).
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-agent-lanes-b13d`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

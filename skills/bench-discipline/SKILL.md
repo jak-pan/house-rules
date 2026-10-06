@@ -1,6 +1,6 @@
 ---
 name: bench-discipline
-description: Design and interpret controlled benchmarks, evaluations, A/B tests, and tuning sweeps with production-valid inputs, appropriate uncertainty, and bounded costs. Use for comparative experiments, not as a prerequisite for a simple bug reproduction.
+description: Design and interpret controlled benchmarks, evaluations, A/B tests, and tuning sweeps with production-valid inputs, appropriate uncertainty, and bounded costs. Use for comparative experiments, not as a prerequisite for a simple bug reproduction. [HRD-skills-bench-discipline-ad46]
 license: MIT
 ---
 
@@ -108,3 +108,8 @@ Retrieval evaluations also apply the [retrieval rules](references/retrieval-eval
 - Keep each run's tried → result → verdict record in the work item, and in the campaign
   ledger for sustained iteration (skill `work-tracking`). Store large or sensitive run
   artifacts under the project's retention policy and link the evidence.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-bench-discipline-ad46`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

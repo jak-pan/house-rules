@@ -1,6 +1,6 @@
 ---
 name: work-tracking
-description: Track work in Git with a Git-host view — claims, handoffs, and campaign attempts are empty commits with trailers on the work branch (so tracking works offline), mirrored to issues on a project board with one assignee, a Status field, `<issue>-<slug>` branches, and PRs that close their issue. Use when creating, claiming, handing off, or closing work, when coordinating several agents or people, when asked about work state, when working offline, or when migrating a Markdown task ledger (tasks/, NEXT.md).
+description: Track work in Git with a Git-host view — claims, handoffs, and campaign attempts are empty commits with trailers on the work branch (so tracking works offline), mirrored to issues on a project board with one assignee, a Status field, `<issue>-<slug>` branches, and PRs that close their issue. Use when creating, claiming, handing off, or closing work, when coordinating several agents or people, when asked about work state, when working offline, or when migrating a Markdown task ledger (tasks/, NEXT.md). [HRD-skills-work-tracking-3760]
 license: MIT
 ---
 
@@ -248,3 +248,8 @@ items' unpromoted decisions to the bible. Then delete the ledger and its mention
 repository canon in the same commit. Until that commit the existing ledger stays
 authoritative; the two never run as writable trackers side by side (rules/core.md
 §Applicability and loading).
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-work-tracking-3760`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

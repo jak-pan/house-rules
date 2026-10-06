@@ -22,3 +22,8 @@ Merge the default branch first if it moved (merge, no rebase).
 Local gate: apply the worker pack and the repository's declared gates.
 Commit message conventions: <conventions>. Delivery override: <task-specific override, if any>.
 ```
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-pr-ready-references-review-prompt-2bd1`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.

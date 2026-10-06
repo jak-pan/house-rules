@@ -1,6 +1,6 @@
 ---
 name: finding-unknowns
-description: Surface the operator's unknowns before, during, and after ambiguous work — blindspot pass, reverse interview, fake-data prototype variants, volatile-decisions-first plans, implementation notes, pre-merge quiz. Use at the start of any underspecified or design-heavy task, when writing specs/prompts for agents, when output surprises anyone, and before merging significant work.
+description: Surface the operator's unknowns before, during, and after ambiguous work — blindspot pass, reverse interview, fake-data prototype variants, volatile-decisions-first plans, implementation notes, pre-merge quiz. Use at the start of any underspecified or design-heavy task, when writing specs/prompts for agents, when output surprises anyone, and before merging significant work. [HRD-skills-finding-unknowns-31bd]
 license: MIT
 ---
 
@@ -83,3 +83,8 @@ Significant work means P0/P1, or any diff spanning multiple modules.
   add noise. Rules are load-bearing or they're clutter.
 - Recurring interview answers and blindspot findings should produce proactive proposals
   for improving the design, bible, or skills. Persistence follows rules/core.md §Operator correction.
+
+---
+
+**House Rules debug round** (branch `debug/load-canaries`, never merged). This file's canary code is `HRC-skills-finding-unknowns-31bd`.
+While this debug round runs, end every reply with one line that starts with `HR-LOADED:` and lists the canary codes (`HRC-…`) of every House Rules file whose text you have seen in this session, including text pasted into your prompt, and the `HRD-…` codes of skill descriptions you have seen. Write `HR-LOADED: none` if you have seen none.
