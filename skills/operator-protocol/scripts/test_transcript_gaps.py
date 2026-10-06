@@ -252,12 +252,20 @@ class TranscriptGapsTest(unittest.TestCase):
                                  ("environment_context", "user_instructions", "turn_aborted", "skill"))
                 envelopes.append("# AGENTS.md instructions for /example\n\n"
                                  "<INSTRUCTIONS>injected</INSTRUCTIONS>")
+            for envelope in list(envelopes):
+                tag = envelope.split("<", 1)[1].split(">", 1)[0].split()[0]
+                envelopes.append(envelope.replace(
+                    "injected", f"injected <{tag}>example <{tag}>nested example</{tag}></{tag}>\n"
+                    f"<{tag}>another example</{tag}>\nSynthetic generated rule after the example."))
             cases = []
             for envelope in envelopes:
                 cases.extend([
+                    (envelope, None),
                     (envelope + "Report failed checks.", "Report failed checks."),
                     ("Keep this." + envelope + "Report failed checks.",
                      "Keep this.Report failed checks."),
+                    (envelope + "Keep between." + envelope + "Keep after.",
+                     "Keep between.Keep after."),
                     ([{"type": "text", "text": envelope},
                       {"type": "text", "text": "Keep the human block."}], "Keep the human block."),
                     ([{"type": "text", "text": envelope + "Keep this block."}], "Keep this block."),
@@ -276,7 +284,8 @@ class TranscriptGapsTest(unittest.TestCase):
                         record.update(type="user", origin={"kind": "human"},
                                       sessionId="claude-session", message={"content": content})
                     stream.write(json.dumps(record) + "\n")
-                    expected.append(text)
+                    if text is not None:
+                        expected.append(text)
         result = self.run_script()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual([r["text"] for r in self.rows()], expected)

@@ -55,11 +55,26 @@ def strip_injected(text, tool):
     tags = ("task-notification", "teammate-message", "subagent_notification")
     if tool == "codex":
         tags += ("environment_context", "user_instructions", "turn_aborted", "skill")
-    envelopes = r"<(" + "|".join(tags) + r")(?:\s[^<>]*)?>.*?</\1>"
+    envelopes = r"<(?P<tag>" + "|".join(tags) + r")(?:\s[^<>]*)?>"
     if tool == "codex":
         envelopes += (r"|# AGENTS\.md instructions for [^\n]+\n[ \t\n]*"
-                      r"<INSTRUCTIONS>.*?</INSTRUCTIONS>")
-    return re.sub(envelopes, "", text, flags=re.DOTALL)
+                      r"<(?P<instructions>INSTRUCTIONS)>")
+    parts = []
+    position = 0
+    for opening in re.finditer(envelopes, text):
+        if opening.start() < position:
+            continue
+        tag = opening.group(opening.lastgroup)
+        tokens = re.compile(r"<" + tag + r"(?:\s[^<>]*)?>|</" + tag + r">")
+        depth = 1
+        for token in tokens.finditer(text, opening.end()):
+            depth += -1 if token.group().startswith("</") else 1
+            if depth == 0:
+                parts.append(text[position:opening.start()])
+                position = token.end()
+                break
+    parts.append(text[position:])
+    return "".join(parts)
 
 
 def human_message(record, tool, session):
