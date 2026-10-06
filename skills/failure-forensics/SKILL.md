@@ -19,6 +19,8 @@ existing record; do not create an experiment campaign for every diagnostic comma
    that a successful retry disproves it.
 3. Identify plausible changes since the last known good state: code, configuration,
    dependencies, data, traffic, credentials, provider behavior, or infrastructure.
+   **Your own previous fixes are prime suspects**: layered compensating hacks cause
+   the next regression; strip fudge factors before adding new ones.
    Rank hypotheses by evidence and the cost of a distinguishing probe. An outage can
    justify an environment check immediately; a local diff is often a useful starting
    point, never proof of the cause.
@@ -44,6 +46,8 @@ model evaluation it might be input → ingestion → candidates → effective pr
   generalize from one convenient example to the whole population.
 - Retain useful observations and counterexamples. Several causes can coexist, and a
   fully investigated result can remain unresolved within the available evidence.
+  A list of theories is not a deliverable; every causal claim cites a log line, trace,
+  or measurement.
 
 ## Performance signals are clues
 
@@ -51,9 +55,9 @@ State the workload, expected concurrency, rate limits, dependencies, and build p
 before calling resource behavior defective. Serial execution, low GPU use, or a slower
 quantized model can be legitimate for a particular workload.
 
-Use utilization, queue times, completions, memory, and known-good measurements to locate
-the difference. Regular batch sizes, timeout-like durations, and exact caps suggest
-settings or queue boundaries to inspect; they do not prove a hidden limit. A lever with
+For performance, measure, don't estimate. Use utilization, queue times, completions,
+memory, and known-good measurements to locate the difference. Regular batch sizes,
+timeout-like durations, and exact caps suggest settings or queue boundaries to inspect; they do not prove a hidden limit. A lever with
 no measurable effect suggests checking whether it fired as well as whether the workload
 can benefit from it. Validate units and timing boundaries when measurements appear
 implausible. Check affected consumers before changing shared defaults.
