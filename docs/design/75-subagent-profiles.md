@@ -1,6 +1,6 @@
 # Subagent profiles: general worker and specialist
 
-Status: revised design proposal; operator choices recorded on 2026-10-07; implementation not qualified.
+Status: revised design proposal; operator choices and lead decisions recorded on 2026-10-07; implementation not qualified.
 
 Issue: [#75](https://github.com/symbiotic-sh/house-rules/issues/75).
 
@@ -11,8 +11,8 @@ The dispatcher names the profile in the dispatch.
 A **general worker** receives House Rules through the normal session instruction layer.
 Lane workers are general workers even when a role prompt covers their job.
 A **specialist** receives one compiled pack as its only task rule source.
-The specialist environment loads no House Rules instruction block, project instruction files or discovered House Rules skills.
-Host permission controls still apply to both profiles.
+The specialist environment loads no additional global task instructions, project instruction files or discovered skills, regardless of their source.
+Host permission controls and built-in tool instructions still apply to both profiles.
 Every Claude specialist runs as a separate `claude -p --safe-mode` process.
 A Claude specialist that needs a skill receives the skill text in its pack.
 
@@ -30,7 +30,7 @@ This design adds dispatch guidance, a specialist launcher and specialist-home ve
 - **Specialist:** a separate process whose only task rule source is a compiled pack.
 - **Specialist pack:** a role prompt, required shared rules, optional lens and skill text, repository rules and task, built from a named House Rules commit.
 - **Manifest:** the compiler's JSON record of the House Rules revision, included files and blob identifiers, and the pack's SHA-256 hash.
-- **Specialist home:** a Codex or Kimi configuration home that loads no House Rules block, project instructions or House Rules skills.
+- **Specialist home:** a Codex or Kimi configuration home that loads no additional global task instructions, project instructions or discovered skills.
 - **Launcher:** the proposed specialist launcher in the agent-lanes scripts directory.
 - **Foundation:** the normal session instructions defined by the [smaller-core design (#73)](https://github.com/symbiotic-sh/house-rules/issues/73).
 
@@ -63,7 +63,7 @@ Section 7 includes the MCP test and its fallback.
 ## 4. Design
 
 The launcher and text changes in this section are implementation proposals.
-Section 10 records the operator choices that bind those proposals.
+Section 10 records the operator choices and lead decisions that bind those proposals.
 
 ### 4.1 How the dispatcher chooses
 
@@ -171,27 +171,31 @@ The proposed launcher checks the following before any model call:
 1. The pack header names the manifest's `house_rules_revision`.
 2. The pack's SHA-256 matches `pack.sha256`; the launcher sends the verified pack unchanged.
 3. Codex and Kimi have registered specialist homes with login state; Claude needs no specialist home.
-4. The configured home instruction files, including `<specialist-home>/AGENTS.md` and `<specialist-home>/AGENTS.override.md` where applicable, contain no House Rules, Forge or Groundwork block.
-5. Codex's `debug prompt-input -c project_doc_max_bytes=0` output contains no House Rules block, project instruction text or discovered House Rules skill.
+4. The configured home instruction files, including `<specialist-home>/AGENTS.md` and `<specialist-home>/AGENTS.override.md` where applicable, contain no additional global task instructions, including unbranded instructions and House Rules, Forge or Groundwork blocks. Host permission controls and built-in tool instructions remain permitted.
+5. Codex's `debug prompt-input -c project_doc_max_bytes=0` output contains no additional global task instructions, project instruction text or discovered skills from any source.
+6. Read-only mode has qualified write prevention through host filesystem permissions or the tool's own read-only sandbox. A prompt restriction alone does not qualify; the launcher refuses such a read-only role before a model call.
 
 A failed check prevents launch.
 The launcher reports a required capability that the selected tool cannot provide.
 The launcher never retries.
-The caller owns any authorized capacity retry and compiles a fresh pack and manifest for that attempt.
+The caller owns any authorized retry after a provider-capacity failure.
+The caller reuses the unchanged pack and manifest when the existing launch checks pass and the pack hash matches.
+The caller recompiles only when a compilation input changed.
 The launcher holds no lane scheduling or priority logic.
 
 **Codex.** The launcher sets `CODEX_HOME=<specialist-home>`.
 The launcher runs `codex exec --skip-git-repo-check -c project_doc_max_bytes=0 -s <read-only|workspace-write> -C <checkout> -o <out> -` with the pack on standard input.
 The launcher forwards configured model and reasoning-effort arguments.
-The launcher checks discovered skill names against every installed House Rules skill name, including skills added after the pack revision.
+The launcher rejects every discovered skill, including third-party skills and skills added after the pack revision; it does not filter by House Rules skill names.
 
 **Claude.** The launcher runs `claude -p --safe-mode --output-format stream-json --verbose` with the pack on standard input.
 The launcher forwards the configured model.
 Read-only mode adds `--disallowedTools Edit Write NotebookEdit` and `--permission-prompts none`.
 Write mode adds `--permission-mode acceptEdits` and `--permission-prompts none`.
-`ASSUMPTION` The earlier design reports that `--permission-prompts none` denies shell commands requiring approval; section 7 must verify that behavior before read-only mode qualifies.
+`ASSUMPTION` The earlier design reports that `--permission-prompts none` denies shell commands requiring approval.
+Those flags alone do not qualify read-only mode; host filesystem permissions or the tool's own read-only sandbox must also deny a write the configuration would otherwise already permit, as tested in section 7.
 The launcher extracts the final result into `--out`.
-The launcher stops the child if its initial event reports discovered House Rules skills or loaded instruction memory.
+The launcher stops the child if its initial event reports any discovered skills or loaded instruction memory containing additional task instructions.
 A skill supplied as pack text is permitted; discovered skills are not permitted.
 
 Claude safe mode remains mandatory when a specialist needs a skill or MCP server.
@@ -207,10 +211,11 @@ The dispatcher never drops required MCP functionality or falls back to a non-saf
 The launcher runs `kimi -p <pack> --skills-dir <empty-dir>` and writes standard output to `--out`.
 The launcher forwards the configured model.
 `ASSUMPTION` The earlier design reports that `--skills-dir` replaces discovered skill folders and that Kimi has no read-only sandbox flag.
-Kimi read-only mode therefore remains a prompt restriction until qualification demonstrates stronger enforcement.
+The launcher refuses Kimi read-only roles when only a prompt restriction is available, as reported today.
+Kimi read-only mode qualifies only with enforced write prevention through host filesystem permissions or the tool's own read-only sandbox.
 `ASSUMPTION` Kimi's project instruction loading has not been qualified in this design.
 If Kimi loads `<checkout>/AGENTS.md`, the launcher starts Kimi in an empty directory and names the checkout by absolute path in the pack.
-If Kimi still loads project instructions, the launcher refuses the specialist.
+If Kimi still loads additional global task instructions, project instructions or any discovered skills, the launcher refuses the specialist.
 
 ### 4.5 Claude isolation
 
@@ -231,17 +236,17 @@ Lane workers use the operator's normal Codex home.
 The proposed installation instructions require:
 
 1. A specialist home outside House Rules and project checkouts, with login state established through the tool's normal login command.
-2. Codex's `<specialist-home>/config.toml` setting `project_doc_max_bytes = 0` and disabling every installed House Rules skill through `[[skills.config]]` entries.
-3. No House Rules instruction block or installed House Rules skills inside a specialist home.
+2. Codex's `<specialist-home>/config.toml` setting `project_doc_max_bytes = 0` and disabling every discoverable skill from any source through `[[skills.config]]` entries.
+3. No additional global task instructions or installed skills inside a specialist home, regardless of branding or source. Host permission controls and built-in tool instructions remain permitted.
 4. Registration in the machine-local `<HOUSE_RULES_ROOT>/custom/sync.env` through `SPECIALIST_CODEX_HOME` or `SPECIALIST_KIMI_CODE_HOME`, never through the normal-home keys.
-5. A Codex prompt-input check showing no House Rules heading, project instructions or discovered House Rules skills.
+5. A Codex prompt-input check showing no additional global task instructions, project instructions or discovered skills from any source.
 
 The disabled skill list includes `change-review` after the [review-skill design (#76)](https://github.com/symbiotic-sh/house-rules/issues/76) lands.
 The proposed change makes [scripts/sync.py](../../scripts/sync.py) parse the specialist keys.
 The proposed synchronization check rejects a home registered as both specialist and normal.
-The proposed synchronization check reports instruction blocks, enabled House Rules skills, and nonzero Codex project instruction limits.
+The proposed synchronization check reports all additional global task instructions, enabled discoverable skills from any source, and nonzero Codex project instruction limits.
 The synchronization writer excludes specialist homes from normal block and skill-link installation.
-A newly installed House Rules skill must be disabled in every Codex specialist home.
+A newly discoverable skill from any source must be disabled in every Codex specialist home.
 Both synchronization checks and launcher checks report a missing disable entry.
 
 ### 4.7 Lane panels and Warden
@@ -300,17 +305,23 @@ This design adds no separate qualification cache, lane state or copy of shared r
 
 A canary code is a unique marker appended to a synthetic instruction source so logs reveal which text reached a child.
 The qualification setup uses a named House Rules commit with distinct codes in each shared rule, role, required skill body and skill description.
-Synthetic global instructions and `<checkout>/.agents/rules.md` receive separate codes.
+Synthetic branded and unbranded global instructions, third-party skill descriptions and bodies, and `<checkout>/.agents/rules.md` receive separate codes.
 The setup records the tool version, pack, manifest, prompt capture and tool log.
 A child's answer about what it loaded does not replace those records.
 
 The required qualification runs are:
 
-1. **Codex specialist.** Prompt-input output contains no discovered House Rules skill codes or global or project instruction codes. Tool logs show no reads of House Rules sources or `<checkout>/AGENTS.md`. Pack codes appear only from manifest-listed files; the target rules code appears once.
-2. **Claude specialist.** The initial event shows no discovered House Rules skills or instruction memory. Tool logs show no reads of House Rules sources. A required skill code appears through pack text exactly once. A synthetic shell write requiring permission is denied in read-only mode.
-3. **Kimi specialist.** Logs show no House Rules reads or unexpected project instruction codes. The run tests `<checkout>/AGENTS.md` loading in the target directory and, if necessary, in an empty working directory. A failed isolation check refuses launch.
-4. **General workers and lane workers.** A Claude Agent-tool child and a normal-home Codex worker receive the foundation through normal session instructions. Skill identification opens no skill body. A lane worker's role prompt omits shared-rule includes, while the normal session still receives the rules and skills. The lane record names both the live session checkout and the role prompt commit.
-5. **Refusals.** A Codex home missing the `change-review` disable entry and a pack changed after compilation each fail before a model call. The launcher names the missing entry or hash mismatch.
+1. **Codex specialist.** Prompt-input output contains no discovered skill codes from any source or additional global or project instruction codes. Tool logs show no reads of additional task instruction or discovered skill sources, including House Rules sources and `<checkout>/AGENTS.md`. Pack codes appear only from manifest-listed files; the target rules code appears once.
+2. **Claude specialist.** The initial event shows no discovered skills from any source or instruction memory containing additional task instructions. Tool logs show no reads of additional task instruction or discovered skill sources. A required skill code appears through pack text exactly once.
+3. **Kimi specialist.** Logs show no reads of additional task instruction or discovered skill sources and no additional global, project or discovered skill codes. The run tests `<checkout>/AGENTS.md` loading in the target directory and, if necessary, in an empty working directory. A failed isolation check refuses launch.
+4. **General workers and lane workers.** A Claude Agent-tool child and a normal-home Codex worker each receive exactly one initial foundation delivery through normal session instructions. Prompt captures establish the delivery count; tool logs show no duplicate startup reads of foundation sources. Skill identification opens no skill body. A lane worker's role prompt omits shared-rule includes, while the normal session still receives the rules and skills. The lane record names both the live session checkout and the role prompt commit.
+5. **Refusals.** A Codex home missing a disable entry for `change-review` or a third-party skill, a home containing unbranded global task instructions, and a pack changed after compilation each fail before a model call. The launcher names the missing entry, instruction source or hash mismatch.
+
+For every tool, read-only qualification attempts a synthetic shell write that the configuration would otherwise already permit.
+The setup demonstrates that baseline permission, then records the denial under the proposed host filesystem permissions or tool read-only sandbox and confirms that the write did not occur.
+An approval-denial test alone does not qualify read-only mode.
+Qualification also checks that a launch with only a prompt restriction is refused for a read-only role, including Kimi's current configuration.
+Claude safe mode remains required in these tests.
 
 The Claude MCP canary runs a synthetic local server supplied through `--mcp-config` under `claude -p --safe-mode`.
 The canary invokes one harmless server tool and records its result.
@@ -321,11 +332,12 @@ A failed MCP canary must not weaken safe mode or silently remove a required serv
 ### 7.2 Local tests
 
 The proposed `skills/agent-lanes/scripts/test_specialist.py` uses fake Codex, Claude and Kimi executables.
-The launcher tests cover missing or mismatched headers, mismatched hashes, missing homes, instruction blocks, discovered skills, output extraction and child failure propagation.
+The launcher tests cover missing or mismatched headers, mismatched hashes, missing homes, branded and unbranded global task instructions, discovered skills from any source, output extraction and child failure propagation.
 The launcher tests check command arguments for each tool and mode.
 The launcher tests show that verified pack bytes reach the child unchanged.
 The launcher tests cover explicit MCP configuration forwarding only for a qualified Claude configuration and visible refusal otherwise.
 The launcher tests distinguish required skill text in a pack from forbidden discovered skills.
+The launcher tests check refusal of read-only roles without qualified host or tool write prevention, including a prompt-only Kimi configuration.
 
 [scripts/test_sync.py](../../scripts/test_sync.py) gains tests for specialist-key parsing, conflicting home registrations, specialist-home findings and exclusion from normal installation checks.
 The proposed text test checks the agent-lanes profile heading and skill-identification guidance.
@@ -354,7 +366,8 @@ The specialist launcher is local and does not require Warden to stage agent-lane
 
 ## 10. Decisions
 
-Each item records an operator choice dated 2026-10-07.
+Items 1–7 record operator choices dated 2026-10-07.
+Items 8–9 record lead decisions dated 2026-10-07.
 The numbered design links identify the owner of choices shared with another design.
 
 1. `DECISION` **2026-10-07 — Claude specialist process.** The operator chose a separate `claude -p --safe-mode` process for every Claude specialist.
@@ -364,6 +377,8 @@ The numbered design links identify the owner of choices shared with another desi
 5. `DECISION` **2026-10-07 — Shared rules.** The operator chose one home for writing, Git and priority-label rules in `rules/`; the [role-pack design (#74)](https://github.com/symbiotic-sh/house-rules/issues/74) owns that change.
 6. `DECISION` **2026-10-07 — Named prompt revision.** The operator chose prompt building from a named commit's Git objects in any clone; the [prompt-building design (#77)](https://github.com/symbiotic-sh/house-rules/issues/77) owns that change.
 7. `DECISION` **2026-10-07 — House Rules index.** The operator chose `<HOUSE_RULES_ROOT>/INDEX.md` as the index and the same pointer shape for global, managed-repository and House Rules instruction files; the [smaller-core design (#73)](https://github.com/symbiotic-sh/house-rules/issues/73) owns that change.
+8. `DECISION` **2026-10-07 — Lead decision: capacity retries.** The lead chose reuse of the unchanged pack and manifest after a provider-capacity failure when the existing launch checks pass and the pack hash matches. The caller recompiles only when a compilation input changed.
+9. `DECISION` **2026-10-07 — Lead decision: read-only authority.** The lead required enforced write prevention through host filesystem permissions or the tool's own read-only sandbox. A launch that can only state the restriction in its prompt, including Kimi today, is refused for read-only roles. Qualification for every tool includes a write that the configuration would otherwise already permit. Claude safe mode stays required.
 
 ## 11. Open points
 
@@ -371,6 +386,6 @@ No operator choice remains open for this design.
 The following implementation qualifications need evidence before the launcher is accepted:
 
 - **Claude explicit MCP loading.** Close this point with the synthetic server result, isolation logs and the visible refusal or qualified-tool fallback in section 7.1.
-- **Claude read-only shell permissions.** Close this point with a denied synthetic shell write under the proposed read-only flags and a tool log showing the denial.
+- **Read-only write prevention for every tool.** Close this point with a baseline-permitted synthetic shell write denied by the proposed host filesystem permissions or tool read-only sandbox, a tool log showing the denial, and refusal of prompt-only read-only launches. Claude safe mode remains required.
 - **Kimi project instruction loading.** Close this point with the target-directory and empty-directory canary results in section 7.1; refuse Kimi specialization if neither start preserves isolation.
-- **Normal-session instruction delivery.** Close this point with the general-worker and lane-worker captures in section 7.1 after the smaller-core and role-pack changes land.
+- **Normal-session instruction delivery.** Close this point with the general-worker and lane-worker captures in section 7.1 showing exactly one initial foundation delivery and tool logs showing no duplicate startup reads after the smaller-core and role-pack changes land.
