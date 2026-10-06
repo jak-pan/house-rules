@@ -106,7 +106,7 @@ another repair:
 - Should it be simplified, deleted, deferred, or redesigned?
 - Is continuing inside the approved resource envelope?
 
-Repeat-defect repair order has one home: `prompts/roles/implementer.md`.
+Repeat-defect repair order has one home: `prompts/skills/no-fortification.md`.
 
 The third occurrence does not automatically require operator approval and does not
 prohibit an obvious aligned fix. It prohibits a blind fourth iteration. Escalate only

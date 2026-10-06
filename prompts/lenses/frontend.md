@@ -1,1 +1,1 @@
-Only: user-interface code. Component and state structure, data loading and error handling, accessibility (keyboard access, labels, focus order, contrast, reduced motion), rendering and bundle performance, and consistency with the project's design system and skill `design-canon`.
+Focus: user-interface code. Component and state structure, data loading and error handling, accessibility (keyboard access, labels, focus order, contrast, reduced motion), rendering and bundle performance, and consistency with the project's design system.

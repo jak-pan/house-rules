@@ -12,8 +12,9 @@ lens files contain only prompt text.
 
 Add focused reviewers for changes that warrant them, for example
 security on access-control code or durability on storage code: `security`, `durability`,
-`performance`, `spec` (a requirement-by-requirement traceability pass) and `waste`. Each
-reports only findings in its lens. Non-backend changes add their own reviewers, chosen by the
+`performance`, `spec` (a requirement-by-requirement traceability pass) and `waste`. Lens focus
+follows the [shared review bar](../../../prompts/util/review-bar.md). Non-backend changes add
+their own reviewers, chosen by the
 paths a change touches: `design-spec` for design documents and specifications, `frontend`
 for user-interface code, and `ux` for user flows (with screenshots or a preview link when
 available).
