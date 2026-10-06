@@ -20,11 +20,14 @@ Without the text, the cause stays a guess between a missing permission and a wro
 
 ## House Rules
 
-### 3\. Merge #52, the writing-rules PR?
+### 3\. Merge [#52](https://github.com/jak-pan/house-rules/pull/52), the writing-rules PR?
 `fact` An earlier cleanup removed several writing rules without an operator decision; #52
 puts them back. `fact` It changes only the operator-writing skill and the rules changelog.\
 Agents on this machine use the rules from their next session; Warden and the lanes get them
 only after their House Rules pins move.
 
-Answer with one numbered line per question: the option's number for a choice, ok for a yes
-or approval question, and your text otherwise. For example: 1. 1, 2. not available, 3. ok.
+**Answer with one numbered line per question, like so:**
+
+1. 1
+2. not available
+3. ok
