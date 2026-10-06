@@ -28,7 +28,7 @@ from a public upstream durability report and its fix; names are shortened.
 
 ## 2. Issue
 
-Follow [the issue form](github-issue-form.md).
+Follow [the issue form](../../../prompts/util/issue-form.md).
 
 ## 3. PR body
 
