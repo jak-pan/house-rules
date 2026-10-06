@@ -7,7 +7,7 @@ Issue: [#73](https://github.com/jak-pan/house-rules/issues/73)
 ## 1. Result
 
 Every Claude Code, Codex and Kimi session gets a small House Rules foundation (core rules and
-writing rules, about 4,200 tokens instead of 7,300) inside the tool's own instruction file, so
+writing rules, about 4,300 tokens instead of 7,300) inside the tool's own instruction file, so
 no session reads rule files at start and compaction cannot shrink the foundation to a summary.
 The outcome and delivery rules load only when the task needs them. After a compaction an agent
 re-reads only the files its current task uses, each at most once.
@@ -21,7 +21,8 @@ re-reads only the files its current task uses, each at most once.
 - **House Rules block:** the managed section of that file between `<!-- house-rules:begin -->`
   and `<!-- house-rules:end -->` ([INSTALL-AGENTS.md §3](../../INSTALL-AGENTS.md)).
 - **Foundation:** the House Rules text every session needs: `rules/core.md` and
-  `rules/writing.md` after this change.
+  `rules/writing.md` after this change. It replaces the "always-load set" (the index plus four
+  rule files). The sibling designs #74-#77 use the same term.
 - **Triggered file:** a rule file or skill that an agent reads with a tool when the task first
   needs it.
 - **Block mode:** a session whose instructions hold the new House Rules block. **Fallback
@@ -176,6 +177,7 @@ architecture, The bar. Deferred work holds delivery lines 104-117 verbatim, unde
   - Project or stack defaults: PREFERENCES.md.
 - Load procedural skills on demand.
 - Choose skills by the descriptions in your skill list.
+- To identify which skills apply, read skill descriptions, not skill bodies.
 - Keep model selection, permissions, Model Context Protocol connections, and hooks in native tool configuration.
 - Keep delegation application programming interfaces in native tool configuration.
 - Treat skills as procedure descriptions.
@@ -184,6 +186,8 @@ architecture, The bar. Deferred work holds delivery lines 104-117 verbatim, unde
 - Read context files fully.
 - rules/writing.md governs all text.
 - Follow skills/operator-writing/SKILL.md §Communication rules for operator-facing text.
+- A compiled prompt may state that it is your only rule source.
+- For that run, it overrides the loading and re-read rules in this file.
 
 ## After a compaction
 
@@ -210,6 +214,14 @@ architecture, The bar. Deferred work holds delivery lines 104-117 verbatim, unde
 - Read, clone, or fork externally owned repositories freely.
 - For externally owned repositories, never push upstream, open pull requests/issues, or comment until the operator says ready.
 ```
+
+Three §Loading sentences come from the sibling designs. "To identify which skills apply…" is
+[#75](https://github.com/jak-pan/house-rules/issues/75)'s sentence. The two sentences about a
+compiled prompt let a worker pack built under #74 and #77 stay its worker's only rule source,
+even when that worker's tool also delivers the House Rules block. The sentence "Follow
+skills/operator-writing/SKILL.md §Communication rules for operator-facing text." stays here only
+until [#76](https://github.com/jak-pan/house-rules/issues/76) merges after this design; #76
+deletes it together with the section it names.
 
 The recovery rule is the "After a compaction" section. It replaces "re-read everything" with
 three bounded reads: the bible, an active campaign ledger, and the triggered files the current
@@ -294,7 +306,8 @@ All three tools get the same generated block inline. No tool uses an import.
 
 A managed repository's loader ([STRUCTURE.md](../../STRUCTURE.md) §Managed repository loader)
 still tells the agent to read the House Rules index. In block mode that costs one read of the
-index, which then says not to read the rule files. This design does not change the loader.
+index, which then says not to read the rule files. The STRUCTURE.md "Managed repository loader"
+template is unchanged by all five designs; #77 owns detecting it.
 
 ### 4.7 The generated block and `scripts/sync.py`
 
@@ -306,6 +319,7 @@ installing agent to install the output of `sync.py --print-block` unchanged:
 # Shared operating foundation (House Rules)
 
 House Rules root: `<HOUSE_RULES_ROOT>`. House Rules paths below are relative to it.
+House Rules index: `<HOUSE_RULES_ROOT>/AGENTS.md`.
 House Rules foundation: rules/core.md and rules/writing.md in full below, sha256 <FOUNDATION_HASH>.
 scripts/sync.py generated this block from committed files; edit those files, not this block.
 
@@ -337,7 +351,8 @@ Changes to `scripts/sync.py`:
   block only in a file with exactly one well-formed `house-rules` block. It first copies the file
   to `custom/backups/sync-<UTC time>/`, then writes through a temporary file in the same folder
   and renames it. It follows an instruction-file symlink to its regular target. It never adds a
-  missing block and never touches `forge`, `groundwork`, malformed or multiple blocks. It prints
+  missing block and never touches `forge`, `groundwork`, malformed or multiple blocks. It skips
+  homes listed under #75's `SPECIALIST_*` keys. It prints
   `REPAIRED: stale block: <path> (backup: <path>)`.
 
 `INSTALL-AGENTS.md` §5 runtime verification adds one check: `codex debug prompt-input` output
@@ -358,9 +373,18 @@ that the generated block comes from committed files and, with option 1, document
   "After a compaction (reload skills)"; "Autonomy (unattended work)" to "Authority (unattended
   work)"). It adds an entry for this change, citing the operator direction of 2026-10-07.
 - `skills/pr-ready/scripts/test_prompt.py` moves each pinned sentence to its new file: the
-  session-start and reset tests, the council, L9, L10 and L11 autonomy tests, M1 precedence, and
-  the tracking-rule and M9 tests (now core), and `RuleIndexTest` (Always load lists exactly core
-  and writing; core §Loading names outcome, delivery, STRUCTURE and PREFERENCES).
+  session-start test (`test_procedure_moves_preserve_reading_and_landing_order`), the council,
+  L9, L10 and L11 autonomy tests, M1 precedence, and the tracking-rule and M9 tests (now core).
+- `test_reset_reloads_skills_and_references_the_writing_rule_owner` keeps its name and now reads
+  core §Loading and §After a compaction. Renaming it belongs to #76, which deletes the
+  operator-writing sentence.
+- `RuleIndexTest`: `test_index_loads_every_skill_and_rule_file_with_resolving_relative_links`
+  expects core and writing in the index and outcome, delivery, STRUCTURE and PREFERENCES linked
+  from core §Loading. `test_agents_contains_only_purpose_precedence_and_load_lines` adds the new
+  purpose and "Always load" lines from §4.5 to its accepted set. It keeps its format check for
+  every skill line (`- <trigger>: load [name](path).`), which #76 relies on.
+  `test_repository_overrides_may_tighten_or_loosen_and_name_the_rule` reads core §Precedence
+  and checks the two sentences of the split precedence rule.
 - `scripts/test_sync.py` changes its fixture `RULES` to `("core", "writing")` and adds the tests
   in §7.
 
@@ -388,14 +412,15 @@ that the generated block comes from committed files and, with option 1, document
 
 `DECISION` Foundation budget: the generated block stays at or under 24,000 bytes, about
 4,900 o200k tokens (`ESTIMATE`, at 4.9 bytes per token measured at 9e18159). Tests enforce bytes
-because the tests use only the Python standard library. The proposal uses about 20,600 bytes.
-The headroom of about 3,400 bytes is half of `skills/operator-writing/SKILL.md` (7,062 bytes),
-the most everyday writing text #76 could plausibly move into `rules/writing.md`.
+because the tests use only the Python standard library. The proposal uses about 20,800 bytes.
+The headroom of about 3,200 bytes is for everyday writing rules that #76 adds to
+`rules/writing.md`. `ASSUMPTION` (cross-check of the five designs) #76 adds about 730 bytes to
+the block.
 
 | Set | Bytes | o200k tokens |
 |---|---|---|
 | Always-load before (5 files) | 36,247 | 7,336 (`FACT`) |
-| Generated block after | about 20,600 | about 4,200 (`ESTIMATE`) |
+| Generated block after | about 20,800 | about 4,300 (`ESTIMATE`) |
 | outcome.md after (triggered) | about 6,570 | about 1,220 (`ESTIMATE`) |
 | delivery.md after (triggered) | about 7,400 | about 1,480 (`ESTIMATE`) |
 
@@ -458,6 +483,8 @@ stays a draft and the evidence returns to the operator.
 
 ## 8. Rollout and pins
 
+Merge order across the five designs: #74, #77, #73, #76, #75.
+
 1. One implementation PR lands all changes in §4 together. The tests pin sentences to files, so
    the moves, references and tests must change in one commit range.
 2. The operator checkout updates through `sync.py`. `sync.py` does not pull a dirty checkout, so
@@ -466,34 +493,37 @@ stays a draft and the evidence returns to the operator.
    --write-blocks` replaces them; with option 2, an agent installs the `--print-block` output per
    INSTALL-AGENTS.md §3. Until then, sessions keep the old pointer block and read the files as
    today, because the old block lacks the `House Rules foundation:` line.
-4. **Lane pin:** no file under `prompts/` changes, so compiled role packs are unchanged and the
-   lane pin can move at any time. `ASSUMPTION` (load-test re-test) Lane workers now run in their
-   own Codex home without a House Rules block, so they do not receive the new block either.
-5. **Warden pin:** Warden stages `prompts/` and `skills/pr-ready/`. Only
-   `skills/pr-ready/scripts/test_prompt.py` changes there, and Warden's packs do not use it.
-   Nothing waits for symbiotic-sh/warden#231.
+4. **Lane pin:** this merge does not move it. The lane pin moves once, after #77 merges,
+   together with the lane runner's switch to `--target`. No file under `prompts/` changes, so
+   compiled role packs are unchanged. `ASSUMPTION` (load-test re-test) Lane workers run in their
+   own Codex home without a House Rules block, so they do not receive the new block.
+5. **Warden pin:** Warden stages only `prompts/` and `skills/pr-ready/`; staging `rules/` is a
+   separate Warden change. Only the test file `skills/pr-ready/scripts/test_prompt.py` changes
+   there. Nothing here waits for a Warden change.
 
 ## 9. Interfaces with the other designs
 
-- **[#74](https://github.com/jak-pan/house-rules/issues/74) (worker packs):** `ASSUMPTION` #74's
-  writing baseline under `prompts/` is a worker subset of `rules/writing.md` and does not copy
-  it. This design moves nothing under `prompts/`. After warden#231, packs could include
-  `rules/core.md` and `rules/writing.md` whole; #74 decides.
+- **[#74](https://github.com/jak-pan/house-rules/issues/74) (worker packs):** what House Rules
+  text a worker or specialist pack carries is #74's decision; packs do not include the
+  foundation files. #74's writing baseline under `prompts/` is a verbatim subset copy of
+  `rules/writing.md`, kept by #74's parity test. An edit to `rules/writing.md` must keep those
+  lines or update the copy in the same PR. This design moves nothing under `prompts/`.
 - **[#75](https://github.com/jak-pan/house-rules/issues/75) (subagent profiles):** Claude
   subagents already receive the user-level block, so a general worker gets the foundation
-  without reads. `ASSUMPTION` Specialist homes are not listed in `custom/sync.env`. Otherwise
-  `sync.py` reports their missing block, and with `--write-blocks` it would still not add one.
+  without reads. Specialist homes appear only under #75's `SPECIALIST_*` keys in
+  `custom/sync.env`. `--print-block`, the block checks in `verify` and `--write-blocks` ignore
+  homes under those keys.
 - **[#76](https://github.com/jak-pan/house-rules/issues/76) (review skill, operator-writing):**
-  everyday writing lives in `rules/writing.md`, which is foundation and whole, with about 3,400
-  bytes of headroom. `ASSUMPTION` #76 rewords the core §Loading sentence about operator-writing;
-  this design keeps it verbatim. In block mode the index's skill lines are not loaded, so skill
+  everyday writing lives in `rules/writing.md`, which is foundation and whole, with about 3,200
+  bytes of headroom. #76 merges after this design and deletes the core §Loading sentence about
+  operator-writing (§4.3). In block mode the index's skill lines are not loaded, so skill
   descriptions are the operative triggers.
 - **[#77](https://github.com/jak-pan/house-rules/issues/77) (pack assembly):** the block follows
   the same principle: committed content only, with a recorded hash. `ASSUMPTION` If #77 builds a
   compiler that reads a pinned commit, `sync.py` may call it later instead of `git show`.
-  `ASSUMPTION` (load-test re-test) #77 owns the managed repository loader that restarts the
-  chain. This design needs only one property from it: an agent whose instructions hold the line
-  `House Rules foundation:` is not told to read `rules/core.md` or `rules/writing.md`.
+  The managed repository loader needs no owner here: this design's own index text (§4.5) tells
+  an agent whose instructions hold the line `House Rules foundation:` not to read
+  `rules/core.md` or `rules/writing.md`.
 - **[#78](https://github.com/jak-pan/house-rules/issues/78) (agy):** its acceptance criterion
   names "the index and the always-load rule files". After this design, the matching check is the
   `House Rules foundation:` line in agy's instructions and no rule reads at start.
