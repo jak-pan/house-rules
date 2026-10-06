@@ -2,6 +2,7 @@
 # Shared operating foundation (House Rules)
 
 At session start and after every context compaction or reset, read `INDEX.md`.
+`INDEX.md` sits in the same folder as this file.
 It is the index for collaboration, verification, autonomy, and durable
 execution rules. Load the rule files and Skills that its conditions select.
 Repository-local rules supply project details and win over shared preferences; all work remains subject to the host's instruction hierarchy

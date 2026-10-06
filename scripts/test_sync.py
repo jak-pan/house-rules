@@ -669,7 +669,9 @@ settings.
 
     def test_house_rules_pointer_keeps_portable_old_wording(self):
         self.assertEqual((REPO / 'AGENTS.md').read_text().strip(),
-                         self.EXPECTED_BLOCK.replace('<HOUSE_RULES_ROOT>/', ''))
+                         self.EXPECTED_BLOCK.replace('<HOUSE_RULES_ROOT>/', '').replace(
+                             "read `INDEX.md`.\n",
+                             "read `INDEX.md`.\n`INDEX.md` sits in the same folder as this file.\n"))
 
     def test_managed_repository_keeps_three_line_loader(self):
         structure = (REPO / 'STRUCTURE.md').read_text()
