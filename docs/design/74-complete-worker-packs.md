@@ -25,9 +25,13 @@ source.
 - **Citation:** text in a pack that sends the worker to another file or section: a Markdown
   link, a `§` section reference, a `rules/*.md` path, or "skill `name`".
 - **Open citation:** a citation whose target is not part of the same pack.
-- **Staged paths:** `prompts/` and `skills/pr-ready/`, the only House Rules paths Warden copies
-  into a review job ([warden#231](https://github.com/symbiotic-sh/warden/issues/231)).
+- **Staged paths:** `prompts/` and `skills/pr-ready/`. Warden stages only `prompts/` and `skills/pr-ready/`; staging `rules/` is a separate Warden change.
 - **Stay-off line:** the sentence that tells a worker not to load House Rules or skills.
+- **"Repository rules" part** and **task part:** two parts of a pack that
+  [#77](https://github.com/jak-pan/house-rules/issues/77)'s one-step assembly writes. The
+  "Repository rules" part holds the target repository's own rule file, or the single line
+  "Repository rules: this repository has no rules of its own." The task part holds the task
+  file, into which the dispatcher writes the work item's Decisions and Pre-flight sections.
 
 ## 3. Current behavior
 
@@ -76,6 +80,8 @@ scanned those files for links outside the list and for `§`, `rules/*.md`, "skil
   it" ([STRUCTURE.md:52](../../STRUCTURE.md#L52)). The implementer tells the worker to follow the
   repository's `AGENTS.md` ([implementer.md:2](../../prompts/roles/implementer.md#L2)). In a
   managed repository the two instructions conflict.
+- The STRUCTURE.md managed-repository loader template does not change in this design; #77
+  detects it by exact match.
 - `FACT` The operator's lane launcher now starts workers in a separate tool home without the
   House Rules block, project instruction files or shared skills. That closes the global loading
   path, but not the repository loader path above.
@@ -103,8 +109,8 @@ scanned those files for links outside the list and for `§`, `rules/*.md`, "skil
 `FACT` `test_role_prompts_include_only_files_warden_stages`, added by
 [#61](https://github.com/jak-pan/house-rules/pull/61)
 ([test_prompt.py:260](../../skills/pr-ready/scripts/test_prompt.py#L260)) fails when any role
-lists a file outside `prompts/` or `skills/pr-ready/`. It exists because every Warden triager
-preparation failed on 2026-10-06 when a role included a file Warden did not stage.
+lists a file outside `prompts/` or `skills/pr-ready/`. It keeps every role buildable from what
+Warden stages.
 
 ## 4. Design
 
@@ -116,10 +122,15 @@ Two rules decide every change below.
    verbatim copy under `prompts/util/`. A parity test fails when a copy and its source differ.
    Question 1 asks the operator to confirm this over moving the text.
 3. **DECISION (proposed):** no role asks the worker to search for, find or open the repository's
-   rule files. The dispatcher supplies the repository's rules and the work item's Decisions and
-   Pre-flight sections inside the prompt. [#77](https://github.com/jak-pan/house-rules/issues/77)'s
-   one-step assembly owns how they get there. When none are supplied, the worker says so and
-   continues without them. The stay-off line forbids following any loader it still meets.
+   rule files. The role text names the two pack parts that hold them: the repository's rules
+   are in the "Repository rules" part, and the work item's Decisions and Pre-flight sections are
+   in the task part. #77's assembly writes both parts.
+   - A "Repository rules" part that says the repository has no rules of its own is a complete
+     answer. The worker reports nothing about it.
+   - A pack with no "Repository rules" part at all (built without a target repository) makes
+     the worker say so once and continue.
+   - The stay-off line forbids following any House Rules pointer the worker still meets, such as
+     an `AGENTS.md` that holds real rules and also says to read House Rules first.
 
 ### 4.1 New fragments
 
@@ -242,9 +253,11 @@ to, the pointer to pr-ready §4 is deleted, and commits follow the worker Git fr
 -conventions. Read the work item's Decisions and Pre-flight sections and the repository's
 -rule files supplied or named by the dispatcher before implementing.
 +@rule house-rules:prompts/util/rule-source.md
-+The dispatcher supplies the work item's Decisions and Pre-flight sections and the repository's
-+rule files in this prompt; they set the repository's gates and conventions. Read them before
-+implementing. Never search for rule files. If none are supplied, say so in the final message.
++The "Repository rules" part of this prompt holds the repository's rule files; they set its gates
++and conventions. The task part holds the work item's Decisions and Pre-flight sections. Read both
++before implementing. Never search for rule files. A "Repository rules" part that says the
++repository has no rules of its own is complete. If the prompt has no "Repository rules" part,
++say so in the final message.
 -  conditions. Merge eligibility follows pr-ready §4.
 +  conditions.
  …
@@ -306,7 +319,7 @@ The triager's line 2 stops asking it to find rule files
 
 ```diff
 -Read the work item's Decisions and Pre-flight sections and the repository's rule files supplied or named by the dispatcher before triaging.
-+Read the work item's Decisions and Pre-flight sections and the repository's rule files that the dispatcher supplies in this prompt before triaging. Never search for rule files. If none are supplied, say so in one line.
++Read the work item's Decisions and Pre-flight sections in the task part and the repository's rule files in the "Repository rules" part of this prompt before triaging. Never search for rule files. A "Repository rules" part that says the repository has no rules of its own is complete. If the prompt has no "Repository rules" part, say so in one line.
 ```
 
 **DECISION (proposed):** the checker's new self-name is "CHECKER". It matches the file name,
@@ -337,7 +350,7 @@ files in the prompt. Line 5 is the checker's only instruction about rule files.
 -… If no list is supplied, the triager says so in one line and files as usual.
 +… If no list is supplied, say so in one line and file as usual.
 -- Before calling a contract "unresolved", check the work item's Decisions and Pre-flight sections, the repository's rule files and the design; apply …
-+- Before calling a contract "unresolved", check the work item's Decisions and Pre-flight sections and the repository's rule files supplied in this prompt, and the design; apply …
++- Before calling a contract "unresolved", check the work item's Decisions and Pre-flight sections (task part) and the repository's rule files ("Repository rules" part), and the design; apply …
  …
 -… a fix whose lines are reasoned for and necessary is fine. A cost defect is work per operation that grows with stored data where an index or native filter should bound it, extra storage or native calls per operation beyond the spec or a recorded budget, or a measured regression in a benchmark or count assertion. With a concrete operation and its count or measurement, it is FIX-NOW even if the fix adds an index, a native filter or a test.
 +… a fix whose lines are reasoned for and necessary is fine. With a concrete operation and its count or measurement, a cost defect ([Cost defect](cost-defect.md)) is FIX-NOW even if the fix adds an index, a native filter or a test.
@@ -415,7 +428,7 @@ def test_compiled_roles_cite_only_files_they_include(self):
 from. The copies themselves hold no source note, because a note would be an open citation.
 
 ```python
-# Rule text whose owner Warden does not stage (symbiotic-sh/warden#231).
+# Rule text whose owner file is outside the paths Warden stages.
 COPIES = {
     "prompts/util/worker-git.md": "rules/delivery.md",
     "prompts/util/writing-baseline.md": "rules/writing.md",
@@ -458,7 +471,8 @@ whether to copy it.
 - `writing-baseline.md` appears exactly once in every compiled role.
 - `worker-git.md` appears exactly once in the implementer and fixer, and in no other role.
 - `checker.md` starts with "You are the CHECKER" and does not contain "TRIAGER".
-- No compiled role contains "supplied or named" or "the rules file it points to". The existing
+- No compiled role contains "supplied or named" or "the rules file it points to". The compiled
+  implementer, fixer, triager and checker each name the "Repository rules" part. The existing
   `test_workers_and_triager_read_work_item_and_repo_rules` keeps passing, because the new
   sentences still say "work item's Decisions and Pre-flight" and "repository's rule files".
 
@@ -474,13 +488,13 @@ whether to copy it.
 
 **Kept unchanged:** the staged-paths guard test from [#61](https://github.com/jak-pan/house-rules/pull/61), `test_role_prompts_include_only_files_warden_stages`.
 Every new file is under `prompts/util/`, so the test passes without change, and it keeps
-enforcing the staged paths. It widens only when warden#231 is deployed, as that issue's
+enforcing the staged paths. It widens only when Warden stages `rules/`, which is a separate Warden change;
 acceptance criteria state.
 
 ## 5. Alternatives considered
 
 - **Include `rules/delivery.md` and `rules/writing.md` whole once Warden stages `rules/`.**
-  Rejected: it waits on warden#231, and it adds about 13 KB to every pack. It would also give
+  Rejected: it waits on a separate Warden change, and it adds about 13 KB to every pack. It would also give
   workers the lead's push and merge rules (delivery.md lines 53–66), which contradict their
   no-external-writes rule.
 - **Move the copied text into `prompts/util/` and have `rules/` link to it.** One owner, no
@@ -511,7 +525,7 @@ acceptance criteria state.
   - Triager: 15,248 B / 3,365 tokens → 17,364 B / 3,824 tokens.
   - Checker: 13,499 B / 2,980 tokens → 15,615 B / 3,439 tokens.
 - The writing baseline accounts for most of the growth: 1,673 B and 363 tokens per role.
-- The revised rule-file sentences and the longer stay-off line add about 150 B more to the
+- The revised rule-file sentences and the longer stay-off line add about 300 B more to the
   implementer, fixer, triager and checker (`ESTIMATE`, not in the figures above).
 
 ## 7. Verification
@@ -521,12 +535,17 @@ acceptance criteria state.
 **Canary lane run** (the issue's acceptance criterion):
 
 - Setup:
-  - Pin the lanes to the implementation commit.
+  - Pin the lanes to a commit that contains both this change and #77, with the lane runner
+    already passing `--target` (see §8). This canary runs in the same round as #77's.
   - Append a unique canary code to every file of the unpinned House Rules checkout: the index,
     the four rule files and every skill. Do not change `prompts/`.
-  - Run in a test repository whose `AGENTS.md` is the managed loader from
-    [STRUCTURE.md](../../STRUCTURE.md#L46). This exercises the "even when the repository's
-    AGENTS.md says to" clause.
+  - Run in a test repository whose `AGENTS.md` holds real rules and also says to read House
+    Rules first (#77's case-2 fixture). #77 includes that file in the "Repository rules" part,
+    so the pack itself tells the worker to read House Rules. This exercises the "even when a
+    repository file such as AGENTS.md says to" clause.
+  - Run the triager and checker a second time in a test repository whose `AGENTS.md` is the
+    unchanged STRUCTURE.md loader template. #77 never includes a loader, so the pack gets the
+    line "Repository rules: this repository has no rules of its own."
 - Run one implementer, three reviewers, the triager, one fixer and the checker on a small
   seeded change.
 - Pass:
@@ -535,26 +554,35 @@ acceptance criteria state.
   - Each output keeps its contract: a `VERDICT:` first line for the reviewer, triager and
     checker, and the final-message sections for the implementer and fixer.
   - The checker's output never calls the checker "triager".
-  - Run the triager and checker once more with no repository rules supplied. Their tool logs
-    show no search for rule files and no read of the repository's `AGENTS.md`, and their output
-    says in one line that no repository rules were supplied.
+  - In the loader-template run, the triager and checker logs show no search for rule files and
+    no read of the repository's `AGENTS.md`, and their output does not report missing rules.
+  - In one extra triager run from a pack built with `--no-target`, the log shows no search for
+    rule files, and the output says once that the prompt has no "Repository rules" part.
 - Fail: any such read or search, in any role.
 
-**Warden:** after the Warden pin moves to the implementation commit, one Warden review
-prepares every role without a missing-file error.
+**Warden:** after Warden moves to a House Rules commit that contains this change, one Warden
+review runs every role without a missing-file error.
 
 ## 8. Rollout and pins
 
-1. Merge the implementation PR. It depends on neither warden#231 nor the sibling designs.
-2. Move the lane House Rules pin to the merge commit. The lanes use the new packs from their
-   next run, and the canary run in §7 runs on that pin.
-3. Move Warden's qualified House Rules commit through its normal qualification. Until then
-   Warden keeps the old packs. Nothing breaks, because the guard test keeps every include
+The merge order for the five designs is #74 → #77 → #73 → #76 → #75. This change merges first.
+
+1. Merge the implementation PR. Do not move the lane House Rules pin at this merge.
+2. The lane pin moves once, after #77 merges, to a commit that contains both changes, together
+   with the lane runner switch to `--target`. #77's rollout owns that step, and its step zero
+   (a short House Rules `.agents/rules.md`) comes before any lane targets a House Rules
+   worktree. The §7 canary runs then, in the same round as #77's.
+3. `ASSESSMENT` Between this merge and #77's merge, a dispatcher that compiles roles from main
+   gets role text that names a "Repository rules" part no tool writes yet. The worker then says
+   once that the part is missing and does not search. No lane is affected, because the lane pin
+   has not moved.
+4. Warden uses the new packs once it moves to a House Rules commit that contains them. Until
+   then it keeps the old packs. Nothing breaks, because the guard test keeps every include
    inside the staged paths.
-4. The operator checkout needs only a pull. `scripts/sync.py` installs no prompts.
-5. After warden#231 is deployed, the guard test widens to `rules/`. Whether the copies then go
-   away depends on Question 1 and on #73's split of `rules/`. The implementation PR files that
-   follow-up as an issue linked to warden#231.
+5. The operator checkout needs only a pull. `scripts/sync.py` installs no prompts.
+6. When Warden stages `rules/` (a separate Warden change), the guard test widens to `rules/`.
+   Whether the copies then go away depends on Question 1 and on #73's split of `rules/`. The
+   implementation PR files that follow-up as a House Rules issue.
 
 ## 9. Interfaces with the other designs
 
@@ -562,29 +590,37 @@ prepares every role without a missing-file error.
   from. The parity test then fails, and the PR that moves them updates the `COPIES` table and
   the copy in the same change. If #73 splits delivery.md line 50 into "Require green gates" and
   "Update tracker state", `worker-git.md` can take the first sentence. If #73 defines its own
-  everyday-writing baseline, `writing-baseline.md` should equal it.
-- **[#75](https://github.com/jak-pan/house-rules/issues/75) (subagent profiles).** `ASSUMPTION` Specialist packs are these role packs, plus the
-  task. `rule-source.md` is the statement that the pack is the only rule source. #75 decides
-  where the pack's revision header goes.
+  everyday-writing baseline, `writing-baseline.md` should equal it. Packs do not include #73's
+  foundation files. `ASSUMPTION` #73's foundation adds one sentence: a compiled prompt that
+  states it is the only rule source overrides the foundation's loading and re-read rules for
+  that run. `rule-source.md` and the reviewer's line are such statements.
+- **[#75](https://github.com/jak-pan/house-rules/issues/75) (subagent profiles).** `ASSUMPTION` Specialist packs are these role packs, plus
+  the parts #77 assembles; they carry no foundation. `rule-source.md` is the statement that the
+  pack is the only rule source. Question 1 below covers specialist packs too. #77 decides where
+  the pack's revision header goes.
 - **[#76](https://github.com/jak-pan/house-rules/issues/76) (review entry skill).** `ASSUMPTION` The review skill loads the compiled reviewer pack.
   With this design that pack includes the writing baseline.
 - **[#77](https://github.com/jak-pan/house-rules/issues/77) (one-step assembly).** `ASSUMPTION` One-step assembly compiles these roles unchanged.
-  `ASSUMPTION` #77 also puts the target repository's own rules and the work item's Decisions and
-  Pre-flight sections into the assembled prompt, so that no role needs to find them. This
-  design's role text depends on that. Whether the repository's House Rules loader line is
-  stripped during assembly is #77's choice; the stay-off line covers it either way. #77's scope
-  also covers the repository loader restarting the chain (the structural review's rank 7).
+  `ASSUMPTION` #77's "Repository rules" part holds the target repository's own rules, or the line
+  "Repository rules: this repository has no rules of its own.", and is absent with `--no-target`.
+  The dispatcher writes the work item's Decisions and Pre-flight sections into the task file, so
+  they reach the worker in the task part; #77 adds no work-item part. This design's role text
+  names those parts and depends on them. #77 never includes a loader `AGENTS.md`, but it
+  includes a case-2 `AGENTS.md` unchanged; the stay-off line handles its House Rules line. The
+  STRUCTURE.md managed-repository loader template does not change in this design; #77 detects it
+  by exact match.
   No role includes a file twice, so no deduplication is needed for the role part.
 
 ## 10. Questions for the operator
 
-### 1\. How should worker packs get rule text whose owner Warden cannot stage yet?
-`FACT` Three fragments copy text from files outside `prompts/`: Git rules from `rules/delivery.md`, the writing baseline from `rules/writing.md`, and priority labels from the design-flow skill. `FACT` [warden#231](https://github.com/symbiotic-sh/warden/issues/231) states that Warden copies only `prompts/` and `skills/pr-ready/` until it is deployed. `ASSESSMENT` The repository's tests prefer one owner per rule, but #73 is rewriting the rule files now.\
+### 1\. What House Rules text should worker and specialist packs carry beyond their role fragments?
+`FACT` Three fragments copy text from files outside `prompts/`: Git rules from `rules/delivery.md`, the writing baseline from `rules/writing.md`, and priority labels from the design-flow skill. `FACT` Warden stages only `prompts/` and `skills/pr-ready/`; staging `rules/` is a separate Warden change. `ASSESSMENT` The answer applies to #75's specialist packs too, which are built from these role packs. `ASSESSMENT` The repository's tests prefer one owner per rule, but #73 is rewriting the rule files now.\
 The answer decides whether the implementation PR touches `rules/` at all.
 
-1. **Verbatim copies under `prompts/util/`, with a parity test that fails when a copy and its source differ; replace them with direct includes after warden#231 and #73 land (recommended).** No `rules/` change and no conflict with #73. Two copies exist until the follow-up.
+1. **Verbatim copies under `prompts/util/`, with a parity test that fails when a copy and its source differ; replace them with direct includes after Warden stages `rules/` and #73 lands (recommended).** No `rules/` change and no conflict with #73. Two copies exist until the follow-up.
 2. Move the text: the fragment becomes the only owner, and `rules/delivery.md`, `rules/writing.md` and design-flow link to it. One owner at once, but the change edits files #73 is restructuring, and the always-loaded writing rules then depend on a file under `prompts/`.
-3. Wait for warden#231 and include the whole rule files. No copies, but every pack grows by about 13 KB and gets the lead's push and merge rules.
+3. Wait until Warden stages `rules/` and include the whole rule files. No copies, but every pack grows by about 13 KB and gets the lead's push and merge rules.
+4. Include #73's whole foundation in every pack instead. One source for sessions and packs, but every pack grows by about 4,200 tokens (#73's measurement); the reviewer pack would grow from about 2,700 to about 7,000 tokens.
 
 **Answer like so:**
 ```text
