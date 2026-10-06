@@ -117,26 +117,21 @@ Questions the operator must answer come after the explanation. Example:
 ## Warden
 
 ### 1\. What should Warden do with a review request in an unmanaged repository?
-`fact` Five repositories are unmanaged. `fact` Today Warden ignores the request and nobody
-sees why. `assessment` A silent skip looks like an outage.\
+`fact` Five repositories are unmanaged. `fact` Today Warden ignores the request and nobody sees why. `assessment` A silent skip looks like an outage.\
 Either option also applies to repositories added later.
 
 1. **One comment saying the repository is not managed by House Rules (recommended).**
 2. A silent skip, visible only in Warden's host log.
 
 ### 2\. Send the error text from the failed App install?
-`fact` GitHub opened the organization settings page instead of the install page. `fact`
-Warden's host log has no entry from that time. `assessment` The error is probably visible
-only in the browser.\
+`fact` GitHub opened the organization settings page instead of the install page. `fact` Warden's host log has no entry from that time. `assessment` The error is probably visible only in the browser.\
 Without the text, the cause stays a guess between a missing permission and a wrong link.
 
 ## House Rules
 
 ### 3\. Merge [#52](https://github.com/jak-pan/house-rules/pull/52), the writing-rules PR?
-`fact` An earlier cleanup removed several writing rules without an operator decision; it
-puts them back. `fact` It changes only the operator-writing skill and the rules changelog.\
-Agents on this machine use the rules from their next session; Warden and the lanes get them
-only after their House Rules pins move.
+`fact` An earlier cleanup removed several writing rules without an operator decision; it puts them back. `fact` It changes only the operator-writing skill and the rules changelog.\
+Agents on this machine use the rules from their next session; Warden and the lanes get them only after their House Rules pins move.
 
 **Answer with one numbered line per question, like so:**
 
@@ -153,16 +148,21 @@ only after their House Rules pins move.
   alone. Add a link or a short code excerpt when the answer depends on it.
 - Keep the context brief: a few sentences, never a wall of text.
 - Start each context sentence with the flag `fact` or `assessment` in inline code.
-- End each context line with a backslash.
+- Write all context sentences on one source line. Do not wrap it.
 - Add one line on what happens after the answer, only when the reader cannot infer it.
+- When that line follows, end the context line with a backslash, so it renders as a line
+  break.
 - Write the options of a choice as a numbered list. Never nest it.
 - Give each option what changes and its side effect.
 - Recommend exactly one option. Write its whole line in bold and end it with "(recommended)".
 - Do not write the word "Option" in option text.
+- When the answer is text, name the text in the question title, for example "Send the
+  error text …?".
 - Put no reply line, answer box, quote or table in the questions.
 - End the message with the bold line "Answer with one numbered line per question, like so:".
 - Below it, give a three-line numbered example: an option number, a request for more
   context and `ok`.
+- Treat an answer that asks for more context as a new question: explain, then ask again.
 - Never ask the operator about work the agent's own team must do (tests, replays,
   verification). List it as an internal task.
 
