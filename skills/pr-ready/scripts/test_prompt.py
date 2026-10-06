@@ -1,4 +1,5 @@
 from pathlib import Path
+import ast
 import shutil
 import re
 import subprocess
@@ -946,12 +947,6 @@ class AnsweredRestoreTest(unittest.TestCase):
                        "Investigate runs more than 20% over that time.",
                        "Allow an expected long run once, including a rebuilt dependency cache."):
             self.assertIn(phrase, rules)
-        # A150: CI review routing procedure moves into pr-ready §2.
-        procedure = self.text("skills/pr-ready/SKILL.md")
-        for phrase in ("Have Warden review CI runs.",
-                       "Send failing jobs to a CI-repair investigator.",
-                       "Follow rules/delivery.md §Verification for the expected-long-run exception."):
-            self.assertIn(phrase, procedure)
 
     def test_specialized_visual_ui_verification(self):
         rules = self.text("rules/delivery.md")
@@ -1219,14 +1214,6 @@ class AuditRestorationTest(unittest.TestCase):
             with self.subTest(clause=clause):
                 self.assertIn(clause, text)
 
-    def test_H4_external_write_rules_always_load(self):
-        text = (ROOT / 'AGENTS.md').read_text()
-        for clause in (
-            '- [delivery rules](rules/delivery.md)',
-        ):
-            with self.subTest(clause=clause):
-                self.assertIn(clause, text)
-
     def test_M1_precedence_remains_bounded(self):
         text = (ROOT / 'AGENTS.md').read_text()
         for clause in (
@@ -1244,16 +1231,6 @@ class AuditRestorationTest(unittest.TestCase):
             'At session start, read the bible and `CONTEXT.md` when present.',
             "Then read the tracker board, followed by your work item's state and latest"
             ' handoff.',
-        ):
-            with self.subTest(clause=clause):
-                self.assertIn(clause, text)
-
-    def test_M3_stop_scope_always_loads(self):
-        text = (ROOT / 'rules/core.md').read_text()
-        for clause in (
-            'On "stop", halt the last thing the operator gave or the agent put in the '
-            'chat.',
-            'On "Stop everything", halt everything.',
         ):
             with self.subTest(clause=clause):
                 self.assertIn(clause, text)
@@ -1314,22 +1291,6 @@ class AuditRestorationTest(unittest.TestCase):
             'an audit gap, a plan or migration step, or said to "belong to the other '
             'repository\'s side".\n',
             'Accepted findings are findings the operator or a review accepted.',
-        ):
-            with self.subTest(clause=clause):
-                self.assertIn(clause, text)
-
-    def test_M10_paid_run_rules_always_load(self):
-        text = (ROOT / 'AGENTS.md').read_text()
-        for clause in (
-            '- [delivery rules](rules/delivery.md)',
-        ):
-            with self.subTest(clause=clause):
-                self.assertIn(clause, text)
-
-    def test_M11_parallel_rules_always_load(self):
-        text = (ROOT / 'AGENTS.md').read_text()
-        for clause in (
-            '- [delivery rules](rules/delivery.md)',
         ):
             with self.subTest(clause=clause):
                 self.assertIn(clause, text)
@@ -1613,6 +1574,110 @@ class AuditRestorationTest(unittest.TestCase):
         always = index.split("## Always load\n", 1)[1].split("## Load when", 1)[0]
         self.assertIn("At session start and after every reset or compaction, read these files in full:", always)
         self.assertEqual(re.findall(r"\((rules/[^)]+)\)", always), ["rules/core.md", "rules/outcome.md", "rules/delivery.md"])
+
+
+class AcceptedScopeRegressionTest(unittest.TestCase):
+    """Keep accepted requirements in their unconditional homes, without copies."""
+
+    def test_application_hardening_checks_simpler_designs_without_loading_upstream(self):
+        rules = (ROOT / "rules/outcome.md").read_text().split(
+            "### Prove necessity before expanding the critical path", 1
+        )[1].split("### Resource envelopes", 1)[0]
+        check = "First check supported APIs, configuration and simpler application designs."
+        self.assertIn(check, rules)
+        upstream = (ROOT / "skills/upstream-contribution/SKILL.md").read_text()
+        self.assertNotIn(check, upstream)
+        self.assertIn(
+            "Follow rules/outcome.md §Prove necessity before expanding the critical path "
+            "for the supported-API, configuration and simpler-design check.",
+            " ".join(upstream.split()),
+        )
+
+    def test_routine_commands_are_exempt_from_expensive_work_requirements(self):
+        delivery = (ROOT / "rules/delivery.md").read_text()
+        self.assertIn(
+            "Apply this launch-boundary requirement only to external or paid work.\n"
+            "- Exempt routine short, cheap, reproducible commands from these expensive-work requirements.",
+            delivery,
+        )
+        handoff = (ROOT / "skills/handoff-continuity/SKILL.md").read_text()
+        self.assertIn(
+            "Apply the routine-command exemption in rules/delivery.md §Verification.",
+            handoff,
+        )
+        self.assertNotIn("from the durable-external-run procedure", handoff)
+
+    def test_preventive_safety_stops_do_not_require_operator_approval(self):
+        delivery = (ROOT / "rules/delivery.md").read_text()
+        self.assertIn(
+            "Obtain operator approval before stopping materially paid work, except under "
+            "rules/core.md §Operator correction or safety requirements.", delivery,
+        )
+        self.assertNotIn("urgent safety requirements", delivery)
+        handoff = " ".join((ROOT / "skills/handoff-continuity/SKILL.md").read_text().split())
+        self.assertIn(
+            "For a materially paid or unique run, apply the approval requirement and "
+            "exceptions in rules/delivery.md §Verification.", handoff,
+        )
+        self.assertIn("An urgent safety stop takes precedence", handoff)
+
+    def test_ready_instruction_is_required_only_for_externally_owned_repositories(self):
+        delivery = (ROOT / "rules/delivery.md").read_text()
+        self.assertIn(
+            "For externally owned repositories, never push upstream, open pull "
+            "requests/issues, or comment until the operator says ready.", delivery,
+        )
+        self.assertNotIn("\n- Never push upstream,", delivery)
+
+    def test_local_iteration_and_invalidated_evidence_use_always_loaded_verification(self):
+        verification = (ROOT / "rules/delivery.md").read_text().split(
+            "## Verification", 1
+        )[1].split("## Git", 1)[0]
+        procedure = (ROOT / "skills/pr-ready/SKILL.md").read_text()
+        for requirement in (
+            "During iteration, run the smallest gate that proves the current change.",
+            "Run the complete required gate on the resulting candidate or whenever "
+            "changes invalidate prior full-gate evidence.",
+            "Where CI owns the full suite, use CI’s run on the pushed head.",
+        ):
+            with self.subTest(requirement=requirement):
+                self.assertIn(requirement, verification)
+                self.assertNotIn(requirement, procedure)
+        self.assertIn(
+            "Follow rules/delivery.md §Verification for iteration gates and renewal "
+            "of invalidated verification evidence.", procedure,
+        )
+
+    def test_scheduled_ci_failures_receive_review_and_repair_without_pr_preparation(self):
+        delivery = (ROOT / "rules/delivery.md").read_text()
+        self.assertIn(
+            "Define a standard CI time for each repository.\n"
+            "- Investigate runs more than 20% over that time.\n"
+            "- Allow an expected long run once, including a rebuilt dependency cache.\n"
+            "- Have Warden review CI runs.\n"
+            "- Send failing jobs to a CI-repair investigator.",
+            delivery,
+        )
+        procedure = (ROOT / "skills/pr-ready/SKILL.md").read_text()
+        self.assertNotIn("Have Warden review CI runs.", procedure)
+        self.assertNotIn("Send failing jobs to a CI-repair investigator.", procedure)
+        self.assertIn(
+            "Follow rules/delivery.md §Verification for CI review, failure routing "
+            "and the expected-long-run exception.", procedure,
+        )
+
+    def test_restoration_tests_keep_distinct_assertions(self):
+        module = ast.parse(Path(__file__).read_text())
+        restoration = next(node for node in module.body
+                           if isinstance(node, ast.ClassDef)
+                           and node.name == "AuditRestorationTest")
+        bodies = {}
+        for method in restoration.body:
+            if isinstance(method, ast.FunctionDef) and method.name.startswith("test_"):
+                body = ast.dump(ast.Module(body=method.body, type_ignores=[]))
+                self.assertNotIn(body, bodies, f"{method.name} duplicates {bodies.get(body)}")
+                bodies[body] = method.name
+        self.assertFalse(hasattr(AuditRestorationTest, "test_M3_stop_scope_always_loads"))
 
 
 if __name__ == "__main__":

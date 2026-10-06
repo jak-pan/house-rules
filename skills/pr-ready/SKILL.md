@@ -41,9 +41,7 @@ Verification invariant: rules/delivery.md §Verification. Local work follows
   changes; toolchain, lockfile and build-script matrices belong to CI.
 - Report the exact commands, filters and pass/fail counts.
 
-- During iteration, run the smallest gate that proves the current change.
-- Run the complete required gate on the resulting candidate or whenever changes invalidate prior full-gate evidence.
-- Where CI owns the full suite, use CI’s run on the pushed head.
+- Follow rules/delivery.md §Verification for iteration gates and renewal of invalidated verification evidence.
 
 ## 2. Push and CI
 
@@ -58,9 +56,7 @@ Verification invariant: rules/delivery.md §Verification. Local work follows
 - On a CI failure, reproduce only the failing tests locally. Before attributing a failure
   to the change, compare it against the default branch under the same conditions.
 
-- Have Warden review CI runs.
-- Send failing jobs to a CI-repair investigator.
-- Follow rules/delivery.md §Verification for the expected-long-run exception.
+- Follow rules/delivery.md §Verification for CI review, failure routing and the expected-long-run exception.
 
 ## 3. Review rounds
 

@@ -22,6 +22,7 @@
 - Demonstrate the gap against the unmodified dependency.
 - Require a failing reproduction for a dependency bug fix.
 - Do not treat failures introduced by our patches as upstream defects.
+- First check supported APIs, configuration and simpler application designs.
 - Implement the requested behavior before non-critical hardening.
 - Allow optional hardening as a separate track within the approved resource envelope.
 - Do not let optional hardening block or starve the main goal.

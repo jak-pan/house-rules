@@ -22,7 +22,8 @@ Reproduce on unmodified upstream: its current default branch and the version we 
 bug needs a failing test in upstream's own test framework. A failure that exists only with
 our patches is ours (rules/outcome.md §Prove necessity before expanding the critical path).
 
-- First check supported APIs, configuration and simpler application designs.
+- Follow rules/outcome.md §Prove necessity before expanding the critical path for the
+  supported-API, configuration and simpler-design check.
 
 ## 2. Sweep what already exists
 

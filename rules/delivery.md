@@ -10,6 +10,9 @@
 - Include test output with results.
 - Reserve end-to-end claims for the real stack.
 - Classify mocked-stack tests as integration tests.
+- During iteration, run the smallest gate that proves the current change.
+- Run the complete required gate on the resulting candidate or whenever changes invalidate prior full-gate evidence.
+- Where CI owns the full suite, use CI’s run on the pushed head.
 - Do not repeat the full matrix after changes that cannot affect it.
 - Let CI own the full suite.
 - Follow `../prompts/roles/implementer.md` and `../prompts/roles/reviewer.md` for local scopes.
@@ -20,19 +23,22 @@
 - Define a standard CI time for each repository.
 - Investigate runs more than 20% over that time.
 - Allow an expected long run once, including a rebuilt dependency cache.
+- Have Warden review CI runs.
+- Send failing jobs to a CI-repair investigator.
 - Require a specialized agent to verify UI work visually with screenshots.
 - Do not rely only on programmatic assertions.
 - Follow `../prompts/skills/test-discipline.md` §Test discipline for duration, hanging-test removal, build-queue hold limits, and scale-test replacement.
 - Follow `../skills/pr-ready/references/guards.md` for guard/test upkeep and daily whole-system audits.
 - Require an explicit maximum cost/token/runtime boundary before launching external or paid work.
 - Apply this launch-boundary requirement only to external or paid work.
+- Exempt routine short, cheap, reproducible commands from these expensive-work requirements.
 - Keep paid, long-running, or non-reproducible external runs primary or proportionally supporting within approved envelopes.
 - Examples include agents, model command-line interfaces, remote jobs, benchmarks, and crawls.
 - Require a durable transcript or checkpoint before the first substantive call for those runs.
 - Require a recorded session ID before that call.
 - Record spend at milestones.
 - Inspect process state before stopping runs because of silence or wrapper timeouts.
-- Obtain operator approval before stopping materially paid work, except under rules/core.md §Operator correction or urgent safety requirements.
+- Obtain operator approval before stopping materially paid work, except under rules/core.md §Operator correction or safety requirements.
 - Follow `handoff-continuity` §Authorized, bounded, and durable external runs for procedure.
 
 ## Git
@@ -60,7 +66,7 @@
 - Never let subagents push or merge into main.
 - Keep spawning authority separate from delivery authority under rules/outcome.md §Resource envelopes and §Parallel work in this file.
 - Read, clone, or fork externally owned repositories freely.
-- Never push upstream, open pull requests/issues, or comment until the operator says ready.
+- For externally owned repositories, never push upstream, open pull requests/issues, or comment until the operator says ready.
 - Follow `upstream-contribution` §3 for our fork’s push exception and local review requirements.
 - Commit documentation with the code it describes.
 

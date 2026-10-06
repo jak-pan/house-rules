@@ -84,13 +84,13 @@ failure: inspect the process, terminal/session state, transcript growth, checkpo
 provider status. A timeout is an observation, not authorization to kill the run.
 
 Before interrupt/restart/replacement, persist the latest recoverable output and decide
-whether the evidence proves no progress. For a materially paid or unique run, obtain the
-operator's approval unless rules/core.md §Operator correction applies. An urgent safety stop
+whether the evidence proves no progress. For a materially paid or unique run, apply the
+approval requirement and exceptions in rules/delivery.md §Verification. An urgent safety stop
 takes precedence; capture only what can be captured without delaying it. If durable
 capture cannot be established at launch, ask the operator to accept the loss risk or use
 a cheaper/reproducible probe instead.
 
-- Exempt routine short, cheap, reproducible commands from the durable-external-run procedure.
+- Apply the routine-command exemption in rules/delivery.md §Verification.
 
 ## Resuming
 
