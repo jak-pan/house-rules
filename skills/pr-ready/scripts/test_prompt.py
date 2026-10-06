@@ -229,12 +229,12 @@ class CollectionAcceptanceTest(unittest.TestCase):
         self.assertEqual(contract, (
             'one per ISSUE item, as "### <title>" then the body. '
             'The title names the behavior in plain words (no internal labels, codes or round names, never cut mid-phrase). '
-            'The body follows [the issue form](../../skills/operator-writing/references/github-issue-form.md).\n'
+            'The body follows [the issue form](issue-form.md).\n'
         ))
-        form = (ROOT / "skills/operator-writing/references/github-issue-form.md").read_text()
+        form = (ROOT / "prompts/util/issue-form.md").read_text()
         issue_form = form
         guide = (ROOT / "skills/operator-writing/references/github-text.md").read_text()
-        self.assertIn("Follow [the issue form](github-issue-form.md).", guide)
+        self.assertIn("Follow [the issue form](../../../prompts/util/issue-form.md).", guide)
         self.assertNotIn("prompts/util/issue-report.md", issue_form)
         for requirement in ("## Evidence", "## Cause", "## Acceptance criteria", "Label untested parts", "full SHA"):
             self.assertIn(requirement, issue_form)
@@ -257,8 +257,18 @@ class CollectionAcceptanceTest(unittest.TestCase):
                 self.assertIn('"## Issues to file"', prompt.stdout)
                 self.assertNotIn("3–6 line body", prompt.stdout)
 
+    def test_role_prompts_include_only_files_warden_stages(self):
+        # Warden stages only prompts/ and skills/pr-ready/ from the qualified commit; an include
+        # outside them fails Warden's preparation (2026-10-06: every triager failed this way).
+        for role in sorted((ROOT / "prompts/roles").glob("*.md")):
+            with self.subTest(role=role.name):
+                includes = PromptTest().run_prompt("--list", f"prompts/roles/{role.name}")
+                self.assertEqual(includes.returncode, 0, includes.stderr)
+                for path in includes.stdout.split():
+                    self.assertTrue(path.startswith(("prompts/", "skills/pr-ready/")), path)
+
     def test_triager_and_checker_include_only_the_issue_form(self):
-        form_path = "skills/operator-writing/references/github-issue-form.md"
+        form_path = "prompts/util/issue-form.md"
         for role in ("triager", "checker"):
             with self.subTest(role=role):
                 includes = PromptTest().run_prompt("--list", f"prompts/roles/{role}.md")
