@@ -156,4 +156,4 @@ memory; the mode had been removed, and the claim reached an operator decision.
 ## rules/writing.md — Claim labels (citations)
 
 Operator direction: 2026-10-06; evidence written inline with each `FACT` made text too long,
-so facts cite numbered sources listed at the end, as in standard citation practice.
+so facts carry superscript footnote numbers (no brackets) with the sources listed at the end.
