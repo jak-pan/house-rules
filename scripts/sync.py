@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -20,8 +21,31 @@ import uuid
 MARKERS = re.compile(r"<!-- (house-rules|forge|groundwork):(begin|end) -->")
 
 
+def status(path, *, follow_symlinks=True):
+    """Treat only a missing path as absent; propagate other filesystem errors."""
+    try:
+        return path.stat() if follow_symlinks else path.lstat()
+    except FileNotFoundError:
+        return None
+
+
+def is_dir(path):
+    info = status(path)
+    return info is not None and stat.S_ISDIR(info.st_mode)
+
+
+def is_file(path):
+    info = status(path)
+    return info is not None and stat.S_ISREG(info.st_mode)
+
+
+def is_link(path):
+    info = status(path, follow_symlinks=False)
+    return info is not None and stat.S_ISLNK(info.st_mode)
+
+
 def present(path):
-    return path.exists() or path.is_symlink()
+    return status(path, follow_symlinks=False) is not None
 
 
 def git(root, *args):
@@ -90,14 +114,14 @@ def homes(root, home):
     }
     selected = []
     for key, path in defaults.items():
-        if key in os.environ and (not path.is_absolute() or not path.is_dir()):
+        if key in os.environ and (not path.is_absolute() or not is_dir(path)):
             raise ValueError(f"{key} must be an existing absolute directory")
-        if present(path) and not path.is_dir():
+        if present(path) and not is_dir(path):
             raise ValueError(f"{key} default home is not a directory: {path}")
-        if path.is_dir():
+        if is_dir(path):
             selected.append((key, path.absolute()))
     config = root / "custom/sync.env"
-    if config.exists():
+    if present(config):
         for number, line in enumerate(config.read_text(encoding="utf-8").splitlines(), 1):
             tokens = shlex.split(line, comments=True)
             if not tokens:
@@ -108,13 +132,13 @@ def homes(root, home):
             if key not in defaults or not value:
                 raise ValueError(f"{config}:{number}: unknown key or empty home")
             path = Path(value).expanduser()
-            if not path.is_absolute() or not path.is_dir():
+            if not path.is_absolute() or not is_dir(path):
                 raise ValueError(f"{config}:{number}: home must be an existing absolute directory")
             selected.append((key, path))
     for key, path in selected:
         if not path.is_absolute():
             raise ValueError(f"{key} must be an absolute directory")
-        if key == "CODEX_HOME" and not any((path / name).is_file()
+        if key == "CODEX_HOME" and not any(is_file(path / name)
                                            for name in ("config.toml", "auth.json")):
             raise ValueError(f"not a Codex home (no config.toml or auth.json): {path}")
     return list(dict.fromkeys(selected))
@@ -129,7 +153,7 @@ def children(path):
 def copy_entries(path):
     for entry in children(path):
         yield entry
-        if not entry.is_symlink() and entry.is_dir():
+        if not is_link(entry) and is_dir(entry):
             yield from copy_entries(entry)
 
 
@@ -138,11 +162,11 @@ def copy_hash(path):
     digest = hashlib.sha256()
     for entry in sorted(copy_entries(path)):
         name = str(entry.relative_to(path))
-        if entry.is_symlink():
+        if is_link(entry):
             kind, value = "link", os.readlink(entry).encode()
-        elif entry.is_file():
+        elif is_file(entry):
             kind, value = "file", entry.read_bytes()
-        elif entry.is_dir():
+        elif is_dir(entry):
             kind, value = "directory", b""
         else:
             raise ValueError(f"unsupported copy entry: {entry}")
@@ -150,7 +174,7 @@ def copy_hash(path):
     return digest.hexdigest()
 
 
-def ownership(root):
+def ownership(root, snapshots=None):
     roots, copies = {str(root)}, {}
     directory = root / "custom/installations"
     try:
@@ -163,7 +187,12 @@ def ownership(root):
     for path in paths:
         if path.suffix != ".json" or path.name.startswith("sync-"):
             continue
+        before = precondition(path)
         receipt = json.loads(path.read_text(encoding="utf-8"))
+        if precondition(path) != before:
+            raise ValueError(f"receipt changed since reading: {path}")
+        if snapshots is not None:
+            snapshots[str(path)] = before
         if not isinstance(receipt, dict):
             raise ValueError(f"receipt must be an object: {path}")
         previous = receipt.get("previous_roots", [])
@@ -182,13 +211,13 @@ def ownership(root):
     return roots, copies
 
 
-def owned(path, roots, copies):
-    if path.is_symlink():
+def owned(path, roots, copies, digest=None):
+    if is_link(path):
         target = os.readlink(path)
         # Compare the target as written; do not follow an unrelated alias into ownership.
         return target in {str(Path(root) / "skills" / path.name) for root in roots}
-    return (path.is_dir() and str(path) in copies and
-            copy_hash(path) in copies[str(path)])
+    return (is_dir(path) and str(path) in copies and
+            (copy_hash(path) if digest is None else digest) in copies[str(path)])
 
 
 def instruction_file(key, home):
@@ -233,15 +262,19 @@ def precondition(path):
     return {"parent": str(path.parent.resolve()),
             "entry": [info.st_dev, info.st_ino, info.st_mode, info.st_uid, info.st_gid,
                       info.st_size, info.st_mtime_ns, info.st_ctime_ns],
-            "link": os.readlink(path) if path.is_symlink() else None}
+            "link": os.readlink(path) if is_link(path) else None}
 
 
-def plan(root, home):
+def plan(root, home, receipt_before=None):
     block = template(root)
     selected = homes(root, home)
-    roots, copies = ownership(root)
+    roots, copies = ownership(root, receipt_before)
+    if receipt_before is not None:
+        for key, product_home in selected:
+            path = inventory_path(root, key, product_home)
+            receipt_before.setdefault(str(path), precondition(path))
     skills = {path.name: path for path in sorted((root / "skills").iterdir())
-              if path.is_dir() and (path / "SKILL.md").is_file()}
+              if is_dir(path) and is_file(path / "SKILL.md")}
     if ".system" in skills:
         raise ValueError(".system is reserved; cannot install a House Rules skill there")
     actions, conflicts = [], []
@@ -252,7 +285,7 @@ def plan(root, home):
             conflicts.append(f"duplicate home-level managed block: {path}")
     instruction_targets = {}
     for path in sorted(instructions):
-        if path.is_symlink() and not path.is_file():
+        if is_link(path) and not is_file(path):
             conflicts.append(f"instruction symlink has no regular target: {path}")
             continue
         target = path.resolve()
@@ -260,7 +293,7 @@ def plan(root, home):
         instruction_targets.setdefault(target, {})[str(path)] = precondition(path)
     for target, aliases in instruction_targets.items():
         before = precondition(target)
-        text = target.read_bytes().decode("utf-8") if target.exists() else ""
+        text = target.read_bytes().decode("utf-8") if present(target) else ""
         markers = list(MARKERS.finditer(text))
         if markers and (len(markers) != 2 or markers[0].group(2) != "begin" or
                         markers[1].group(2) != "end" or
@@ -281,27 +314,30 @@ def plan(root, home):
                             "instructions": aliases})
     for folder, install in skill_folders(selected, home):
         check_protected(folder, selected)
-        entries = {path.name: path for path in children(folder)} if folder.exists() else {}
+        entries = {path.name: path for path in children(folder)} if present(folder) else {}
         for name in sorted(set(skills) | set(entries)):
             if name == ".system":
                 continue
             path = folder / name
             before = precondition(path)
             exists = present(path)
-            ours = exists and owned(path, roots, copies)
+            digest = (copy_hash(path) if exists and not is_link(path) and
+                      is_dir(path) and str(path) in copies else None)
+            ours = exists and owned(path, roots, copies, digest)
+            if exists and str(path) in copies and not ours:
+                conflicts.append(f"altered copy conflict: {path}")
+                continue
             if install and name in skills:
                 if exists and not ours:
                     conflicts.append(f"same-name skill conflict: {path}")
-                elif not path.is_symlink() or os.readlink(path) != str(skills[name]):
+                elif not is_link(path) or os.readlink(path) != str(skills[name]):
                     actions.append({"path": str(path), "kind": "link",
                                     "reason": "missing or stale skill link", "target": str(skills[name]),
-                                    "before": before, "copy_hash": copy_hash(path) if
-                                    exists and not path.is_symlink() else None})
+                                    "before": before, "copy_hash": digest})
             elif ours:
                 actions.append({"path": str(path), "kind": "remove",
                                 "reason": "shadowing skill" if name in skills else "removed skill",
-                                "before": before, "copy_hash": copy_hash(path) if
-                                not path.is_symlink() else None})
+                                "before": before, "copy_hash": digest})
             elif exists and not install and name in skills:
                 conflicts.append(f"same-name shadowing conflict: {path}")
     return actions, conflicts, selected, roots, block
@@ -311,8 +347,8 @@ def check_action(action, root):
     path = Path(action["path"])
     if precondition(path) != action["before"]:
         raise ValueError(f"destination changed since planning: {path}")
-    if action["kind"] == "block":
-        for alias, before in action["instructions"].items():
+    if "content" in action:
+        for alias, before in action.get("instructions", {}).items():
             instruction = Path(alias)
             if precondition(instruction) != before or instruction.resolve() != path:
                 raise ValueError(f"instructions changed since planning: {instruction}")
@@ -320,8 +356,9 @@ def check_action(action, root):
             raise ValueError(f"instructions changed since planning: {path}")
     elif present(path):
         roots, copies = ownership(root)
-        if not owned(path, roots, copies) or (action["copy_hash"] is not None and
-                                             copy_hash(path) != action["copy_hash"]):
+        digest = copy_hash(path) if action["copy_hash"] is not None else None
+        if not owned(path, roots, copies, digest) or (action["copy_hash"] is not None and
+                                                    digest != action["copy_hash"]):
             raise ValueError(f"destination ownership changed since planning: {path}")
 
 
@@ -364,7 +401,7 @@ def atomic_text(path, text, mode=0o600, *, selected=(), before_replace=None, pre
         check_protected(path, selected)
         os.replace(staged, path)
     finally:
-        if staged is not None and staged.exists():
+        if staged is not None and present(staged):
             staged.unlink()
 
 
@@ -378,13 +415,83 @@ def private_backup_run(path, selected, *, create=True):
         path.mkdir(mode=0o700)
     check_access(path)
     info = path.lstat()
-    if path.is_symlink() or info.st_mode & 0o777 != 0o700 or info.st_uid != os.getuid():
+    if is_link(path) or info.st_mode & 0o777 != 0o700 or info.st_uid != os.getuid():
         raise ValueError(f"backup run directory is not owner-only: {path}")
 
 
 def inventory_path(root, key, home):
     identity = hashlib.sha256(f"{key}\0{home.resolve()}".encode()).hexdigest()
     return root / f"custom/installations/home-{identity}.json"
+
+
+def write_changes(root, actions, selected, receipt_path, receipt):
+    """Journal backups and preconditions before every destination replacement."""
+    run = receipt_path.stem.removeprefix("sync-")
+    backup_run = root / f"custom/backups/sync-{run}"
+    backup_ready = present(backup_run)
+
+    def save():
+        atomic_text(receipt_path, json.dumps(receipt, indent=2) + "\n", selected=selected)
+
+    for action in actions:
+        number = len(receipt["changes"])
+        path = Path(action["path"])
+        check_action(action, root)
+        change = {key: action[key] for key in ("path", "kind", "reason", "target") if key in action}
+        change.update(outcome="planned", backup=None)
+        receipt["changes"].append(change)
+        mode = (path.stat().st_mode & 0o777
+                if "content" in action and present(path) else 0o600)
+        if present(path):
+            private_backup_run(backup_run, selected, create=not backup_ready)
+            backup_ready = True
+            backup = backup_run / str(number) / path.name
+            check_protected(backup, selected)
+            backup.parent.mkdir(parents=True, exist_ok=True)
+            if not is_dir(path) or is_link(path):
+                shutil.copy2(path, backup, follow_symlinks=False)
+            change["backup"] = str(backup)
+        else:
+            change["previously_absent"] = True
+        save()  # Record the backup and intended write before changing the destination.
+        check_action(action, root)
+        check_protected(path, selected)
+        if is_dir(path) and not is_link(path):
+            try:
+                os.rename(path, change["backup"])
+            except OSError as error:
+                if error.errno != errno.EXDEV:
+                    raise
+                shutil.copytree(path, change["backup"], symlinks=True)
+                # Copying must finish before the final source check and removal.
+                check_action(action, root)
+                check_protected(path, selected)
+                shutil.rmtree(path)
+        if "content" in action:
+            atomic_text(path, action["content"], mode, selected=selected,
+                        preserve=path if present(path) else None,
+                        before_replace=lambda: check_action(action, root))
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if present(path) and action["kind"] == "remove":
+                check_action(action, root)
+                path.unlink()
+            if action["kind"] == "link":
+                staged = path.with_name(f".sync-{run}-{number}")
+                try:
+                    check_protected(staged, selected)
+                    staged.symlink_to(action["target"], target_is_directory=True)
+                    if not change.get("backup") or not action["copy_hash"]:
+                        check_action(action, root)
+                    elif precondition(path) != {"parent": action["before"]["parent"], "entry": None}:
+                        raise ValueError(f"destination changed after copy backup: {path}")
+                    check_protected(path, selected)
+                    os.replace(staged, path)
+                finally:
+                    if is_link(staged):
+                        staged.unlink()
+        change["outcome"] = "fixed"
+        save()
 
 
 def repair(root, actions, selected, roots, block):
@@ -406,68 +513,10 @@ def repair(root, actions, selected, roots, block):
         atomic_text(receipt_path, json.dumps(receipt, indent=2) + "\n", selected=selected)
 
     save()
-    backup_ready = False
     try:
-        for number, action in enumerate(actions):
-            path = Path(action["path"])
-            check_action(action, root)
-            change = {key: action[key] for key in ("path", "kind", "reason", "target") if key in action}
-            change.update(outcome="planned", backup=None)
-            receipt["changes"].append(change)
-            mode = (path.stat().st_mode & 0o777
-                    if action["kind"] == "block" and path.exists() else 0o600)
-            if present(path):
-                private_backup_run(backup_run, selected, create=not backup_ready)
-                backup_ready = True
-                backup = backup_run / str(number) / path.name
-                check_protected(backup, selected)
-                backup.parent.mkdir(parents=True, exist_ok=True)
-                if not path.is_dir() or path.is_symlink():
-                    shutil.copy2(path, backup, follow_symlinks=False)
-                change["backup"] = str(backup)
-            else:
-                change["previously_absent"] = True
-            save()  # Record the backup and intended write before changing the destination.
-            check_action(action, root)
-            check_protected(path, selected)
-            if path.is_dir() and not path.is_symlink():
-                try:
-                    os.rename(path, change["backup"])
-                except OSError as error:
-                    if error.errno != errno.EXDEV:
-                        raise
-                    shutil.copytree(path, change["backup"], symlinks=True)
-                    # Copying must finish before the final source check and removal.
-                    check_action(action, root)
-                    check_protected(path, selected)
-                    shutil.rmtree(path)
-            if action["kind"] == "block":
-                atomic_text(path, action["content"], mode, selected=selected,
-                            preserve=path if present(path) else None,
-                            before_replace=lambda: check_action(action, root))
-            else:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                if present(path) and action["kind"] == "remove":
-                    check_action(action, root)
-                    path.unlink()
-                if action["kind"] == "link":
-                    staged = path.with_name(f".sync-{run}-{number}")
-                    try:
-                        check_protected(staged, selected)
-                        staged.symlink_to(action["target"], target_is_directory=True)
-                        if not change.get("backup") or not action["copy_hash"]:
-                            check_action(action, root)
-                        elif precondition(path) != {"parent": action["before"]["parent"], "entry": None}:
-                            raise ValueError(f"destination changed after copy backup: {path}")
-                        check_protected(path, selected)
-                        os.replace(staged, path)
-                    finally:
-                        if staged.is_symlink():
-                            staged.unlink()
-            change["outcome"] = "fixed"
-            save()
+        write_changes(root, actions, selected, receipt_path, receipt)
         receipt["status"] = "repairs completed; verification pending"
-    except (OSError, ValueError, subprocess.CalledProcessError) as error:
+    except (OSError, ValueError, RecursionError, subprocess.CalledProcessError) as error:
         receipt["status"] = f"partial failure: {error}"
         raise
     finally:
@@ -476,34 +525,57 @@ def repair(root, actions, selected, roots, block):
     return receipt_path, receipt
 
 
-def save_inventories(root, selected, roots, block, run_receipt):
+def save_inventories(root, selected, roots, block, run_receipt, receipt_path, receipt_before):
     """Publish current per-home ownership; run history never participates in scans."""
+    for recorded, before in receipt_before.items():
+        if precondition(Path(recorded)) != before:
+            raise ValueError(f"receipt changed since ownership read: {recorded}")
     _, copies = ownership(root)
+
+    def publish(path, text, kind, before):
+        original = path.read_bytes().decode("utf-8") if present(path) else ""
+        action = {"path": str(path), "kind": kind, "reason": f"current {kind} publication",
+                  "content": text, "original": original, "before": before}
+        check_action(action, root)
+        if text != original:
+            write_changes(root, [action], selected, receipt_path, run_receipt)
+
     source_hashes = {path.name: copy_hash(path) for path in children(root / "skills")
-                     if path.is_dir() and (path / "SKILL.md").is_file()}
+                     if is_dir(path) and is_file(path / "SKILL.md")}
     for key, home in selected:
         instruction = instruction_file(key, home)
         destinations = [{"path": str(instruction), "kind": "instruction",
                          "installed_hash": hashlib.sha256(instruction.read_bytes()).hexdigest()
-                         if instruction.is_file() else None}]
+                         if is_file(instruction) else None}]
+        path = inventory_path(root, key, home)
+        previous_copies = (json.loads(path.read_text(encoding="utf-8")).get("copies", {})
+                           if present(path) else {})
         current_copies = {}
         for folder, install in skill_folders([(key, home)], Path.home()):
-            entries = {path.name: path for path in children(folder)} if folder.exists() else {}
+            entries = {path.name: path for path in children(folder)} if present(folder) else {}
             names = set(source_hashes) if install else set()
-            names.update(name for name, path in entries.items() if owned(path, roots, copies))
+            snapshots = {}
+            for name, entry in entries.items():
+                digest = (copy_hash(entry) if not is_link(entry) and is_dir(entry) and
+                          str(entry) in copies else None)
+                snapshots[name] = (owned(entry, roots, copies, digest), digest)
+            names.update(name for name, entry in entries.items()
+                         if snapshots[name][0] or str(entry) in copies)
             for name in sorted(names):
                 path = folder / name
-                ours = owned(path, roots, copies)
-                digest = None
-                if ours and path.is_dir():
-                    digest = (source_hashes[name] if name in source_hashes and path.is_symlink() and
+                ours, digest = snapshots.get(name, (False, None))
+                if ours and is_dir(path):
+                    digest = (source_hashes[name] if name in source_hashes and is_link(path) and
                               os.readlink(path) == str(root / "skills" / name)
-                              else copy_hash(path))
-                if ours and not path.is_symlink():
+                              else digest if digest is not None else copy_hash(path))
+                if ours and not is_link(path):
                     current_copies[str(path)] = digest
-                destinations.append({"path": str(path), "kind": "link" if path.is_symlink()
-                                     else "copy" if path.is_dir() else "absent or conflict",
-                                     "target": os.readlink(path) if path.is_symlink() else None,
+                elif present(path) and not ours and str(path) in previous_copies:
+                    # Keep the recorded hash, never adopt locally edited bytes as ownership.
+                    current_copies[str(path)] = previous_copies[str(path)]
+                destinations.append({"path": str(path), "kind": "link" if is_link(path)
+                                     else "copy" if is_dir(path) else "absent or conflict",
+                                     "target": os.readlink(path) if is_link(path) else None,
                                      "owned": ours, "installed_hash": digest})
         path = inventory_path(root, key, home)
         inventory = {"product": key, "home": str(home), "source_root": str(root),
@@ -518,7 +590,7 @@ def save_inventories(root, selected, roots, block, run_receipt):
                      "status": run_receipt["status"],
                      "filesystem_verification": run_receipt["filesystem_verification"],
                      "runtime_verification": "not run"}
-        atomic_text(path, json.dumps(inventory, indent=2) + "\n", selected=selected)
+        publish(path, json.dumps(inventory, indent=2) + "\n", "receipt", receipt_before[str(path)])
     index = root / "custom/INDEX.md"
     check_protected(index, selected)
     before = precondition(index)
@@ -536,16 +608,7 @@ def save_inventories(root, selected, roots, block, run_receipt):
     else:
         text = text.rstrip("\n") + "\n\n" + section + "\n"
 
-    def check_index():
-        if precondition(index) != before:
-            raise ValueError(f"index changed since reading: {index}")
-
-    if text == original:
-        check_index()
-        return
-    mode = index.stat().st_mode & 0o777 if present(index) else 0o600
-    atomic_text(index, text, mode, selected=selected, before_replace=check_index,
-                preserve=index if present(index) else None)
+    publish(index, text, "index", before)
 
 
 def main(argv=None):
@@ -556,7 +619,8 @@ def main(argv=None):
     root, started = args.root.resolve(), time.monotonic()
     try:
         update_findings = update(root, args.fix)
-        actions, conflicts, selected, roots, block = plan(root, Path.home())
+        receipt_before = {}
+        actions, conflicts, selected, roots, block = plan(root, Path.home(), receipt_before)
         for message in update_findings + conflicts:
             print(f"REPORT: {message}")
         for action in actions:
@@ -569,12 +633,12 @@ def main(argv=None):
                 unresolved = [{"path": action["path"], "reason": action["reason"]}
                               for action in remaining]
                 receipt["filesystem_verification"] = [*conflicts, *unresolved]
-                save_inventories(root, selected, roots, block, receipt)
+                save_inventories(root, selected, roots, block, receipt, receipt_path, receipt_before)
                 if remaining:
                     descriptions = "; ".join(f"{item['reason']}: {item['path']}" for item in unresolved)
                     raise ValueError(f"repairs left unresolved actions: {descriptions}")
                 actions = []
-            except (OSError, ValueError, subprocess.CalledProcessError) as error:
+            except (OSError, ValueError, RecursionError, subprocess.CalledProcessError) as error:
                 receipt["status"] = f"partial failure: {error}"
                 raise
             finally:
@@ -582,7 +646,7 @@ def main(argv=None):
         findings = len(update_findings) + len(conflicts) + len(actions)
         print(f"{len(selected)} homes checked; {findings} findings; {time.monotonic() - started:.3f}s")
         return 1 if findings else 0
-    except (OSError, ValueError, subprocess.CalledProcessError) as error:
+    except (OSError, ValueError, RecursionError, subprocess.CalledProcessError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         if isinstance(error, subprocess.CalledProcessError):
             print(error.stderr, file=sys.stderr)

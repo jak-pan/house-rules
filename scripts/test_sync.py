@@ -810,9 +810,118 @@ class SyncTests(unittest.TestCase):
                 self.assertEqual(path.read_bytes(), before)
                 path.unlink()
 
-    def test_fix_now_14_ci_runs_sync_regressions(self):
-        workflow = (REPO / ".github/workflows/checks.yml").read_text()
-        self.assertIn("run: python3 scripts/test_sync.py", workflow)
+    def test_source_status_errors_preserve_installed_links(self):
+        self.clean()
+        real_stat = Path.stat
+        real_is_dir, real_is_file = Path.is_dir, Path.is_file
+        for denied in (self.root / "skills/sample", self.root / "skills/sample/SKILL.md"):
+            with self.subTest(denied=denied):
+                def stat(path, *args, **kwargs):
+                    if path == denied:
+                        raise PermissionError("source status unavailable")
+                    return real_stat(path, *args, **kwargs)
+
+                # Model Python 3.14's error-suppressing predicates on older Python too.
+                def predicate(method):
+                    return lambda path: False if path == denied else method(path)
+
+                with mock.patch.object(Path, "stat", autospec=True, side_effect=stat), \
+                        mock.patch.object(Path, "is_dir", autospec=True,
+                                          side_effect=predicate(real_is_dir)), \
+                        mock.patch.object(Path, "is_file", autospec=True,
+                                          side_effect=predicate(real_is_file)):
+                    code, _, err = self.invoke(True)
+                self.assertEqual(code, 2, err)
+                self.assertIn("source status unavailable", err)
+                self.assertTrue((self.claude / "skills/sample").is_symlink())
+
+    def test_changed_receipts_and_index_have_journaled_backups(self):
+        self.clean()
+        index = self.root / "custom/INDEX.md"
+        self.write(index, "Operator index\n")
+        paths = [sync.inventory_path(self.root, key, home)
+                 for key, home in sync.homes(self.root, self.home)] + [index]
+        before = {str(path): path.read_bytes() for path in paths}
+        self.clean()
+        runs = [json.loads(path.read_text()) for path in
+                (self.root / "custom/installations/runs").iterdir()]
+        latest = next(run for run in runs if any(change["path"] == str(index)
+                                               for change in run["changes"]))
+        for path, content in before.items():
+            change = next(change for change in latest["changes"] if change["path"] == path)
+            self.assertEqual(change["outcome"], "fixed")
+            self.assertEqual(Path(change["backup"]).read_bytes(), content)
+
+    def test_receipt_edit_after_ownership_read_is_preserved(self):
+        self.clean()
+        path = sync.inventory_path(self.root, "CLAUDE_CONFIG_DIR", self.claude)
+        real_plan = sync.plan
+        count = 0
+        edited = None
+
+        def plan(*args):
+            nonlocal count, edited
+            result = real_plan(*args)
+            count += 1
+            if count == 1:
+                data = json.loads(path.read_text())
+                data["previous_roots"].append(str(self.base / "previous-source"))
+                edited = json.dumps(data)
+                self.write(path, edited)
+            return result
+
+        with mock.patch.object(sync, "plan", side_effect=plan):
+            code, _, err = self.invoke(True)
+        self.assertEqual(code, 2, err)
+        self.assertIn("changed since", err)
+        self.assertEqual(path.read_text(), edited)
+
+    def test_removed_edited_copy_remains_a_conflict_with_ownership_evidence(self):
+        self.clean()
+        path = self.claude / "skills/sample"
+        path.unlink()
+        self.write(path / "SKILL.md", "Original copy\n")
+        digest = sync.copy_hash(path)
+        receipt_path = sync.inventory_path(self.root, "CLAUDE_CONFIG_DIR", self.claude)
+        receipt = json.loads(receipt_path.read_text())
+        receipt["copies"] = {str(path): digest}
+        self.write(receipt_path, json.dumps(receipt))
+        self.write(path / "SKILL.md", "Operator edit\n")
+        self.write(self.root / "skills/other/SKILL.md", "# Other fixture\n")
+        self.git(self.root, "add", "skills/other/SKILL.md")
+        self.git(self.root, "rm", "skills/sample/SKILL.md")
+        self.git(self.root, "commit", "-m", "Remove fixture skill")
+        for fix in (False, True, False):
+            with self.subTest(fix=fix):
+                code, out, err = self.invoke(fix)
+                self.assertEqual(code, 1, out + err)
+                self.assertIn("conflict", out)
+                self.assertIn(str(path), out)
+                self.assertEqual((path / "SKILL.md").read_text(), "Operator edit\n")
+                self.assertIn(digest, sync.ownership(self.root)[1][str(path)])
+
+    def test_copy_digest_is_computed_once_per_validation_snapshot(self):
+        path = self.claude / "skills/sample"
+        self.write(path / "SKILL.md", "Owned fixture\n")
+        self.receipt({"copies": {str(path): sync.copy_hash(path)}})
+        with mock.patch.object(sync, "copy_hash", wraps=sync.copy_hash) as hashes:
+            actions, *_ = sync.plan(self.root, self.home)
+            action = next(action for action in actions if action["path"] == str(path))
+            self.assertEqual(hashes.call_count, 1)
+            sync.check_action(action, self.root)
+            self.assertEqual(hashes.call_count, 2)
+            sync.check_action(action, self.root)
+            self.assertEqual(hashes.call_count, 3)
+
+    def test_inventory_recursion_error_records_partial_failure_and_error_exit(self):
+        with mock.patch.object(sync, "copy_hash", side_effect=RecursionError("inventory recursion")):
+            code, _, err = self.invoke(True)
+        self.assertEqual(code, 2, err)
+        self.assertIn("inventory recursion", err)
+        runs = list((self.root / "custom/installations/runs").iterdir())
+        self.assertEqual(len(runs), 1)
+        receipt = json.loads(runs[0].read_text())
+        self.assertIn("partial failure: inventory recursion", receipt["status"])
 
     def test_fix_now_15_broken_default_homes_are_visible(self):
         self.claude.rmdir()
