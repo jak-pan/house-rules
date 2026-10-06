@@ -34,8 +34,8 @@ Verification invariant: rules/delivery.md §Verification. Local work follows
   cached base. Both report stale context and skip merging even with `--update`.
   `--no-fetch --base REF` uses an already resolved base without fetching and still merges
   on owned repositories or with `--update`. Git and gh run non-interactively.
-- Use the repository's declared gates (its `AGENTS.md`, or the CI workflow when none are
-  declared) in CI's build profile. Rust: skill `rust-canon` §Gates.
+- Use the repository's declared gates (its `AGENTS.md` and the rules file it points to,
+  or the CI workflow when none are declared) in CI's build profile. Rust: skill `rust-canon` §Gates.
 - Apply the local test scope in [`prompts/roles/implementer.md`](../../prompts/roles/implementer.md).
   Widen targeted checks to dependents when a shared type, trait, schema or public contract
   changes; toolchain, lockfile and build-script matrices belong to CI.
