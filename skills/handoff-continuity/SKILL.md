@@ -54,9 +54,7 @@ Destinations for findings (rules/core.md prime rule 11):
 
 Paths for runs, reports, ledgers, debug evidence, and scratch: `STRUCTURE.md`.
 
-- Save settled decisions with continuing relevance and operator-confirmed rules in their proper home.
-- Never leave those decisions, rules, or findings only in chat.
-- Save task decisions in the work item, durable repo-wide decisions in the bible when work closes, and findings in the work item’s record as they happen.
+- Follow rules/core.md prime rule 11 for decision and finding timing and destinations.
 - Cross-check cleanup or supersession against the active work record and newer docs/code.
 - Record old-to-new mappings and verification evidence in the work item.
 

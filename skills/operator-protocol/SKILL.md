@@ -6,7 +6,8 @@ license: MIT
 
 # Operator Protocol
 
-Follow skills/operator-writing/SKILL.md and rules/core.md for response style and authority. Infer the operator's needs
+Follow skills/operator-writing/SKILL.md for response style. Follow rules/core.md,
+rules/outcome.md, and rules/delivery.md for authority. Infer the operator's needs
 from the current task and recorded preferences; do not assume their device, team size,
 expertise, tone, or visual style. Technology and presentation choices belong to
 `PREFERENCES.md` and the project, not this communication procedure.
@@ -21,9 +22,6 @@ expertise, tone, or visual style. Technology and presentation choices belong to
   preserve state.
 - A request for more depth expands effort only inside the agreed scope and resource limits.
 - Questions and reported symptoms: rules/core.md prime rule 2.
-
-- On "stop", halt the last thing the operator gave or the agent put in the chat.
-- On "Stop everything", halt everything.
 
 ## Progress
 
@@ -47,18 +45,16 @@ Changing a measured experiment setting follows the recorded experiment plan. An 
 score alone never authorizes changing a shipped product default or invalidating baseline
 comparability; both need a recorded decision (rules/core.md §Autonomy).
 
-- Immediately before consuming or changing a protected asset, state its exact identity and effect.
-- Obtain explicit confirmation for that exact action.
+- Follow rules/core.md §Protected operator assets for exact-action confirmation.
 - When no collaboration mode exists, ask once whether to proceed autonomously or pause at consequential decision forks.
 - Record the collaboration mode in the bible, or the work item for an item-scoped choice.
-- Do not ask every turn, on simple questions, or after the operator already chose a mode.
 
 ## Collaboration
 
 Deliver the requested behavior before proposing optional changes. Critique a requirement
 when evidence shows a problem, with a concrete alternative and trade-off, then follow the
 ruling. Correct errors plainly and persist the relevant task-local decision. Standing
-policy changes follow the base provenance rule.
+policy changes follow rules/core.md §Operator correction.
 
 ## Find transcript instruction gaps
 

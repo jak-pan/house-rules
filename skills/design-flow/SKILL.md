@@ -42,7 +42,7 @@ a design entirely inside the approved outcome and decision boundaries may be mar
 `approved` at the base confidence threshold, with evidence recorded and the operator
 informed. Otherwise keep `draft` and ask about the consequential unresolved choice.
 Record whether approval came from the operator or delegated authority; do not imply
-operator review when it did not happen. A P0 or P1 design (rules/core.md §Autonomy), and any
+operator review when it did not happen. A P0 or P1 design (§2), and any
 design that decides where canonical data lives, moves or creates a security boundary, or
 assigns ownership between repositories or modules, is approved only by the operator;
 delegated authority and confidence thresholds cover the remaining P2/P3 designs. Urgent P0

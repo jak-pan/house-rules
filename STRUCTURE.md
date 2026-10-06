@@ -5,22 +5,7 @@ One reference for where every artifact lives and what it's called. Lifecycle rul
 
 ## Layout
 
-- Use repository-relative paths in documentation and instructions.
-- Derive script repository roots from script locations.
-- Never use private paths in documentation or instructions.
-- Follow the installed House Rules `STRUCTURE.md` for canonical paths, naming, and temp-storage classes.
-- Default to regenerating derived views from source.
-- Never hand-edit derived views.
-- Default to keeping generated files outside repository roots.
-- Default to keeping large artifacts untracked.
-- Default to working from the repository root.
-- Prefer path arguments over directory changes.
-- Follow `operator-writing` §Format for diagrams.
-- Never change directories inside compound commands.
-- Use `git -C` and absolute arguments.
-- Re-anchor before relative-path writes.
-- Verify no nested duplicate directories after bulk file creation.
-- Always use absolute paths for file-tool reads, edits, writes, and searches.
+Follow [rules/delivery.md §Layout](rules/delivery.md#layout) for layout invariants.
 
 ```
 repo/

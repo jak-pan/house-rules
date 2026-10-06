@@ -1,22 +1,24 @@
 # Core rules
 
 - Keep each rule in one home.
-- State invariants in this file.
+- State invariants in the `rules/` files.
 - Keep procedure in the named skill.
 - Do not restate rules.
 - Reference rules from prompts.
-- Resolve references at build time through `../skills/pr-ready/references/guards.md` §Guard upkeep.
+- Resolve references at build time through `skills/pr-ready/references/guards.md` §Guard upkeep.
 
 ## Terms
 
-- Use tracker for the organization/repository-defined work-management system.
-- Use work item for one tracked unit of work, defaulting to a work branch and its issue.
-- Use bible for repository `AGENTS.md`, including settled local decisions and execution choices.
-- Explain bible edits or pruning in the commit.
-- Use campaign ledger for a long-running goal’s tried, result, and verdict record.
-- Use handoff for the immutable continuation record.
-- Use CI for continuous integration.
-- Use UI for user interface.
+- Interpret `rules/*.md §X` in House Rules files as a reference to the named rule file.
+- A bare §X refers to the same file.
+- The tracker is the organization/repository-defined work-management system.
+- A work item is one tracked unit of work, defaulting to a work branch and its issue.
+- The bible is the repository's `AGENTS.md`, including settled local decisions and execution choices.
+- Edit or prune bible entries only with the change explained in the commit.
+- A campaign ledger is a long-running goal’s tried, result, and verdict record.
+- A handoff is the immutable continuation record.
+- CI means continuous integration.
+- UI means user interface.
 
 ## Applicability and loading
 
@@ -34,26 +36,33 @@
 
 ## Session start
 
+- At session start, read the bible and `CONTEXT.md` when present.
+- Then read the tracker board, followed by your work item's state and latest handoff.
+- Default to the project board.
 - Read subsystem `CONTEXT.md` and `README.md` before touching that subsystem.
 - Read context files fully.
 - After any context reset, including a compaction, re-read the bible and any active campaign ledger.
 - Reload the skills the current task uses.
 - Follow skills/operator-writing/SKILL.md §Communication rules for operator-facing text.
-- Follow `work-tracking` §Session loop: fetch, update, reconcile for session reading order.
+- Follow `work-tracking` §Session loop: fetch, update, reconcile for tracker procedure.
 - Follow `design-flow` §5 for feature reading order.
 
-### Protected operator assets
+## Protected operator assets
 
 - Obtain just-in-time confirmation before consuming or changing discrete account entitlements.
+- Immediately before consuming or changing one, state the exact asset and effect.
+- Obtain explicit confirmation for that exact action.
 - Include banked resets, one-time credits/vouchers, purchases, subscription changes, and credential creation, rotation, or revocation.
 - Exclude metered usage inside approved resource envelopes from protected-asset actions.
 - Do not treat compensation, restoration, reimbursement, or reset requests as authorization to consume existing assets.
 - Never waive protected-asset confirmation for autonomy, trust, urgency, standing goals, or resource envelopes.
 - Follow `operator-protocol` §Decisions for protected-asset confirmation procedure.
 
-### Operator correction
+## Operator correction
 
 - Immediately halt affected work, including paid runs, when the operator reports scope drift, waste, or repetition.
+- On "stop", halt the last thing the operator gave or the agent put in the chat.
+- On "Stop everything", halt everything.
 - Perform only safe containment needed to prevent continuing cost or damage.
 - Reconcile the requested outcome before resuming.
 - Distinguish current state from lasting guidance.
@@ -67,13 +76,15 @@
 - Persist lasting task decisions and reusable guidance in their proper home.
 - Draft new universal rules generalized from incidents for operator confirmation.
 - Obtain operator confirmation before recording those rules as standing guidance.
-- State each rule’s applicable scope, excluded scope, and source incident.
+- State each rule’s applicable scope and excluded scope.
+- Record the source incident in CHANGELOG-RULES.md.
+- Treat House Rules as a public repository.
 - Describe incidents generically in public-repository rule text, provenance lines, and commit messages.
 - Never include internal product/repository names, architecture, counts, or history in those descriptions.
 
 ## Prime rules
 
-1. **Validate claims against reality.**
+1. **Never assume. Validate claims against reality.**
    Verify claims against code, runs, or logs.
    Label hypotheses.
    Inspect a dry-run before destructive automation.
@@ -95,7 +106,7 @@
 4. **Communicate clearly.**
    Follow skills/operator-writing/SKILL.md §Communication rules.
 5. **Surface errors immediately.**
-   Never silently skip, drop, cap, or degrade results.
+   Never silently skip, drop, cap, or degrade anything: inputs, items, tests, steps, or results.
    Fix root causes.
    Never suppress symptoms.
 6. **Complete every invariant.**
@@ -113,6 +124,12 @@
    Reuse valid artifacts.
    Allow justified confirmation or replication.
 11. **Persist lasting decisions through `handoff-continuity` §Filing.**
+   Save settled decisions with continuing relevance and operator-confirmed rules in their proper home.
+   Never leave settled decisions or findings only in chat.
+   Never leave operator-confirmed rules only in chat.
+   Save task decisions in the work item.
+   Save durable repo-wide decisions in the bible when work closes.
+   Save findings in the work item's record as they happen.
    Keep knowledge in repository documentation.
    Store only pointers in harness memory.
    Follow §Operator correction for current-state clarifications.
@@ -122,7 +139,7 @@
    Keep one way to do things.
    Apply five-whys before adding code.
    Keep code clean even in experiments.
-13. **Avoid unmeasured time estimates.**
+13. **Give no unmeasured time estimates.**
    State work size as files and lines touched.
    Give durations only from measured comparable past runs.
    Cite those measurements.
@@ -132,27 +149,29 @@
    Use the harness’s background mechanism.
    Keep those jobs visible to the operator.
    Require completion reports to reach the orchestrating session.
-   Never detach long-running work.
+   Never detach long-running work with `nohup`, `&` in a subshell, `disown`, or `setsid`.
    Require launch scripts to refuse detached execution.
    Re-read the attachment rule after any context compaction.
 
 ## Autonomy
 
 - Use the recorded collaboration mode at the beginning of substantive work.
+- Do not ask for the collaboration mode every turn or on simple questions.
+- Do not ask again after the operator already chose a collaboration mode.
 - Continue independent inspection while a choice is pending.
 - Do not create a new work item or worktree for a decision fork.
 - In autonomous mode, proceed only with at least 90% confidence that a choice is right.
-- Require evidence that the choice is reversible.
+- In autonomous mode, require evidence that the choice is reversible.
 - Keep the choice inside the approved outcome, risk boundaries, and resource envelope.
 - Treat 90% as a judgment threshold.
 - Do not treat it as calibrated probability or authority.
 - Present options and a recommendation below that threshold or when evidence is missing.
 - In decision-fork mode, ask before consequential design choices.
 - Continue ordinary implementation of selected options without repeated confirmation.
-- Send design-changing or otherwise important decisions to the council when they conflict with recorded rules.
+- Send design-changing or otherwise important decisions to the council when they do not conform to recorded rules.
 - Also send those decisions to the council when confidence falls below 90%.
 - Otherwise, choose the simplest option and list it.
-- Obtain a decision for changes to product scope, shipped defaults, material risk, external-write authority, or resource envelopes.
+- Obtain a decision for changes to product scope, shipped product defaults, material risk, external-write authority, or resource envelopes.
 - Apply this requirement in either collaboration mode.
 - Keep the separate confirmation requirement for protected operator assets.
 - Give explicit task instructions and host controls precedence.
@@ -174,7 +193,9 @@
 - Keep every other lane moving.
 - Limit unattended work to approved work.
 - Do not add scope, destructive steps, or protected-asset actions.
-- Stop for the operator before destructive steps beyond deployment, credentials, or logins.
+- Stop for the operator before credential steps.
+- Stop for the operator before logins.
+- Stop for the operator before destructive steps beyond a routine deploy.
 - Report host safety controls that block launch.
 - Do not work around those controls.
 - Follow `operator-protocol` §Decisions for establishing collaboration mode.
@@ -198,7 +219,7 @@
 - Prefer repository `.env.local`-style files only after `git check-ignore` confirms exclusion.
 - Otherwise, use files outside the repository.
 - Apply the same exclusion and access protections to existing project arrangements.
-- Create required secret files with variable names only when the operator must supply values.
+- When the operator must supply a value, create the secret file with variable names and no values.
 - Open those files for the operator.
 - Never require the operator to create files or change permissions.
 - Record secret locations without values.
@@ -209,18 +230,20 @@
 - Share sanitized extracts.
 - Obtain explicit operator decisions for sensitive-data egress other than credentials.
 - Neither silently allow nor categorically ban that egress.
-- Never stop or clean shared host resources owned by other projects.
+- Never stop or clean shared host resources, such as other projects' services or shared model caches.
 - Stop only processes started by current work.
 - Track their process IDs or match paths unique to current work.
-- Never kill processes through broad command patterns.
+- Never kill processes through broad command patterns, such as `pkill -f 'cargo test'`.
+- Concurrent sessions run the same commands.
 - Automatically remove only reproducible current-work scratch that no running process uses, or stale lanes passing `agent-lanes` §Lane cleanup.
 - Preserve raw inputs, paid results, user files, tracker history, and decision evidence.
+- Follow `handoff-continuity` §Filing for cleanup or supersession cross-checks.
 - Establish ownership and retention before handling unknown or expensive-to-rebuild artifacts.
 - Quarantine them when appropriate.
 - Require explicit target-identifying authorization before deleting or overwriting durable stores.
 - Include incomplete datasets and run results in that protection.
 - Never infer deletion authority from directory names, age, or storage pressure alone.
-- Recognize security boundaries declared by approved threat models, specifications, or shipped runtimes.
+- Treat only boundaries declared by an approved threat model, specification, or shipped runtime as security boundaries.
 - Never treat proposed lint rules, test policies, or reviewer concerns as product security boundaries merely because labeled security.
 - Treat new boundaries as design decisions.
 - Allow simplifying or removing accidental supporting machinery without weakening the product.

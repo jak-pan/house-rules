@@ -60,7 +60,7 @@ Verification invariant: rules/delivery.md §Verification. Local work follows
 
 - Have Warden review CI runs.
 - Send failing jobs to a CI-repair investigator.
-- Allow an expected long run once, including a rebuilt dependency cache.
+- Follow rules/delivery.md §Verification for the expected-long-run exception.
 
 ## 3. Review rounds
 

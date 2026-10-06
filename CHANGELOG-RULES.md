@@ -47,7 +47,7 @@ clarification was unnecessarily turned into a durable note.
 Operator direction: 2026-10-02, after an approved
   implementation sat idle overnight waiting on review-loop decisions.
 
-## rules/core.md — Autonomy (finish the landing)
+## skills/pr-ready/SKILL.md — 4. Merge and cleanup (finish the landing)
 
 Operator direction: 2026-10-01,
   after the routine deploy of an approved change was handed back to the operator.

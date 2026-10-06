@@ -47,7 +47,7 @@ updates itself; agents load it as its own Skill and MCP server, not as part of H
   unassign on the host.
 - Agents that share one host account tell lanes apart by the `Agent` trailer: an issue
   assigned to your login whose latest claim names another agent is taken.
-- Priority (rules/core.md §Autonomy) is a `P0`–`P3` label; dependencies are the host's
+- Priority (design-flow §2) is a `P0`–`P3` label; dependencies are the host's
   blocked-by links.
 
 ## The Git record
@@ -129,9 +129,7 @@ The tracker is worked every session, not only written to at the end.
    for 7 days comments on it and asks the owner, or the operator if there is no owner,
    to resume, release, or close it.
 
-- Read the bible and CONTEXT.md when present before the tracker board.
-- Default to the project board.
-- Then read the work item’s current state and latest handoff.
+- Follow rules/core.md §Session start for reading order.
 
 ## Offline and sync
 

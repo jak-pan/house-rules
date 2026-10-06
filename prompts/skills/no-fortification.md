@@ -13,7 +13,7 @@ patching another call site. When a finding targets a mechanism an earlier fix ro
 apply this repair order.
 
 - Treat the first and second occurrence of the same failure class as potentially valid product or scope discoveries.
-- Diagnose, fix, and verify them normally when they remain outcome-aligned.
+- Implementers and fixers: diagnose, fix, and verify them normally when they remain outcome-aligned.
 - At the third consecutive occurrence, ask whether previous work advanced a requested acceptance criterion.
 - Check whether this remains the cheapest path to the requested outcome.
 - Check whether the abstraction or supporting mechanism is wrong.

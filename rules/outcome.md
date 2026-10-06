@@ -6,11 +6,12 @@
 - Classify work as primary when it directly produces the requested deliverable or completes an acceptance criterion.
 - Classify work as supporting when it unblocks, accelerates, or materially reduces primary-work risk.
 - Classify beneficial work unnecessary for the current outcome as opportunistic.
-- Classify unrelated work or work disproportionate to its value as divergent.
+- Classify work unrelated to the current outcome or disproportionate to its value as divergent.
 - Execute primary and proportional supporting work autonomously.
 - Propose opportunistic improvements proactively.
 - Record those proposals.
-- Do not execute proposals or let them delay the critical path.
+- Do not execute a proposal until it is approved.
+- Never let proposals delay the critical path.
 - Do not execute divergent work.
 - Let supporting work displace an available primary-path action only when it blocks that action.
 - Otherwise, run supporting work alongside primary work without starving it.
@@ -32,7 +33,8 @@
 - Record optional work separately.
 - Keep its acceptance criteria outside the main deliverable.
 - Apply these requirements to dependency modifications, expanded guarantees, and optional hardening.
-- Preserve agreed functionality, existing security boundaries, required verification, and ordinary application fixes.
+- Preserve agreed functionality, existing security boundaries, and required verification.
+- Do not use these requirements to refuse ordinary application fixes.
 - Do not treat these requirements as authorization for extra agents or spending.
 - Design for the required architecture before implementation.
 - Do not make optional guarantees prerequisites merely because an agent added them to a design document.
@@ -48,7 +50,7 @@
 - Treat requests for agents or named providers as authorization for requested work inside the stated campaign.
 - Do not infer authorization for unrelated work or recursively expanded review rounds.
 - Obtain a new decision before crossing the approved envelope.
-- Propose additional resources whenever useful.
+- You may always propose additional resources.
 - Require durability and resumability for expensive work.
 - Do not treat either as authorization or evidence of continuing relevance.
 
@@ -56,7 +58,7 @@
 
 - Reassess the mechanism before another repair on the third consecutive occurrence of the same failure class.
 - Follow `../prompts/skills/no-fortification.md` for repeat-defect repair order.
-- Do not require automatic operator approval on the third occurrence.
+- The third occurrence alone does not require operator approval.
 - Allow obvious fixes aligned with the requested outcome.
 - Do not attempt a blind fourth iteration.
 - Escalate only when the resolution requires a decision under rules/core.md §Autonomy.

@@ -3,24 +3,26 @@
 House Rules provides shared operating rules and task-specific skills.
 This file is its index.
 
-- Apply repository instructions and explicit operator choices before House Rules.
-- Respect host instruction hierarchy, permissions, access, and approval controls.
+- Repository instructions and explicit operator choices override House Rules when they conflict.
+- Both stay subject to the host instruction hierarchy, permissions, access, and approval controls.
 
 ## Always load
 
-- Every task: load [core rules](rules/core.md).
-- Any task beyond answering a question: load [outcome rules](rules/outcome.md).
+At session start and after every reset or compaction, read these files in full:
+
+- [core rules](rules/core.md)
+- [outcome rules](rules/outcome.md)
+- [delivery rules](rules/delivery.md)
 
 ## Load when the task needs it
 
-- Changes to files, code, or tracked work: load [delivery rules](rules/delivery.md).
 - Artifact paths, naming, or placement: load [STRUCTURE.md](STRUCTURE.md).
 - Project or stack defaults: load [PREFERENCES.md](PREFERENCES.md).
 - Parallel agents, lanes, workflows, or background jobs: load [agent-lanes](skills/agent-lanes/SKILL.md).
 - Evidence-based audit or due-diligence reports: load [audit-report-authoring](skills/audit-report-authoring/SKILL.md).
 - Comparative benchmarks, evaluations, A/B tests, or tuning sweeps: load [bench-discipline](skills/bench-discipline/SKILL.md).
 - CI build time, cost, caching, or scheduling work: load [ci-build-optimization](skills/ci-build-optimization/SKILL.md).
-- Choices needing operator input or explanations of those choices: load [decision-brief](skills/decision-brief/SKILL.md).
+- Choices needing operator input, decisions, or explanations: load [decision-brief](skills/decision-brief/SKILL.md).
 - Design decisions, components, refactors, specs, or architecture reviews: load [design-canon](skills/design-canon/SKILL.md).
 - Features, design documents, prototypes, spikes, or feature closeout: load [design-flow](skills/design-flow/SKILL.md).
 - New or changed benchmark, evaluation, A/B test, or tuning plans: load [experiment-planning](skills/experiment-planning/SKILL.md).
