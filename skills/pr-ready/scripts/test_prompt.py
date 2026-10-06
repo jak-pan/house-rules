@@ -258,14 +258,14 @@ class CollectionAcceptanceTest(unittest.TestCase):
                 self.assertNotIn("3–6 line body", prompt.stdout)
 
     def test_role_prompts_include_only_files_warden_stages(self):
-        # Warden stages only prompts/ and skills/pr-ready/ from the qualified commit; an include
-        # outside them fails Warden's preparation (2026-10-06: every triager failed this way).
+        # Warden stages only prompts/, rules/ and skills/pr-ready/ from the qualified commit; an
+        # include outside them fails Warden's preparation (2026-10-06: every triager failed this way).
         for role in sorted((ROOT / "prompts/roles").glob("*.md")):
             with self.subTest(role=role.name):
                 includes = PromptTest().run_prompt("--list", f"prompts/roles/{role.name}")
                 self.assertEqual(includes.returncode, 0, includes.stderr)
                 for path in includes.stdout.split():
-                    self.assertTrue(path.startswith(("prompts/", "skills/pr-ready/")), path)
+                    self.assertTrue(path.startswith(("prompts/", "rules/", "skills/pr-ready/")), path)
 
     def test_triager_and_checker_include_only_the_issue_form(self):
         form_path = "prompts/util/issue-form.md"
