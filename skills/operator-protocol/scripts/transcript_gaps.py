@@ -33,7 +33,7 @@ def object_field(record, key):
 
 def text_content(content, tool=None):
     if isinstance(content, str):
-        return "" if tool and injected(content, tool) else content
+        return strip_injected(content, tool) if tool else content
     if not isinstance(content, list):
         raise TranscriptError("human message content must be text or content blocks")
     texts = []
@@ -43,22 +43,23 @@ def text_content(content, tool=None):
         if block.get("type") in ("text", "input_text"):
             if not isinstance(block.get("text"), str):
                 raise TranscriptError("human text block is missing text")
-            if not tool or not injected(block["text"], tool):
-                texts.append(block["text"])
+            text = text_content(block["text"], tool)
+            if text:
+                texts.append(text)
         elif block.get("type") not in ("image", "input_image", "tool_result"):
             raise TranscriptError("unsupported human content block")
     return "\n".join(texts)
 
 
-def injected(text, tool):
-    text = text.lstrip()
-    wrappers = tuple(prefix for tag in ("task-notification", "teammate-message",
-                                        "subagent_notification")
-                     for prefix in (f"<{tag}>", f"<{tag} "))
+def strip_injected(text, tool):
+    tags = ("task-notification", "teammate-message", "subagent_notification")
     if tool == "codex":
-        wrappers += ("# AGENTS.md instructions for ", "<environment_context>",
-                     "<user_instructions>")
-    return text.startswith(wrappers)
+        tags += ("environment_context", "user_instructions", "turn_aborted", "skill")
+    envelopes = r"<(" + "|".join(tags) + r")(?:\s[^<>]*)?>.*?</\1>"
+    if tool == "codex":
+        envelopes += (r"|# AGENTS\.md instructions for [^\n]+\n[ \t\n]*"
+                      r"<INSTRUCTIONS>.*?</INSTRUCTIONS>")
+    return re.sub(envelopes, "", text, flags=re.DOTALL)
 
 
 def human_message(record, tool, session):
@@ -79,7 +80,7 @@ def human_message(record, tool, session):
     else:
         # Kimi's user-history is typed input, not its agent conversation log.
         text = text_content(record.get("content"))
-        if re.match(r"/[A-Za-z][A-Za-z0-9_:-]*(?:\s|$)", text.lstrip()):
+        if re.match(r"/[A-Za-z0-9_-]+(?::[A-Za-z0-9_-]+)*(?:\s|$)", text.strip()):
             return None
     if not text.strip():
         return None
@@ -96,7 +97,8 @@ def transcript_paths(root, tool):
         raise error
 
     # Unlike Path.glob, walk's onerror exposes unreadable directories.
-    for directory, directories, files in os.walk(root, onerror=report_error):
+    for directory, directories, files in os.walk(root, onerror=report_error,
+                                                followlinks=tool == "claude"):
         depth = len(Path(directory).relative_to(root).parts)
         directories.sort()
         if tool == "kimi" or tool == "claude" and depth == 1:
@@ -127,6 +129,9 @@ def sources():
             except FileNotFoundError:
                 if index > 0:
                     raise TranscriptError("configured extra transcript root does not exist")
+                override = {"codex": "CODEX_HOME", "kimi": "KIMI_CODE_HOME"}.get(tool)
+                if override and override in os.environ:
+                    raise TranscriptError(f"configured {override} transcript root does not exist")
                 continue
             if not root.is_dir():
                 raise TranscriptError("transcript root is not a directory")

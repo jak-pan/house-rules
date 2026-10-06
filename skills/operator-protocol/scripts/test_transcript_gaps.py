@@ -237,15 +237,68 @@ class TranscriptGapsTest(unittest.TestCase):
                          self.root / "user-state/house-rules/transcript-gaps")
 
     def test_injected_blocks_do_not_discard_human_blocks_in_same_item(self):
-        path = self.fixture("codex.jsonl", self.home / ".codex/sessions/session.jsonl")
+        paths = {
+            "claude": self.fixture("claude.jsonl", self.home / ".claude/projects/project/session.jsonl"),
+            "codex": self.fixture("codex.jsonl", self.home / ".codex/sessions/session.jsonl"),
+        }
         self.assertEqual(self.run_script().returncode, 0)
-        with path.open("a") as stream:
-            stream.write(json.dumps({"type": "response_item", "timestamp": "2026-01-01T00:00:02Z",
-                                     "payload": {"type": "message", "role": "user", "content": [
-                                         {"type": "input_text", "text": "<environment_context>injected</environment_context>"},
-                                         {"type": "input_text", "text": "Keep the human block."}]}}) + "\n")
-        self.assertEqual(self.run_script().returncode, 0)
-        self.assertEqual([r["text"] for r in self.rows()], ["Keep the human block."])
+        expected = []
+        for tool, path in paths.items():
+            envelopes = [f"<{tag}>injected</{tag}>" for tag in
+                         ("task-notification", "teammate-message", "subagent_notification")]
+            envelopes.append('<teammate-message teammate_id="example">injected</teammate-message>')
+            if tool == "codex":
+                envelopes.extend(f"<{tag}>injected</{tag}>" for tag in
+                                 ("environment_context", "user_instructions", "turn_aborted", "skill"))
+                envelopes.append("# AGENTS.md instructions for /example\n\n"
+                                 "<INSTRUCTIONS>injected</INSTRUCTIONS>")
+            cases = []
+            for envelope in envelopes:
+                cases.extend([
+                    (envelope + "Report failed checks.", "Report failed checks."),
+                    ("Keep this." + envelope + "Report failed checks.",
+                     "Keep this.Report failed checks."),
+                    ([{"type": "text", "text": envelope},
+                      {"type": "text", "text": "Keep the human block."}], "Keep the human block."),
+                    ([{"type": "text", "text": envelope + "Keep this block."}], "Keep this block."),
+                ])
+                unmatched = envelope.split("injected")[0] + "Keep literal tokens."
+                cases.append((unmatched, unmatched))
+            cases.append(("<skillful>Keep similar tokens.</skillful>",
+                          "<skillful>Keep similar tokens.</skillful>"))
+            with path.open("a") as stream:
+                for content, text in cases:
+                    record = {"timestamp": "2026-01-01T00:00:02Z"}
+                    if tool == "codex":
+                        record.update(type="response_item", payload={
+                            "type": "message", "role": "user", "content": content})
+                    else:
+                        record.update(type="user", origin={"kind": "human"},
+                                      sessionId="claude-session", message={"content": content})
+                    stream.write(json.dumps(record) + "\n")
+                    expected.append(text)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([r["text"] for r in self.rows()], expected)
+
+    def test_codex_interruption_and_skill_context_are_excluded(self):
+        path = self.home / ".codex/sessions/session.jsonl"
+        path.parent.mkdir(parents=True)
+        records = [{"type": "session_meta", "payload": {
+            "id": "codex-session", "originator": "codex_cli_rs", "source": "cli"}}]
+        for text in ("<turn_aborted>\nSynthetic interruption guidance.\n</turn_aborted>",
+                     "<skill>\n<name>example</name>\n<path>/example/SKILL.md</path>\n"
+                     "Synthetic skill context.\n</skill>"):
+            records.append({"type": "response_item", "timestamp": "2026-01-01T00:00:00Z",
+                            "payload": {"type": "message", "role": "user", "content": [
+                                {"type": "input_text", "text": text}]}})
+        path.write_text("".join(json.dumps(record) + "\n" for record in records))
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(list(self.state.glob("messages-*.jsonl")), [])
+        self.assertEqual(json.loads((self.state / "last-run.json").read_text()),
+                         {"codex:" + str(path): path.stat().st_size})
 
     def test_kimi_paths_are_not_slash_commands(self):
         path = self.home / ".kimi-code/user-history/history.jsonl"
@@ -253,6 +306,54 @@ class TranscriptGapsTest(unittest.TestCase):
         path.write_text('{"content":"/example/project needs clear documentation."}\n')
         self.assertEqual(self.run_script().returncode, 0)
         self.assertEqual(self.rows()[0]["text"], "/example/project needs clear documentation.")
+
+    def test_kimi_slash_commands_require_nonempty_namespaces_and_token_boundaries(self):
+        path = self.home / ".kimi-code/user-history/history.jsonl"
+        path.parent.mkdir(parents=True)
+        prose = ["/login: obtain confirmation before changes.", "/skill::example needs labels.",
+                 "/skill:example: keep literal text.", "/login, report failures.",
+                 "/skill:example/path needs documentation."]
+        commands = ["/login", " /add-dir /example", "/release-notes", "/skill:example-skill",
+                    "/skill:example:task argument", "/1", "/_example", "/-example"]
+        path.write_text("".join(json.dumps({"content": text}) + "\n"
+                                for text in prose + commands))
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([r["text"] for r in self.rows()], prose)
+
+    def test_missing_explicit_primary_source_is_an_error(self):
+        for variable in ("CODEX_HOME", "KIMI_CODE_HOME"):
+            for home_exists in (False, True):
+                with self.subTest(variable=variable, home_exists=home_exists):
+                    override = self.root / (variable + str(home_exists))
+                    if home_exists:
+                        override.mkdir()
+                    result = self.run_script(env={**self.env, variable: str(override)})
+                    self.assertEqual(result.returncode, 2)
+                    self.assertIn(variable, result.stderr)
+                    self.assertEqual(result.stdout, "")
+                    self.assertFalse(self.state.exists())
+
+    def test_claude_project_directory_symlink_is_followed_at_fixed_depth(self):
+        project = self.root / "relocated-project"
+        path = self.fixture("claude.jsonl", project / "session.jsonl")
+        self.fixture("claude.jsonl", project / "deeper/ignored.jsonl")
+        roots = self.home / ".claude/projects"
+        roots.mkdir(parents=True)
+        (roots / "project").symlink_to(project, target_is_directory=True)
+        self.env["TRANSCRIPT_GAPS_CLAUDE_ROOTS"] = str(roots)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(result.stdout.strip(), "linked project produced no transcript batch")
+        self.assertEqual([r["text"] for r in self.rows()],
+                         ["Use clear labels.", "Keep all text.\nIncluding this line."])
+        self.assertEqual(json.loads((self.state / "last-run.json").read_text()),
+                         {"claude:" + str(path): path.stat().st_size})
+
+    def test_ci_runs_transcript_acceptance_suite(self):
+        workflow = SCRIPT.parents[3] / ".github/workflows/checks.yml"
+        self.assertIn("        run: python3 -B -m unittest discover -s skills/operator-protocol/scripts\n",
+                      workflow.read_text())
 
     def test_missing_extra_root_is_an_error(self):
         self.env["TRANSCRIPT_GAPS_CODEX_HOMES"] = str(self.root / "missing")
