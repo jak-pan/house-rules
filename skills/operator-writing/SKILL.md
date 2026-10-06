@@ -56,6 +56,7 @@ reader test.
   Orient them vertically, with groups and comparisons stacked rather than side by side.
   Draw unconnected groups as separate diagrams, with text between them; one diagram would
   place them side by side.
+- Write a PR or issue reference as a Markdown link: `[#52](https://github.com/owner/repo/pull/52)`.
 - Give every file the reader must open as an absolute path. If the client cannot open that
   path, also send the file with the client's file-sending tool, when it has one.
 
@@ -116,24 +117,23 @@ Questions the operator must answer come after the explanation. Each topic is a l
 heading; each question is a level-3 heading with its number typed in. See the rendered
 [example](references/question-example.md).
 
-- Topic headings are level 2 and question headings level 3, so on GitHub only topics get a
-  divider line. The question number is typed and escaped (`1\.`), so no renderer
-  renumbers it; numbering continues across topics (1, 2, 3), never 1a, 1b.
-- Below the heading come one to three context sentences, each starting with the
-  inline-code flag `fact` or `assessment`, with no label in front.
-- The next line says what happens after the answer, only when the reader could not infer it.
-- A choice lists its options as a normal numbered list (not nested), each with what changes
-  and its side effect. Exactly one option is marked "(recommended)". Option text never
-  repeats the word "Option".
-- The message ends with the bold line "Answer with one numbered line per question, like
-  so:" and a three-line numbered example showing an option number, a text answer and `ok`.
-  No reply line inside the questions, no answer box, no quotes and no tables.
-- Reference a PR or issue as a Markdown link (`[#52](https://github.com/…/pull/52)`). A bare
-  `#52` links only in GitHub comments, not in chat or in repository files.
-- Each line inside the context ends with a backslash, so GitHub files show it as a separate
-  line.
-- Work the agent's own team must do (tests, replays, verification) is never a question to
-  the operator. List it as an internal task.
+- Write each topic as a level-2 heading.
+- Write each question as a level-3 heading.
+- Start each question heading with its number, typed and escaped: `### 1\.`.
+- Number questions across topics: 1, 2, 3. Never use 1a or 1b.
+- Below the heading, write one to three context sentences.
+- Start each context sentence with the flag `fact` or `assessment` in inline code.
+- End each context line with a backslash.
+- Add one line on what happens after the answer, only when the reader cannot infer it.
+- Write the options of a choice as a numbered list. Never nest it.
+- Give each option what changes and its side effect.
+- Mark one option "(recommended)".
+- Do not write the word "Option" in option text.
+- Put no reply line, answer box, quote or table in the questions.
+- End the message with the bold line "Answer with one numbered line per question, like so:".
+- Below it, give a three-line numbered example: an option number, a text answer and `ok`.
+- Never ask the operator about work the agent's own team must do (tests, replays,
+  verification). List it as an internal task.
 
 ## Checks before sending
 
