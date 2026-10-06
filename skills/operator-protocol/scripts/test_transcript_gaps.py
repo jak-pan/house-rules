@@ -1,4 +1,5 @@
 from pathlib import Path
+import io
 import json
 import os
 import plistlib
@@ -7,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 import transcript_gaps
 
@@ -71,6 +73,35 @@ class TranscriptGapsTest(unittest.TestCase):
         self.assertEqual(result.stdout, "")
         self.assertEqual(before, {p.name: (p.read_bytes(), p.stat().st_mtime_ns)
                                   for p in self.state.iterdir()})
+
+    def test_failed_output_delivery_preserves_marker_and_retry_delivers_batch(self):
+        path = self.fixture("kimi.jsonl", self.home / ".kimi-code/user-history/history.jsonl")
+        self.assertEqual(self.run_script().returncode, 0)
+        marker = self.state / "last-run.json"
+        for operation in ("write", "flush"):
+            with self.subTest(operation=operation):
+                before = marker.read_bytes()
+                text = f"Keep instructions after failed output {operation}."
+                with path.open("a") as stream:
+                    stream.write(json.dumps({"content": text}) + "\n")
+                output = mock.Mock()
+                getattr(output, operation).side_effect = BrokenPipeError("closed output")
+                errors = io.StringIO()
+                with mock.patch.dict(os.environ, self.env, clear=True), \
+                        mock.patch.object(sys, "stdout", output), \
+                        mock.patch.object(sys, "stderr", errors):
+                    status = transcript_gaps.main()
+                self.assertEqual(status, 2)
+                self.assertIn("closed output", errors.getvalue())
+                self.assertEqual(marker.read_bytes(), before)
+                self.assertEqual([row["text"] for row in self.rows()], [text])
+                batch = max(self.state.glob("messages-*.jsonl"), key=lambda p: p.stat().st_mtime_ns)
+                result = self.run_script()
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), str(batch))
+                self.assertEqual([row["text"] for row in self.rows()], [text])
+                self.assertNotEqual(marker.read_bytes(), before)
+                self.assertEqual(self.run_script().stdout, "")
 
     def test_appended_messages_and_late_files_do_not_depend_on_dates(self):
         path = self.fixture("kimi.jsonl", self.home / ".kimi-code/user-history/history.jsonl")

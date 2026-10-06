@@ -216,15 +216,13 @@ def extract():
         return
     state.mkdir(parents=True, mode=0o700, exist_ok=True)
     encoded_marker = json.dumps(updated, sort_keys=True) + "\n"
-    output = None
     if messages:
         digest = hashlib.sha256(encoded_marker.encode()).hexdigest()
         output = state / f"messages-{digest}.jsonl"
         atomic_write(output, "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in messages))
-    # Publish output before consuming the source offsets. A failed run is visible.
+        print(output, flush=True)
+    # Deliver the batch path before consuming source offsets so failed output is retryable.
     atomic_write(marker, encoded_marker)
-    if output is not None:
-        print(output)
 
 
 def main():
