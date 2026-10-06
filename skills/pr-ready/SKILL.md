@@ -57,9 +57,9 @@ Verification invariant: AGENTS.md §Verification. Local work follows
 ## 3. Review rounds
 
 **Where reviews run.** If the repository has a server-side review gate (a review app
-running in CI), pushing triggers the review and only its result counts for merging.
-Otherwise the agent runs the panel locally. Adversarial verification scope and the
-single-pass rule: AGENTS.md §Parallel work.
+running in CI), pushing triggers the review. Otherwise the agent runs the panel locally.
+Required reviews are defined only in §4. Adversarial verification scope and the single-pass
+rule: AGENTS.md §Parallel work.
 External repositories always get local review rounds (skill `upstream-contribution`).
 
 **Review bar.** [`prompts/util/review-bar.md`](../../prompts/util/review-bar.md) holds the bar;
@@ -138,8 +138,10 @@ load no other rules. Specialist dispatch follows
 
 ## 4. Merge and cleanup
 
-- **Required reviews** are the lane's review and the configured server-side review
-  (Warden where used), plus any reviews the project's approved review plan requires.
+- **Required reviews** are the configured server-side review (Warden where used) when
+  it covers the deliverable; otherwise, the lane's review. Additional reviews explicitly
+  required by the project's approved review plan remain required, including both the lane
+  and server-side reviews for the recorded comparison trial.
 - Merge only when the required reviews approve the exact head with no Blocking items;
   an earlier approved head whose later commits only fix those reviewers' own blockers
   and pass a quick check-back may merge. CI must be green on the final head, and the

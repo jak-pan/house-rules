@@ -473,6 +473,22 @@ class AnsweredRestoreTest(unittest.TestCase):
                       "deliverable, do not add a separate local pass.", rules)
         self.assertNotIn("local panel is optional", self.text("skills/pr-ready/SKILL.md"))
 
+    def test_merge_review_requirements_have_one_owner_and_keep_planned_reviews(self):
+        rules = (ROOT / "skills/pr-ready/SKILL.md").read_text()
+        rounds, merge = rules.split("## 4. Merge and cleanup", 1)
+        rounds = " ".join(rounds.split())
+        merge = " ".join(merge.split())
+        self.assertNotIn("only its result counts for merging", rounds)
+        self.assertIn("Required reviews are defined only in §4.", rounds)
+        self.assertNotIn("**Required reviews**", rounds)
+        self.assertEqual(merge.count("**Required reviews**"), 1)
+        self.assertIn("the configured server-side review (Warden where used) when "
+                      "it covers the deliverable; otherwise, the lane's review.", merge)
+        self.assertIn("Additional reviews explicitly required by the project's "
+                      "approved review plan remain required", merge)
+        self.assertIn("including both the lane and server-side reviews for the "
+                      "recorded comparison trial.", merge)
+
     def test_external_and_paid_boundary_only(self):
         self.assertIn("An explicit maximum cost/token/runtime boundary before launch "
                       "is required for external and paid work only.", self.text("AGENTS.md"))
@@ -581,9 +597,10 @@ class AnsweredRestoreTest(unittest.TestCase):
         self.assertIn("drop pairings that mostly produce noise",
                       self.text("skills/pr-ready/references/review-lenses.md"))
 
-    def test_fork_push_needs_aligned_local_rounds(self):
+    def test_fork_routes_by_parent_and_push_needs_aligned_local_rounds(self):
         rules = self.text("skills/upstream-contribution/SKILL.md")
-        self.assertNotIn("A fork counts as its parent", rules)
+        self.assertIn("A fork counts as its parent, where its PRs, issues and "
+                      "comments land.", rules)
         self.assertIn("Agents push to our own fork only after local review rounds "
                       "that apply the same rules as Warden.", rules)
 

@@ -7,8 +7,8 @@ license: MIT
 # Upstream Contribution
 
 External means any repository not owned by the authenticated GitHub user or an
-organization where their membership is active. Upstream PRs, issues and comments
-remain external; our own fork's push exception is in §3. Check with
+organization where their membership is active. A fork counts as its parent, where its
+PRs, issues and comments land. Our own fork's push exception is in §3. Check with
 `scripts/repo-ownership.sh [owner/name]`.
 
 Internal changes follow skill `pr-ready`. External repositories are different: their
