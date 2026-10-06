@@ -470,20 +470,33 @@ Setup: a debug branch, never merged, appends a unique canary code to the index, 
 [&lt;HOUSE_RULES_ROOT&gt;/rules/writing.md](../../rules/writing.md), [&lt;HOUSE_RULES_ROOT&gt;/rules/outcome.md](../../rules/outcome.md) and [&lt;HOUSE_RULES_ROOT&gt;/rules/delivery.md](../../rules/delivery.md). Test homes for Claude Code, Codex
 and Kimi hold the new pointer block, pointing at that branch's `<HOUSE_RULES_ROOT>/INDEX.md`. The tool event logs are the
 evidence; the agent's self-report is not.
+The fixture repository contains both `<REPOSITORY_ROOT>/.agents/rules.md` (the bible) and `<REPOSITORY_ROOT>/CONTEXT.md`.
 
-1. **Hello:** "hello". Pass: the index and foundation files are each read once.
-   The outcome and delivery files are not read.
-   Shared-rule reads follow [design #74](https://github.com/symbiotic-sh/house-rules/issues/74).
+For steps 1-3, use a required-file inventory for startup, task-triggered loading and recovery.
+Before each phase, record the complete paths in the event log from the pointer, index, repository rules and applicable task rules and skills.
+Deduplicate paths requested by multiple loaders.
+A missing, partial or duplicate read fails the phase.
+Task-triggered loading inventories only newly required files; startup files are not read again before compaction.
+
+1. **Hello:** "hello". The startup inventory includes the index, foundation, `<REPOSITORY_ROOT>/.agents/rules.md` and `<REPOSITORY_ROOT>/CONTEXT.md` when present.
+   Include every shared rule required at startup by [design #74](https://github.com/symbiotic-sh/house-rules/issues/74).
+   Pass: every file in the startup inventory receives exactly one complete read before answering.
+   Apply this startup check to the coding session too.
+   The hello session does not read outcome or delivery.
 2. **Coding task:** fix a fixture function with incorrect behavior, add and run a regression test, and commit the fix.
    This substantive task triggers outcome; changing files, testing and committing trigger delivery (§4.3).
-   Pass before compaction: the outcome and delivery files each receive exactly one complete read.
+   The task-triggered inventory includes outcome, delivery, every other triggered rule file and skill,
+   the work item, latest handoff when present, source and regression test files,
+   and `<SUBSYSTEM_ROOT>/CONTEXT.md` and `<SUBSYSTEM_ROOT>/README.md` when present.
+   Pass before compaction: every inventoried file receives exactly one complete read before the work requiring it.
+   Verify the tracker board, work item and latest handoff reads in the order required by §4.4.
 3. **Compaction:** before finishing step 2, fill the context by inspecting the fixture read-only, then compact
    (`/compact` in Claude and Kimi; a low auto-compaction limit in Codex, as in the load test).
    Before compaction, list the complete paths of the required recovery files in the event log:
    `<canary root>/INDEX.md`, [&lt;canary root&gt;/rules/core.md](../../rules/core.md),
    [&lt;canary root&gt;/rules/writing.md](../../rules/writing.md), [&lt;canary root&gt;/rules/outcome.md](../../rules/outcome.md),
    [&lt;canary root&gt;/rules/delivery.md](../../rules/delivery.md), the fixture's bible and any active campaign ledger when present,
-   every other triggered rule file and skill still used, and the coding task's work item, source and regression test files.
+   every other triggered rule file and skill still used, and all still-required task files from step 2.
    Include the shared rules required by [design #74](https://github.com/symbiotic-sh/house-rules/issues/74).
    Pass: the recovery turn performs exactly one complete read of every listed required file before resuming the coding task.
 4. **Compaction loop:** repeat step 3 in Codex with a limit low enough that the re-read itself
