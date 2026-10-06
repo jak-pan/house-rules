@@ -24,8 +24,8 @@ SPEC.loader.exec_module(sync)
 
 
 
-# The always-load rule files the fixture index lists (the real index lists the same four).
-RULES = ("core", "outcome", "delivery", "writing")
+# The always-load rule files the fixture index lists (the real index lists the same seven).
+RULES = ("core", "outcome", "delivery", "writing", "git", "priority-labels", "session-writing")
 
 class SyncTests(unittest.TestCase):
     def setUp(self):
@@ -48,13 +48,13 @@ class SyncTests(unittest.TestCase):
         self.write(self.origin / ".gitignore", "custom/\n")
         shutil.copyfile(REPO / "INSTALL-AGENTS.md", self.origin / "INSTALL-AGENTS.md")
         self.write(self.origin / "skills/sample/SKILL.md", "# Sample\n")
-        self.write(self.origin / "AGENTS.md", "# Index\n\n## Always load\n\n" + "".join(
+        self.write(self.origin / "INDEX.md", "# Index\n\n## Always load\n\n" + "".join(
             f"- [{name}](rules/{name}.md)\n" for name in RULES) + "\n## Load when needed\n")
         for name in RULES:
             self.write(self.origin / f"rules/{name}.md", f"# {name} rules\n")
-        self.commit(self.origin, [".gitignore", "INSTALL-AGENTS.md", "AGENTS.md", "skills/sample/SKILL.md",
+        self.commit(self.origin, [".gitignore", "INSTALL-AGENTS.md", "INDEX.md", "skills/sample/SKILL.md",
                                   *(f"rules/{name}.md" for name in RULES)])
-        self.root = self.base / "checkout"
+        self.root = self.base / "House Rules checkout"
         self.git(self.base, "clone", str(self.origin), str(self.root))
         self.home = self.base / "user"
         self.home.mkdir()
@@ -136,7 +136,35 @@ class SyncTests(unittest.TestCase):
 
     def test_compaction_wording_is_the_authoritative_template(self):
         self.assertIn("At session start and after every context compaction or reset, read "
-                      f"`{self.root}/AGENTS.md`.", sync.template(self.root))
+                      f"`{self.root}/INDEX.md`.", sync.template(self.root))
+
+    def test_old_index_blocks_are_stale_in_every_known_home(self):
+        self.install_fixture()
+        old_block = sync.template(self.root).replace('/INDEX.md', '/AGENTS.md')
+        paths = [self.claude / 'CLAUDE.md', self.codex / 'AGENTS.md',
+                 self.kimi / 'AGENTS.md', self.codex / 'AGENTS.override.md']
+        for path in paths:
+            with self.subTest(path=path):
+                self.write(path, old_block)
+                findings, selected = [], []
+                sync.verify(self.root, self.home, findings, selected)
+                self.assertEqual(findings, [f'stale block: {path}'])
+                self.assertEqual(path.read_text(), old_block)
+                if path.name == 'AGENTS.override.md':
+                    path.unlink()
+                else:
+                    self.write(path, sync.template(self.root))
+
+    def test_renamed_index_is_required_without_old_index_fallback(self):
+        index = self.root / 'INDEX.md'
+        self.write(self.root / 'AGENTS.md', index.read_text())
+        findings = []
+        self.assertEqual(sync.always_load(self.root, findings),
+                         [self.root / f'rules/{name}.md' for name in RULES])
+        self.assertEqual(findings, [])
+        index.unlink()
+        self.assertEqual(sync.always_load(self.root, findings), [])
+        self.assertEqual(findings, [f'missing index: {index}'])
 
     def test_update_preserves_ignored_files_colliding_with_incoming_paths(self):
         path = "custom/INDEX.md"
@@ -617,6 +645,75 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(code, 1, err)
         self.assertIn(f"instruction symlink has no regular target: {path}", out)
         self.assertTrue(path.is_symlink())
+
+
+class PointerTemplateTests(unittest.TestCase):
+    EXPECTED_BLOCK = """<!-- house-rules:begin -->
+# Shared operating foundation (House Rules)
+
+At session start and after every context compaction or reset, read `<HOUSE_RULES_ROOT>/INDEX.md`.
+It is the index for collaboration, verification, autonomy, and durable
+execution rules. Load the rule files and Skills that its conditions select.
+Repository-local rules supply project details and win over shared preferences; all work remains subject to the host's instruction hierarchy
+and access controls.
+
+Load only the House Rules Skills relevant to the task. Use
+`<HOUSE_RULES_ROOT>/STRUCTURE.md` when deciding artifact paths and naming. Keep
+model, permission, MCP, plugin, and hook configuration in the native tool
+settings.
+<!-- house-rules:end -->"""
+
+    def test_parent_folder_cleanup_preserves_house_rules_repository_pointer(self):
+        installer = (REPO / 'INSTALL-AGENTS.md').read_text()
+        cleanup = installer.split('5. Put ', 1)[1].split('6. Preserve ', 1)[0]
+        self.assertIn('remove such a block instead of migrating it.', cleanup)
+        self.assertIn('Preserve `<HOUSE_RULES_ROOT>/AGENTS.md`, the canonical repository '
+                      'pointer,\n   even when the House Rules checkout is a parent folder.',
+                      cleanup)
+
+    def test_global_discovery_requires_neutral_directory_before_counting_headings(self):
+        installer = (REPO / 'INSTALL-AGENTS.md').read_text()
+        verification = installer.split('Runtime verification:\n', 1)[1].split(
+            'Report filesystem and runtime verification separately.', 1)[0]
+        setup, checks = verification.split('1. Prefer discovery views', 1)
+        self.assertIn('Run global-installation discovery verification from a neutral '
+                      'working directory\noutside any repository.', setup)
+        self.assertIn('Check that neither it nor any parent folder contains\n'
+                      'instruction files such as `AGENTS.md` or `CLAUDE.md`.', setup)
+        self.assertIn('exactly one `Shared operating foundation (House Rules)` heading',
+                      checks)
+
+    def test_installed_pointer_keeps_old_wording_with_renamed_index(self):
+        self.assertEqual(sync.template(REPO), self.EXPECTED_BLOCK.replace(
+            '<HOUSE_RULES_ROOT>', str(REPO)))
+
+    def test_house_rules_pointer_keeps_portable_old_wording(self):
+        self.assertEqual((REPO / 'AGENTS.md').read_text().strip(),
+                         self.EXPECTED_BLOCK.replace('<HOUSE_RULES_ROOT>/', '').replace(
+                             "read `INDEX.md`.\n",
+                             "read `INDEX.md`.\n`INDEX.md` sits in the same folder as this file.\n"))
+
+    def test_managed_repository_keeps_three_line_loader(self):
+        structure = (REPO / 'STRUCTURE.md').read_text()
+        loader = structure.split('```markdown\n', 1)[1].split('```', 1)[0]
+        self.assertEqual(loader, '# AGENTS.md\n'
+                         'This repository is managed by [House Rules](<House Rules URL>). '
+                         'Read House Rules `INDEX.md` first and follow it.\n'
+                         "This repository's own rules are in [.agents/rules.md](.agents/rules.md).\n")
+        self.assertIn('A managed repository uses exactly this `AGENTS.md`:', structure)
+        self.assertIn('A managed repository without its own rules omits the third line.', structure)
+
+    def test_preferences_changes_only_index_filename(self):
+        self.assertIn('These stack defaults apply whenever House Rules is installed. '
+                      'Overrides follow INDEX.md,\n'
+                      'and an existing coherent project stack also takes precedence over them.',
+                      (REPO / 'PREFERENCES.md').read_text())
+
+    def test_transcript_gaps_changes_only_index_filename(self):
+        self.assertIn('Read the batch,\n'
+                      'INDEX.md, all rule, skill and prompt files, and the configured '
+                      'decisions file in full.',
+                      (REPO / 'prompts/util/transcript-gaps.md').read_text())
 
 
 if __name__ == "__main__":

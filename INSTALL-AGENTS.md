@@ -103,7 +103,7 @@ For each selected product and configuration home:
    ```
 
 3. Inside that block, instruct the agent to read the permanent House Rules
-   `AGENTS.md` at session start and after every context compaction or reset, load its
+   `INDEX.md` at session start and after every context compaction or reset, load its
    required rule files and only relevant House Rules Skills, use `STRUCTURE.md` for
    artifact placement, and keep native product configuration
    outside House Rules. Use resolved absolute paths from this computer. Install this
@@ -114,7 +114,7 @@ For each selected product and configuration home:
    <!-- house-rules:begin -->
    # Shared operating foundation (House Rules)
 
-   At session start and after every context compaction or reset, read `<HOUSE_RULES_ROOT>/AGENTS.md`.
+   At session start and after every context compaction or reset, read `<HOUSE_RULES_ROOT>/INDEX.md`.
    It is the index for collaboration, verification, autonomy, and durable
    execution rules. Load the rule files and Skills that its conditions select.
    Repository-local rules supply project details and win over shared preferences; all work remains subject to the host's instruction hierarchy
@@ -132,11 +132,13 @@ For each selected product and configuration home:
    second block. Count all three marker families together: a file with more than one
    block, or with incomplete or reversed markers, is a conflict requiring inspection;
    do not guess. Preserve all content outside the managed block.
-5. Put the block only in each product's global instruction file. Claude Code also loads
-   `AGENTS.md` and `CLAUDE.md` from the parent folders of its working directory, so a
+5. Put the installed block only in each product's global instruction file. Claude Code
+   also loads `AGENTS.md` and `CLAUDE.md` from the parent folders of its working directory, so a
    House Rules, Forge or Groundwork block in `~/AGENTS.md`, `~/CLAUDE.md` or a
    workspace parent folder loads a second copy. Search those locations; back up and
    remove such a block instead of migrating it.
+   Preserve `<HOUSE_RULES_ROOT>/AGENTS.md`, the canonical repository pointer,
+   even when the House Rules checkout is a parent folder.
 6. Preserve human-authored existing rules in place unless the operator chooses a merge.
    For consolidation, first copy them to a machine-local
    `custom/external-rules/<tool>.md`, excluding third-party managed blocks. Review the
@@ -247,6 +249,10 @@ Tools:
 - Resolve shared references such as STRUCTURE.md from the permanent House Rules source.
 
 Runtime verification:
+
+Run global-installation discovery verification from a neutral working directory
+outside any repository. Check that neither it nor any parent folder contains
+instruction files such as `AGENTS.md` or `CLAUDE.md`.
 
 1. Prefer discovery views that make no model call. For Codex, run
    `CODEX_HOME=<home> codex debug prompt-input` for every home: the output must contain

@@ -155,7 +155,7 @@ class PromptTest(unittest.TestCase):
         self.assertEqual(result.stdout, original)
 
     def test_same_input_is_byte_identical(self):
-        text = "@rule house-rules:AGENTS.md\n"
+        text = "@rule house-rules:INDEX.md\n"
         first = self.run_prompt(text=text)
         second = self.run_prompt(text=text)
         self.assertEqual(first.returncode, 0, first.stderr)
@@ -246,7 +246,7 @@ class CompleteWorkerPackTest(unittest.TestCase):
             path.write_text(content)
 
     def test_rule_citations_resolve_through_pack_or_declared_session_owners(self):
-        index = (ROOT / "AGENTS.md").read_text().split("## Always load", 1)[1].split("## Load when", 1)[0]
+        index = (ROOT / "INDEX.md").read_text().split("## Always load", 1)[1].split("## Load when", 1)[0]
         declared = set(re.findall(r"\((rules/[^)]+)\)", index))
         self.assertTrue(set(self.shared).issubset(declared))
         # Resolve links at their source; compiled text does not retain source directories.
@@ -1273,7 +1273,7 @@ class InvariantsOnlyTest(unittest.TestCase):
 
     def test_all_inline_source_notes_live_in_changelog(self):
         marker = re.compile(r"(?:Operator directions?|Source incident):")
-        files = [ROOT / "AGENTS.md", *(ROOT / "rules").glob("*.md")]
+        files = [ROOT / "INDEX.md", *(ROOT / "rules").glob("*.md")]
         files += list((ROOT / "skills").rglob("*.md"))
         files += list((ROOT / "prompts").rglob("*.md"))
         for path in files:
@@ -1326,7 +1326,7 @@ class InvariantsOnlyTest(unittest.TestCase):
 
 
 class RuleIndexTest(unittest.TestCase):
-    def test_agents_contains_only_purpose_precedence_and_load_lines(self):
+    def test_index_contains_only_purpose_precedence_and_load_lines(self):
         purpose = {
             "House Rules provides shared operating rules and task-specific skills.",
             "This file is its index.",
@@ -1336,7 +1336,7 @@ class RuleIndexTest(unittest.TestCase):
             "At session start and after every reset or compaction, read these files in full:",
         }
         section = ""
-        for line in (ROOT / "AGENTS.md").read_text().splitlines():
+        for line in (ROOT / "INDEX.md").read_text().splitlines():
             if line.startswith("## "):
                 section = line[3:]
             if not line or line.startswith("#") or line in purpose:
@@ -1348,10 +1348,10 @@ class RuleIndexTest(unittest.TestCase):
                     self.assertRegex(line, r"^- [^:]+: load \[[^]]+\]\([^)]+\)\.$")
 
     def test_repository_overrides_may_tighten_or_loosen_and_name_the_rule(self):
-        self.assertIn("- A repository override may tighten or loosen any House Rules rule, including a security rule, and names the rule it changes.\n", (ROOT / "AGENTS.md").read_text())
+        self.assertIn("- A repository override may tighten or loosen any House Rules rule, including a security rule, and names the rule it changes.\n", (ROOT / "INDEX.md").read_text())
 
     def test_index_loads_every_skill_and_rule_file_with_resolving_relative_links(self):
-        index = (ROOT / "AGENTS.md").read_text()
+        index = (ROOT / "INDEX.md").read_text()
         targets = re.findall(r"\[[^]]+\]\(([^)]+)\)", index)
         required = {"rules/core.md", "rules/outcome.md", "rules/delivery.md", "rules/writing.md",
                     "rules/git.md", "rules/priority-labels.md", "rules/session-writing.md",
@@ -1400,7 +1400,7 @@ class AuditRestorationTest(unittest.TestCase):
                 self.assertIn(clause, text)
 
     def test_M1_precedence_remains_bounded(self):
-        text = (ROOT / 'AGENTS.md').read_text()
+        text = (ROOT / 'INDEX.md').read_text()
         for clause in (
             'Repository instructions and explicit operator choices override House Rules'
             ' when they conflict.',
@@ -1657,7 +1657,7 @@ class AuditRestorationTest(unittest.TestCase):
         self.assertEqual(loader.split('```markdown\n', 1)[1].split('```', 1)[0], (
             '# AGENTS.md\n'
             'This repository is managed by [House Rules](<House Rules URL>). '
-            'Read House Rules `AGENTS.md` first and follow it.\n'
+            'Read House Rules `INDEX.md` first and follow it.\n'
             "This repository's own rules are in [.agents/rules.md](.agents/rules.md).\n"
         ))
         for clause in (
@@ -1686,7 +1686,7 @@ class AuditRestorationTest(unittest.TestCase):
                 self.assertIn(clause, text)
 
     def test_L24_decision_explanation_trigger(self):
-        text = (ROOT / 'AGENTS.md').read_text()
+        text = (ROOT / 'INDEX.md').read_text()
         for clause in (
             'Choices needing operator input, decisions, or explanations: load '
             '[decision-brief](skills/decision-brief/SKILL.md).',
@@ -1745,7 +1745,7 @@ class AuditRestorationTest(unittest.TestCase):
                 self.assertIn(clause, text)
 
     def test_load_sentence_requires_all_rules_in_full_after_reset(self):
-        index = (ROOT / "AGENTS.md").read_text()
+        index = (ROOT / "INDEX.md").read_text()
         always = index.split("## Always load\n", 1)[1].split("## Load when", 1)[0]
         self.assertIn("At session start and after every reset or compaction, read these files in full:", always)
         self.assertEqual(re.findall(r"\((rules/[^)]+)\)", always), ["rules/core.md", "rules/outcome.md", "rules/delivery.md", "rules/writing.md",

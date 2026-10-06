@@ -148,7 +148,7 @@ Operator direction: 2026-10-04.
 Operator direction: 2026-10-06, House Rules audit; the restored rule blocked unrelated
 parallel runs.
 
-## AGENTS.md — precedence (repository overrides)
+## INDEX.md — precedence (repository overrides)
 
 Operator direction: 2026-10-06, House Rules audit; repositories may tighten or loosen House
 Rules, security included, and keep only their overrides. The rule moves here from each
