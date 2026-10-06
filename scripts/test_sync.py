@@ -2,6 +2,7 @@
 """Synthetic homes and local Git remotes; no network or installed-home writes."""
 
 import contextlib
+import errno
 import importlib.util
 import io
 import json
@@ -9,6 +10,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -23,11 +25,9 @@ SPEC.loader.exec_module(sync)
 
 class SyncTests(unittest.TestCase):
     def setUp(self):
-        scratch = REPO / ".tmp"
-        scratch.mkdir(exist_ok=True)
-        self.tmp = tempfile.TemporaryDirectory(dir=scratch)
+        self.tmp = tempfile.TemporaryDirectory(prefix="house-rules-sync-")
         self.addCleanup(self.tmp.cleanup)
-        self.base = Path(self.tmp.name)
+        self.base = Path(self.tmp.name).resolve()
         self.env = mock.patch.dict(os.environ, {
             "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
             "GIT_AUTHOR_NAME": "Test Author", "GIT_AUTHOR_EMAIL": "test@example.invalid",
@@ -111,7 +111,7 @@ class SyncTests(unittest.TestCase):
         self.assertTrue(changed.endswith("\nTail\n"))
         for folder in (self.claude / "skills", self.home / ".agents/skills"):
             self.assertEqual((folder / "sample").resolve(), self.root / "skills/sample")
-        receipts = list((self.root / "custom/installations").glob("*.json"))
+        receipts = list((self.root / "custom/installations/runs").glob("sync-*.json"))
         self.assertEqual(len(receipts), 1)
         receipt = json.loads(receipts[0].read_text())
         self.assertEqual(receipt["status"], "verified")
@@ -124,7 +124,7 @@ class SyncTests(unittest.TestCase):
         self.assertNotIn("REPORT:", out)
         self.assertIn("0 findings", out)
         self.clean()
-        self.assertEqual(len(list((self.root / "custom/installations").glob("*.json"))), 2)
+        self.assertEqual(len(list((self.root / "custom/installations/runs").glob("sync-*.json"))), 2)
 
     def test_extra_homes_are_only_checked_when_configured(self):
         extra = self.home / "extra codex"
@@ -297,10 +297,10 @@ class SyncTests(unittest.TestCase):
         self.write(path, "Old rules\n")
         real_write = sync.atomic_text
 
-        def write(destination, text, mode=0o600):
+        def write(destination, text, mode=0o600, **kwargs):
             if destination == path:
                 raise OSError("fixture write failure")
-            return real_write(destination, text, mode)
+            return real_write(destination, text, mode, **kwargs)
 
         with mock.patch.object(sync, "atomic_text", side_effect=write):
             code, out, err = self.invoke(True)
@@ -308,7 +308,7 @@ class SyncTests(unittest.TestCase):
         self.assertIn("fixture write failure", err)
         self.assertIn("receipt:", out)
         self.assertEqual(path.read_text(), "Old rules\n")
-        receipts = [json.loads(p.read_text()) for p in (self.root / "custom/installations").glob("*.json")]
+        receipts = [json.loads(p.read_text()) for p in (self.root / "custom/installations/runs").glob("sync-*.json")]
         failed = next(r for r in receipts if r["status"].startswith("partial failure:"))
         self.assertEqual(Path(failed["changes"][0]["backup"]).read_text(), "Old rules\n")
 
@@ -362,6 +362,410 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("ERROR:", err)
         self.assertFalse((self.claude / "CLAUDE.md").exists())
+
+
+    def test_fix_now_01_refuses_instruction_and_skill_drift(self):
+        path = self.claude / "CLAUDE.md"
+        self.write(path, "Before\n")
+        real_plan = sync.plan
+
+        def changed_plan(*args):
+            result = real_plan(*args)
+            self.write(path, "New operator edit\n")
+            return result
+
+        with mock.patch.object(sync, "plan", side_effect=changed_plan):
+            code, _, err = self.invoke(True)
+        self.assertEqual(code, 2, err)
+        self.assertEqual(path.read_text(), "New operator edit\n")
+        self.assertIn("changed", err)
+
+        self.clean()
+        link = self.claude / "skills/sample"
+        link.unlink()
+        self.link(link, self.root / "skills/removed")
+        # An owned stale same-name link uses a recorded old root.
+        old = self.base / "old"
+        link.unlink()
+        self.link(link, old / "skills/sample")
+        self.receipt({"source_root": str(old)})
+
+        def changed_link_plan(*args):
+            result = real_plan(*args)
+            link.unlink()
+            self.link(link, self.home / "foreign")
+            return result
+
+        with mock.patch.object(sync, "plan", side_effect=changed_link_plan):
+            code, _, err = self.invoke(True)
+        self.assertEqual(code, 2, err)
+        self.assertEqual(os.readlink(link), str(self.home / "foreign"))
+
+    def test_fix_now_01_refuses_instruction_edit_during_backup(self):
+        path = self.claude / "CLAUDE.md"
+        self.write(path, "Before\n")
+        real_copy = shutil.copy2
+
+        def copy(source, destination, **kwargs):
+            result = real_copy(source, destination, **kwargs)
+            if source == path:
+                self.write(path, "Edited during backup\n")
+            return result
+
+        with mock.patch.object(shutil, "copy2", side_effect=copy):
+            code, _, err = self.invoke(True)
+        self.assertEqual(code, 2, err)
+        self.assertEqual(path.read_text(), "Edited during backup\n")
+
+    def test_fix_now_01_refuses_instruction_edit_during_staging(self):
+        path = self.claude / "CLAUDE.md"
+        self.write(path, "Before\n")
+        real_temporary = tempfile.NamedTemporaryFile
+
+        def temporary(**kwargs):
+            stream = real_temporary(**kwargs)
+            real_write = stream.write
+
+            def write(data):
+                if Path(kwargs["dir"]) == path.parent:
+                    self.write(path, "Edited during staging\n")
+                return real_write(data)
+
+            stream.write = write
+            return stream
+
+        with mock.patch.object(tempfile, "NamedTemporaryFile", side_effect=temporary):
+            code, _, err = self.invoke(True)
+        self.assertEqual(code, 2, err)
+        self.assertEqual(path.read_text(), "Edited during staging\n")
+
+    def test_fix_now_01_refuses_revoked_copy_ownership(self):
+        path = self.claude / "skills/sample"
+        self.write(path / "SKILL.md", "Owned fixture\n")
+        self.receipt({"copies": {str(path): sync.copy_hash(path)}})
+        real_plan = sync.plan
+
+        def plan(*args):
+            result = real_plan(*args)
+            self.receipt({"copies": {}})
+            return result
+
+        with mock.patch.object(sync, "plan", side_effect=plan):
+            code, _, err = self.invoke(True)
+        self.assertEqual(code, 2, err)
+        self.assertEqual((path / "SKILL.md").read_text(), "Owned fixture\n")
+        self.assertFalse(path.is_symlink())
+
+    def test_fix_now_02_aliased_skill_folders_keep_installation(self):
+        self.clean()
+        self.link(self.codex / "skills", self.home / ".agents/skills")
+        code, out, err = self.invoke(True)
+        self.assertEqual(code, 0, out + err)
+        self.assertTrue((self.home / ".agents/skills/sample").is_symlink())
+
+    def test_fix_now_03_backups_are_owner_only_under_permissive_umask(self):
+        self.claude.chmod(0o700)
+        self.write(self.claude / "CLAUDE.md", "Private fixture\n")
+        before = os.umask(0)
+        try:
+            self.clean()
+        finally:
+            os.umask(before)
+        runs = list((self.root / "custom/backups").iterdir())
+        self.assertEqual(len(runs), 1)
+        self.assertEqual(runs[0].stat().st_mode & 0o777, 0o700)
+
+    def test_fix_now_04_acl_replacement_is_refused_without_widening_access(self):
+        path = self.claude / "CLAUDE.md"
+        self.write(path, "Restricted\n")
+        if sys.platform == "darwin":
+            acl = "everyone deny execute"
+            subprocess.run(["chmod", "+a", acl, str(path)], check=True)
+            self.addCleanup(subprocess.run, ["chmod", "-N", str(path)], check=True)
+            code, _, err = self.invoke(True)
+        else:
+            # Native ACL inspection is covered above on macOS; exercise refusal
+            # on platforms where the standard library cannot preserve file ACLs.
+            with mock.patch.object(sync.sys, "platform", "win32"):
+                code, _, err = self.invoke(True)
+        self.assertEqual(code, 2, err)
+        self.assertEqual(path.read_text(), "Restricted\n")
+        self.assertIn("access restrictions", err)
+
+    def test_fix_now_05_verification_error_does_not_print_instruction_bytes(self):
+        real_plan = sync.plan
+        count = 0
+        private = "PRIVATE-FIXTURE-TEXT"
+
+        def drift(*args):
+            nonlocal count
+            count += 1
+            if count == 2:
+                self.write(self.claude / "CLAUDE.md", private)
+            return real_plan(*args)
+
+        with mock.patch.object(sync, "plan", side_effect=drift):
+            code, _, err = self.invoke(True)
+        self.assertEqual(code, 2)
+        self.assertNotIn(private, err)
+        self.assertIn(str(self.claude / "CLAUDE.md"), err)
+        self.assertIn("missing block", err)
+
+    def test_fix_now_06_auxiliary_destinations_cannot_alias_system(self):
+        for name in ("installations", "backups", "INDEX.md"):
+            with self.subTest(name=name):
+                system = self.codex / "skills/.system"
+                system.mkdir(parents=True, exist_ok=True)
+                custom = self.root / "custom"
+                custom.mkdir(exist_ok=True)
+                alias = custom / name
+                self.link(alias, system)
+                code, _, err = self.invoke(True)
+                self.assertEqual(code, 2, err)
+                self.assertIn("protected", err)
+                self.assertEqual(list(system.iterdir()), [])
+                alias.unlink()
+
+    def test_fix_now_07_scan_failures_reach_caller(self):
+        folder = self.root / "custom/installations"
+        folder.mkdir(parents=True)
+        real_scan = os.scandir
+
+        def scan(path):
+            if Path(path) == folder:
+                raise PermissionError("unreadable receipts")
+            return real_scan(path)
+
+        with mock.patch.object(os, "scandir", side_effect=scan):
+            with self.assertRaises(PermissionError):
+                sync.ownership(self.root)
+
+    def test_fix_now_07_unreadable_copy_subtree_reaches_caller(self):
+        copied = self.base / "copied"
+        self.write(copied / "nested/SKILL.md", "fixture")
+        real_scan = os.scandir
+
+        def scan_copy(path):
+            if Path(path) == copied / "nested":
+                raise PermissionError("unreadable subtree")
+            return real_scan(path)
+
+        with mock.patch.object(os, "scandir", side_effect=scan_copy):
+            with self.assertRaises(PermissionError):
+                sync.copy_hash(copied)
+
+    def test_fix_now_08_atomic_writer_closes_before_replace_or_cleanup(self):
+        real_temp = tempfile.NamedTemporaryFile
+        streams = []
+        real_replace = os.replace
+        real_unlink = Path.unlink
+
+        def temporary(**kwargs):
+            stream = real_temp(**kwargs)
+            streams.append(stream)
+            return stream
+
+        def replace(source, destination):
+            self.assertTrue(streams[-1].closed)
+            return real_replace(source, destination)
+
+        def unlink(path, *args, **kwargs):
+            if path.name.startswith(".sync-"):
+                self.assertTrue(streams[-1].closed)
+            return real_unlink(path, *args, **kwargs)
+
+        path = self.base / "atomic"
+        with mock.patch.object(tempfile, "NamedTemporaryFile", side_effect=temporary), \
+                mock.patch.object(os, "fchmod", side_effect=AttributeError("Windows has no fchmod")), \
+                mock.patch.object(os, "replace", side_effect=replace), \
+                mock.patch.object(Path, "unlink", autospec=True, side_effect=unlink):
+            sync.atomic_text(path, "fixture")
+            self.assertEqual(path.read_text(), "fixture")
+            with mock.patch.object(os, "replace", side_effect=OSError("replacement failed")):
+                with self.assertRaisesRegex(OSError, "replacement failed"):
+                    sync.atomic_text(path, "next")
+        self.assertFalse(list(self.base.glob(".sync-*")))
+        self.assertIn("Python 3.9 or later", (REPO / "INSTALL-AGENTS.md").read_text())
+
+    def test_fix_now_09_owned_copy_moves_across_filesystems(self):
+        copied = self.claude / "skills/sample"
+        self.write(copied / "SKILL.md", "Owned copy\n")
+        self.receipt({"copies": {str(copied): sync.copy_hash(copied)}})
+        real_rename = os.rename
+
+        def rename(source, destination, *args, **kwargs):
+            if Path(source) == copied:
+                raise OSError(errno.EXDEV, "cross-device fixture")
+            return real_rename(source, destination, *args, **kwargs)
+
+        with mock.patch.object(os, "rename", side_effect=rename):
+            self.clean()
+        self.assertTrue(copied.is_symlink())
+        backups = list((self.root / "custom/backups").rglob("SKILL.md"))
+        self.assertEqual([path.read_text() for path in backups], ["Owned copy\n"])
+
+    def test_fix_now_10_hidden_untracked_files_prevent_pull(self):
+        self.git(self.root, "config", "status.showUntrackedFiles", "no")
+        self.write(self.root / "hidden-untracked", "fixture")
+        with mock.patch.object(sync, "git", wraps=sync.git) as calls:
+            code, out, err = self.invoke(True)
+        self.assertEqual(code, 1, err)
+        self.assertIn("dirty", out)
+        self.assertFalse(any("pull" in call.args for call in calls.call_args_list))
+
+    def changed_during_fetch(self, mutation):
+        self.write(self.origin / "remote", "fixture")
+        self.commit(self.origin, ["remote"])
+        real_git = sync.git
+
+        def git(root, *args):
+            result = real_git(root, *args)
+            if "fetch" in args:
+                if mutation == "dirty":
+                    self.write(self.root / "dirty", "fixture")
+                elif mutation == "branch":
+                    self.git(self.root, "checkout", "-b", "other")
+                else:
+                    self.git(self.root, "commit", "--allow-empty", "-m", "Concurrent edit")
+            return result
+
+        with mock.patch.object(sync, "git", side_effect=git) as calls:
+            code, out, err = self.invoke(True)
+        self.assertEqual(code, 1, out + err)
+        self.assertIn("changed during fetch", out)
+        self.assertFalse(any("pull" in call.args for call in calls.call_args_list))
+
+    def test_fix_now_10_rechecks_cleanliness_after_fetch(self):
+        self.changed_during_fetch("dirty")
+
+    def test_fix_now_10_rechecks_branch_after_fetch(self):
+        self.changed_during_fetch("branch")
+
+    def test_fix_now_10_rechecks_revision_after_fetch(self):
+        self.changed_during_fetch("revision")
+
+    def test_fix_now_10_rechecks_before_pull(self):
+        self.write(self.origin / "remote", "fixture")
+        self.commit(self.origin, ["remote"])
+        real_git = sync.git
+
+        def git(root, *args):
+            result = real_git(root, *args)
+            if "rev-list" in args:
+                self.write(self.root / "concurrent-untracked", "fixture")
+            return result
+
+        with mock.patch.object(sync, "git", side_effect=git) as calls:
+            code, out, err = self.invoke(True)
+        self.assertEqual(code, 1, out + err)
+        self.assertFalse(any("pull" in call.args for call in calls.call_args_list))
+
+    def test_fix_now_11_source_alias_does_not_keep_old_written_target(self):
+        old = self.base / "old-source"
+        self.link(old, self.root)
+        link = self.claude / "skills/sample"
+        self.link(link, old / "skills/sample")
+        self.receipt({"source_root": str(old)})
+        self.clean()
+        self.assertEqual(os.readlink(link), str(self.root / "skills/sample"))
+
+    def test_fix_now_12_current_inventory_and_index_ignore_run_history(self):
+        self.clean()
+        self.clean()
+        receipts = self.root / "custom/installations"
+        current = [path for path in receipts.iterdir() if path.suffix == ".json"]
+        self.assertEqual(len(current), 3)
+        for path in current:
+            data = json.loads(path.read_text())
+            self.assertTrue(data["destinations"])
+            self.assertIn("installed_hash", data["destinations"][0])
+            self.assertIn(str(path.relative_to(self.root / "custom")), (self.root / "custom/INDEX.md").read_text())
+        self.write(receipts / "runs/sync-ignored.json", "invalid historical JSON")
+        self.assertEqual(self.invoke()[0], 0)
+        real_read = Path.read_text
+        reads = []
+
+        def read(path, *args, **kwargs):
+            reads.append(path)
+            return real_read(path, *args, **kwargs)
+
+        with mock.patch.object(Path, "read_text", autospec=True, side_effect=read), \
+                mock.patch.object(os, "scandir", wraps=os.scandir) as scans:
+            sync.ownership(self.root)
+        self.assertEqual(sorted(reads), sorted(current))
+        self.assertEqual([Path(call.args[0]) for call in scans.call_args_list], [receipts])
+        self.assertEqual(len([path for path in receipts.iterdir()
+                              if path.suffix == ".json"]), 3)
+
+    def test_fix_now_12_inventory_failure_is_recorded_in_run_receipt(self):
+        real_write = sync.atomic_text
+
+        def write(path, text, *args, **kwargs):
+            if path.name.startswith("home-"):
+                raise OSError("fixture inventory failure")
+            return real_write(path, text, *args, **kwargs)
+
+        with mock.patch.object(sync, "atomic_text", side_effect=write):
+            code, _, err = self.invoke(True)
+        self.assertEqual(code, 2, err)
+        receipts = list((self.root / "custom/installations/runs").iterdir())
+        self.assertEqual(len(receipts), 1)
+        data = json.loads(receipts[0].read_text())
+        self.assertIn("partial failure: fixture inventory failure", data["status"])
+
+    def test_fix_now_13_named_home_instruction_duplicates_are_reported(self):
+        self.clean()
+        for name in ("AGENTS.md", "CLAUDE.md"):
+            with self.subTest(name=name):
+                path = self.home / name
+                self.write(path, "Local rules\n<!-- forge:begin -->old<!-- forge:end -->")
+                before = path.read_bytes()
+                code, out, err = self.invoke(True)
+                self.assertEqual(code, 1, out + err)
+                self.assertIn("duplicate", out)
+                self.assertIn(str(path), out)
+                self.assertEqual(path.read_bytes(), before)
+                path.unlink()
+
+    def test_fix_now_14_ci_runs_sync_regressions(self):
+        workflow = (REPO / ".github/workflows/checks.yml").read_text()
+        self.assertIn("run: python3 scripts/test_sync.py", workflow)
+
+    def test_fix_now_15_broken_default_homes_are_visible(self):
+        self.claude.rmdir()
+        for dangling in (False, True):
+            with self.subTest(dangling=dangling):
+                if dangling:
+                    self.link(self.claude, self.home / "absent")
+                else:
+                    self.write(self.claude, "not a directory")
+                try:
+                    code, _, err = self.invoke()
+                    self.assertEqual(code, 2, err)
+                    self.assertIn(str(self.claude), err)
+                finally:
+                    self.claude.unlink()
+
+    def test_fix_now_16_malformed_receipt_containers_return_error(self):
+        for data in ({"previous_roots": None}, {"copies": []},
+                     {"previous_roots": "not a list"}, {"copies": {"relative": "hash"}}):
+            with self.subTest(data=data):
+                self.receipt(data)
+                code, _, err = self.invoke()
+                self.assertEqual(code, 2, err)
+                self.assertIn("fixture.json", err)
+
+    def test_fix_now_17_report_disables_optional_git_locks(self):
+        real_run = subprocess.run
+
+        def run(command, **kwargs):
+            if command[0] == "git":
+                self.assertTrue("--no-optional-locks" in command or
+                                kwargs.get("env", {}).get("GIT_OPTIONAL_LOCKS") == "0")
+            return real_run(command, **kwargs)
+
+        with mock.patch.object(subprocess, "run", side_effect=run):
+            sync.update(self.root, False)
 
 
 if __name__ == "__main__":

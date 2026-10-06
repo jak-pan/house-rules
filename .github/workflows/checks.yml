@@ -18,3 +18,5 @@ jobs:
           package-manager-cache: false
       - name: Check report helper syntax
         run: node --check skills/audit-report-authoring/scripts/lint-report-set.mjs
+      - name: Test installation sync
+        run: python3 scripts/test_sync.py

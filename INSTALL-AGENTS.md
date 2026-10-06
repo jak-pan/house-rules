@@ -270,7 +270,7 @@ Report filesystem and runtime verification separately.
 source folder. Never use a temporary folder such as a downloads folder or a package-manager
 cache as the source.
 
-Use the Python 3 standard-library sync script from the permanent checkout:
+Use the Python 3.9 or later standard-library sync script from the permanent checkout:
 
 ```sh
 python3 <HOUSE_RULES_ROOT>/scripts/sync.py        # report; no writes
@@ -314,12 +314,17 @@ above instead of treating a failed symlink as success.
 Before each installation change, the script backs up an existing file, link or
 receipt-matched directory in `custom/backups/sync-<run-id>/`; a previously absent file
 is recorded as such. It writes a JSON run receipt in
-`custom/installations/sync-<run-id>.json`, recording homes, source root and revision,
+`custom/installations/runs/sync-<run-id>.json`, recording homes, source root and revision,
 previous roots, the block, changes, backups, outcomes and filesystem verification.
 The backup and planned change are recorded before the write; outcomes follow each
 write. A failure leaves backups and a receipt identifying partial state, exits with
 an error, and requires another fix or manual restoration before claiming success.
-A fix with no installation changes still records a verification receipt. Runtime discovery
+A fix with no installation changes still records a verification receipt. After verification,
+fix mode updates one current `home-<identity>.json` receipt per product home, including
+unchanged destinations and installed hashes, and its pointer section in `custom/INDEX.md`.
+The identity is derived from the product and resolved home path. Ownership reads current
+JSON receipts; `runs/sync-<run-id>.json` receipts remain run history and are excluded from
+ownership scans. Runtime discovery
 remains the separate check in §5; the script does not start agent sessions.
 
 Ownership follows §2. Machine-readable JSON installation receipts can supply
