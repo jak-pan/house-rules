@@ -40,6 +40,7 @@ How to work:
 - Commit once with a clear message in the repository's convention plus any trailer the
   task gives. Do not push, open or edit PRs, comment, or write to GitHub or any other
   external service; the lead does all external writes. Report what you would post.
+  "ONE commit" means one new commit per run, not one commit on the branch; never rewrite pushed history.
 
 @rule house-rules:prompts/skills/code-canon.md
 @rule house-rules:prompts/skills/native-first.md
