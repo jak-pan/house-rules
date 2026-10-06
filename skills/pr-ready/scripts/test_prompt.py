@@ -287,6 +287,24 @@ class CollectionAcceptanceTest(unittest.TestCase):
             '"## Issues to file", or reject it as NITPICK when negligible.', text,
         )
 
+    def test_checker_approval_requires_only_high_or_medium_fixes_and_reports_all(self):
+        result = PromptTest().run_prompt("prompts/roles/checker.md")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(
+            '"VERDICT: APPROVE" when every accepted High or Medium finding is '
+            'fixed and the fix diff has no blocking defect', result.stdout,
+        )
+        self.assertNotIn("when every accepted finding is fixed", result.stdout)
+        self.assertIn("A Low finding never blocks", result.stdout)
+        self.assertIn(
+            "For each accepted finding, verify against the code at HEAD that it "
+            "is fixed; quote the evidence.", result.stdout,
+        )
+        self.assertIn(
+            "one line per accepted finding: fixed / not fixed + evidence",
+            result.stdout,
+        )
+
     def test_triager_requests_changes_only_for_high_or_medium(self):
         text = (ROOT / "prompts/roles/triager.md").read_text()
         self.assertIn(
