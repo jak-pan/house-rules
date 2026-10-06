@@ -663,6 +663,26 @@ model, permission, MCP, plugin, and hook configuration in the native tool
 settings.
 <!-- house-rules:end -->"""
 
+    def test_parent_folder_cleanup_preserves_house_rules_repository_pointer(self):
+        installer = (REPO / 'INSTALL-AGENTS.md').read_text()
+        cleanup = installer.split('5. Put ', 1)[1].split('6. Preserve ', 1)[0]
+        self.assertIn('remove such a block instead of migrating it.', cleanup)
+        self.assertIn('Preserve `<HOUSE_RULES_ROOT>/AGENTS.md`, the canonical repository '
+                      'pointer,\n   even when the House Rules checkout is a parent folder.',
+                      cleanup)
+
+    def test_global_discovery_requires_neutral_directory_before_counting_headings(self):
+        installer = (REPO / 'INSTALL-AGENTS.md').read_text()
+        verification = installer.split('Runtime verification:\n', 1)[1].split(
+            'Report filesystem and runtime verification separately.', 1)[0]
+        setup, checks = verification.split('1. Prefer discovery views', 1)
+        self.assertIn('Run global-installation discovery verification from a neutral '
+                      'working directory\noutside any repository.', setup)
+        self.assertIn('Check that neither it nor any parent folder contains\n'
+                      'instruction files such as `AGENTS.md` or `CLAUDE.md`.', setup)
+        self.assertIn('exactly one `Shared operating foundation (House Rules)` heading',
+                      checks)
+
     def test_installed_pointer_keeps_old_wording_with_renamed_index(self):
         self.assertEqual(sync.template(REPO), self.EXPECTED_BLOCK.replace(
             '<HOUSE_RULES_ROOT>', str(REPO)))
