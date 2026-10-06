@@ -82,4 +82,3 @@ field boundary still decodes. Orphan cleanup trusts the decoded segment list.
 ## Out of scope
 - Syncing segment data before the manifest: finding 1.
 ```
-
