@@ -41,6 +41,10 @@ Verification invariant: AGENTS.md §Verification. Local work follows
   changes; toolchain, lockfile and build-script matrices belong to CI.
 - Report the exact commands, filters and pass/fail counts.
 
+- During iteration, run the smallest gate that proves the current change.
+- Run the complete required gate on the resulting candidate or whenever changes invalidate prior full-gate evidence.
+- Where CI owns the full suite, use CI’s run on the pushed head.
+
 ## 2. Push and CI
 
 - Write the PR body, review comments, replies and commit messages in the forms of skill
@@ -53,6 +57,10 @@ Verification invariant: AGENTS.md §Verification. Local work follows
 - Push; wait for CI to finish green on the exact head commit.
 - On a CI failure, reproduce only the failing tests locally. Before attributing a failure
   to the change, compare it against the default branch under the same conditions.
+
+- Have Warden review CI runs.
+- Send failing jobs to a CI-repair investigator.
+- Allow an expected long run once, including a rebuilt dependency cache.
 
 ## 3. Review rounds
 
@@ -119,8 +127,7 @@ load no other rules. Specialist dispatch follows
   starts from first principles: what the mechanism is for, what the spec actually
   requires (quoted), and which findings are requirements versus a reviewer's assumption.
   Only then does it compare mechanisms and recommend one. The next fix implements that
-  recommendation; a genuine spec gap goes to the operator. Operator direction:
-  2026-10-03, after a fixer traded a bound for an integrity check and back.
+  recommendation; a genuine spec gap goes to the operator.
 - **One fixer per branch; every review feeds it.** A branch never has two fixers at once
   (parallel fixers duplicate builds and conflict). Every finished review, from any
   reviewer at any speed, joins the branch's fix queue. When the fixer is idle, the
@@ -133,8 +140,7 @@ load no other rules. Specialist dispatch follows
   need one; a slower reviewer keeps reviewing its snapshot in the background, and its
   report becomes queued input. At the final head the slow reviewer still reviews, but
   only the diff since its last reviewed head. Merge eligibility: §4.
-  Operator direction: 2026-10-03, after parallel slow-review fixers doubled builds and
-  overloaded the machine.
+
 - **Current base before the final round.** Merge the default branch into the PR branch
   before its final review, so the reviewed head is what CI and the merge see.
 
@@ -155,3 +161,7 @@ load no other rules. Specialist dispatch follows
   auto-merge unless the operator asked.
 - Then update the tracking item, delete the branch, and remove the lane (skill
   `agent-lanes` §Lane cleanup).
+
+- When all reviewer families approve, CI passes, and deployment is documented routine procedure, finish landing.
+- Merge within AGENTS.md §Git delivery authority, deploy, verify after deployment, then report changes.
+- Do not hand routine landing steps to the operator.

@@ -54,6 +54,12 @@ Destinations for findings (AGENTS.md prime rule 11):
 
 Paths for runs, reports, ledgers, debug evidence, and scratch: `STRUCTURE.md`.
 
+- Save settled decisions with continuing relevance and operator-confirmed rules in their proper home.
+- Never leave those decisions, rules, or findings only in chat.
+- Save task decisions in the work item, durable repo-wide decisions in the bible when work closes, and findings in the work item’s record as they happen.
+- Cross-check cleanup or supersession against the active work record and newer docs/code.
+- Record old-to-new mappings and verification evidence in the work item.
+
 ## Authorized, bounded, and durable external runs
 
 Scope and authorization: AGENTS.md §Verification. Before launch, record the envelope that
@@ -85,6 +91,8 @@ operator's approval unless AGENTS.md §Operator correction applies. An urgent sa
 takes precedence; capture only what can be captured without delaying it. If durable
 capture cannot be established at launch, ask the operator to accept the loss risk or use
 a cheaper/reproducible probe instead.
+
+- Exempt routine short, cheap, reproducible commands from the durable-external-run procedure.
 
 ## Resuming
 

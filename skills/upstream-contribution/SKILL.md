@@ -22,6 +22,8 @@ Reproduce on unmodified upstream: its current default branch and the version we 
 bug needs a failing test in upstream's own test framework. A failure that exists only with
 our patches is ours (AGENTS.md §Prove necessity before expanding the critical path).
 
+- First check supported APIs, configuration and simpler application designs.
+
 ## 2. Sweep what already exists
 
 - Search open and closed issues and PRs by symptom, error text, and affected files and

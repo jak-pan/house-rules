@@ -23,8 +23,6 @@ updates itself; agents load it as its own Skill and MCP server, not as part of H
 - Send no code, diffs, prompts, transcripts or credentials.
 - Add no reporting scripts or kits to product repositories for this.
 
-Operator direction: 2026-10-04.
-
 ## Work item and owner
 
 - A work item has a work branch and, once the host is reachable, an issue. Branches follow
@@ -130,6 +128,10 @@ The tracker is worked every session, not only written to at the end.
 4. **Surface stale work.** Whoever finds an In progress item with no handoff or activity
    for 7 days comments on it and asks the owner, or the operator if there is no owner,
    to resume, release, or close it.
+
+- Read the bible and CONTEXT.md when present before the tracker board.
+- Default to the project board.
+- Then read the work item’s current state and latest handoff.
 
 ## Offline and sync
 

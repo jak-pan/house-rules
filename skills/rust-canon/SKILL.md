@@ -29,8 +29,7 @@ Rules.
 - `--release` by default for everything built, executed or measured, including CI checks,
   Clippy, tests and smoke artifacts. Use the development profile only for active debugging
   (assertions, symbols, tight edit-compile loops) or a named debug-only invariant. Reusing
-  compiled outputs across gates: skill `ci-build-optimization`. Operator direction:
-  2026-09-07, cross-repository CI correction.
+  compiled outputs across gates: skill `ci-build-optimization`.
 - `///` docs on public items.
 
 ## Repo tooling

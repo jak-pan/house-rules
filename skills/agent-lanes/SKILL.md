@@ -53,8 +53,7 @@ Housekeeping is part of the workflow, not a later chore. Cleanup follows AGENTS.
 - **Not before.** A lane with an open PR keeps its worktree and build output while it waits
   for review or CI, however long it idles; later fix rounds rebuild incrementally from it.
   Under disk pressure, clear finished experiment and benchmark checkouts first, then ask
-  the operator. Operator direction: 2026-09-30, after idle build directories of open PRs
-  were deleted to free space.
+  the operator.
 - **At session start, for every repo the session works in**, remove stale lanes left by
   any session: linked worktrees whose branch is merged (its PR merged at the same head, or
   its HEAD is on the default branch), and `.tmp/cargo-target/<lane>` directories whose lane
@@ -84,7 +83,7 @@ git worktree remove <wt> && git branch -D <branch>; git worktree prune
   adversarial verifier: AGENTS.md §Parallel work.
 - **Decision handling.** Lanes decide and escalate per skill `operator-protocol`
   §Decisions.
-- **Attached workers.** AGENTS.md prime rule "Long-running work stays attached".
+- **Attached workers.** AGENTS.md prime rule 15.
 - **Background monitors.** Every long-running run has a watcher that surfaces failures instantly
   and feeds concrete counters into status lines. Prove work is running: process name, output
   path, dashboard link.

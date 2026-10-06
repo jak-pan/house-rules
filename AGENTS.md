@@ -1,452 +1,452 @@
 # AGENTS.md — Universal
 
-Repository-local instructions and explicit operator choices override House Rules (this
-file, `PREFERENCES.md`, `STRUCTURE.md`, and the skills), subject to the host instruction
-hierarchy, permissions, access, and approval controls. Each rule has one home: this file
-states invariants; the named skill holds the procedure; nothing is restated. Prompts
-reference rules; builders resolve them at build time
-(skill `pr-ready`, references/guards.md §Guard upkeep).
+- Apply repository instructions and explicit operator choices before House Rules.
+- Respect host instruction hierarchy, permissions, access, and approval controls.
+- Keep each rule in one home.
+- State invariants in this file.
+- Keep procedure in the named skill.
+- Do not restate rules.
+- Reference rules from prompts.
+- Resolve references at build time through `skills/pr-ready/references/guards.md` §Guard upkeep.
+
+## Terms
+
+- Use tracker for the organization/repository-defined work-management system.
+- Use work item for one tracked unit of work, defaulting to a work branch and its issue.
+- Use bible for repository `AGENTS.md`, including settled local decisions and execution choices.
+- Explain bible edits or pruning in the commit.
+- Use campaign ledger for a long-running goal’s tried, result, and verdict record.
+- Use handoff for the immutable continuation record.
+- Use CI for continuous integration.
+- Use UI for user interface.
 
 ## Applicability and loading
 
-Apply the sections relevant to the actual task. A simple question does not create an
-implementation task, benchmark, claim, commit, or handoff obligation. Load procedural
-skills on demand rather than loading every skill.
-
-Keep model selection, permissions, MCP connections, hooks, and delegation APIs in
-native tool configuration. A skill describes a procedure; it does not grant access
-or make an unavailable tool callable. Use the workspace's configured tracker; the
-default is records on Git work branches, viewed as Git-host issues on a project board
-(skill `work-tracking`). Use another
-tracker only when the workspace explicitly selects it; never maintain two writable
-trackers.
+- Apply the sections relevant to the actual task.
+- Do not create implementation, benchmark, claim, commit, or handoff obligations for a simple question.
+- Load procedural skills on demand.
+- Keep model selection, permissions, Model Context Protocol connections, and hooks in native tool configuration.
+- Keep delegation application programming interfaces in native tool configuration.
+- Treat skills as procedure descriptions.
+- Do not treat skills as access grants or tools that make unavailable capabilities callable.
+- Use the workspace's configured tracker.
+- Default to Git work-branch records with Git-host issues on a project board through `work-tracking`.
+- Use another tracker only when the workspace explicitly selects it.
+- Never maintain two writable trackers.
 
 ## Session start
 
-1. The bible (repository `AGENTS.md`) and `CONTEXT.md` when present → the tracker's board
-   (by default the project board; skill `work-tracking`) → your work item's current state +
-   latest handoff.
-2. Subsystem `CONTEXT.md`/`README.md` before touching that subsystem; read context files
-   fully, not summaries.
-3. After any context reset, including a compaction, re-read the bible and any active campaign
-   ledger. Reload the skills the current task uses.
-   For operator-facing text, see §Actionable communication.
-4. Feature reading order: design doc → architecture doc → code.
+- Read subsystem `CONTEXT.md` and `README.md` before touching that subsystem.
+- Read context files fully.
+- After any context reset, including a compaction, re-read the bible and any active campaign ledger.
+- Reload the skills the current task uses.
+- Follow §Actionable communication for operator-facing text.
+- Follow `work-tracking` §Session loop: fetch, update, reconcile for session reading order.
+- Follow `design-flow` §5 for feature reading order.
 
 ## Outcome and resource contract
 
-Classify substantive work by its relationship to the operator's requested outcome:
-
-- **Primary:** directly produces the requested deliverable or completes an acceptance
-  criterion.
-- **Supporting:** unblocks, accelerates, or materially reduces the risk of primary work.
-- **Opportunistic:** beneficial but unnecessary for the current outcome.
-- **Divergent:** unrelated to the current outcome or disproportionate to its value.
-
-Execute primary and proportional supporting work autonomously. Propose opportunistic
-improvements proactively and record them — proposal is not execution — but never let
-them delay the critical path. Do not execute divergent work. Supporting work displaces an
-available primary-path action only when it blocks that action; otherwise it runs
-alongside without starving the primary path.
+- Classify substantive work by its relationship to the operator's requested outcome.
+- Classify work as primary when it directly produces the requested deliverable or completes an acceptance criterion.
+- Classify work as supporting when it unblocks, accelerates, or materially reduces primary-work risk.
+- Classify beneficial work unnecessary for the current outcome as opportunistic.
+- Classify unrelated work or work disproportionate to its value as divergent.
+- Execute primary and proportional supporting work autonomously.
+- Propose opportunistic improvements proactively.
+- Record those proposals.
+- Do not execute proposals or let them delay the critical path.
+- Do not execute divergent work.
+- Let supporting work displace an available primary-path action only when it blocks that action.
+- Otherwise, run supporting work alongside primary work without starving it.
 
 ### Prove necessity before expanding the critical path
 
-Before modifying an external dependency or adding a stronger guarantee, identify
-which operator-approved requirement existing behavior cannot satisfy. Demonstrate
-the gap against the unmodified dependency; a bug fix requires a failing reproduction.
-Failures introduced by our own patches are not evidence of an upstream defect.
-First check supported APIs, configuration and simpler application designs.
-
-Implement the requested behavior before non-critical hardening. Optional hardening
-may proceed as a separate track within the approved resource envelope, but must not
-block or starve the main goal. It becomes a prerequisite only when evidence shows
-that delivery depends on it, such as a relevant security issue, a risk to existing
-user data, or an explicitly required correctness guarantee. Calling a concern
-"hardening" does not justify deferring those requirements; calling it "security"
-does not establish necessity without the boundary and impact described in §Security.
-
-When supporting work causes repeated failures, reassess removing or deferring that
-work before repairing it again; apply §Three-occurrence reassessment. Record optional
-work separately and do not add its acceptance criteria to the main deliverable.
-
-This rule applies to dependency modifications, expanded guarantees and optional
-hardening. It does not waive agreed functionality, existing security boundaries,
-required verification or ordinary application fixes, and does not independently
-authorize extra agents or spending. Design for the required architecture before
-implementation; optional guarantees are not load-bearing merely because an agent
-added them to a design document.
+- Identify the unmet operator-approved requirement before modifying an external dependency or adding a stronger guarantee.
+- Demonstrate the gap against the unmodified dependency.
+- Require a failing reproduction for a dependency bug fix.
+- Do not treat failures introduced by our patches as upstream defects.
+- Implement the requested behavior before non-critical hardening.
+- Allow optional hardening as a separate track within the approved resource envelope.
+- Do not let optional hardening block or starve the main goal.
+- Require evidence that delivery depends on hardening before making it a prerequisite.
+- Accept relevant security issues, existing-user-data risks, or explicitly required correctness guarantees as such evidence.
+- Do not defer required hardening because it carries an optional-work label.
+- Establish security necessity through the boundary and impact defined in §Security.
+- Reassess removing or deferring repeatedly failing supporting work before repairing it again under §Three-occurrence reassessment.
+- Record optional work separately.
+- Keep its acceptance criteria outside the main deliverable.
+- Apply these requirements to dependency modifications, expanded guarantees, and optional hardening.
+- Preserve agreed functionality, existing security boundaries, required verification, and ordinary application fixes.
+- Do not treat these requirements as authorization for extra agents or spending.
+- Design for the required architecture before implementation.
+- Do not make optional guarantees prerequisites merely because an agent added them to a design document.
+- Follow `upstream-contribution` §1 for dependency investigation procedure.
 
 ### Resource envelopes
 
-A standing or campaign-specific resource envelope may define allowed agents,
-providers/models, concurrency, cost/token/runtime boundaries, review rounds, and stop
-conditions. Once the operator approves an envelope, orchestrate, parallelize, retry, and
-reassign resources inside it without per-call approval. A retry of the same failed
-operation stays inside the envelope; a new provider, independent auditor, work category,
-or broad review round is a new decision unless the approved envelope already names it.
-
-An explicit request to use agents or a named provider authorizes the requested work inside
-the stated campaign, but does not silently authorize unrelated work or recursively
-expanding review rounds. Crossing the approved envelope requires a new decision. Proposing
-additional resources is always allowed. Durability and resumability are required for
-expensive work but neither authorizes it nor proves it remains relevant.
+- Allow standing or campaign-specific resource envelopes to define allowed agents, providers/models, concurrency, cost/token/runtime boundaries, review rounds, and stop conditions.
+- Orchestrate, parallelize, retry, and reassign resources inside an operator-approved envelope without per-call approval.
+- Keep retries of the same failed operation inside the envelope.
+- Obtain a decision for a new provider, independent auditor, work category, or broad review round.
+- Skip that decision only when the approved envelope already names the resource or work.
+- Treat requests for agents or named providers as authorization for requested work inside the stated campaign.
+- Do not infer authorization for unrelated work or recursively expanded review rounds.
+- Obtain a new decision before crossing the approved envelope.
+- Propose additional resources whenever useful.
+- Require durability and resumability for expensive work.
+- Do not treat either as authorization or evidence of continuing relevance.
 
 ### Three-occurrence reassessment
 
-Treat the first and second occurrence of the same failure class as potentially valid
-product or scope discoveries: diagnose, fix, and verify them normally when they remain
-outcome-aligned.
-
-On the third consecutive occurrence, perform a mechanism-level reassessment before
-another repair:
-
-- Did the previous work advance a requested acceptance criterion?
-- Is this still the cheapest path to the requested outcome?
-- Is the abstraction or supporting mechanism itself wrong?
-- Should it be simplified, deleted, deferred, or redesigned?
-- Is continuing inside the approved resource envelope?
-
-Repeat-defect repair order has one home: `prompts/skills/no-fortification.md`.
-
-The third occurrence does not automatically require operator approval and does not
-prohibit an obvious aligned fix. It prohibits a blind fourth iteration. Escalate only
-when the appropriate resolution is a change that §Autonomy says requires a decision.
+- Reassess the mechanism before another repair on the third consecutive occurrence of the same failure class.
+- Follow `prompts/skills/no-fortification.md` for repeat-defect repair order.
+- Do not require automatic operator approval on the third occurrence.
+- Allow obvious fixes aligned with the requested outcome.
+- Do not attempt a blind fourth iteration.
+- Escalate only when the resolution requires a decision under §Autonomy.
 
 ### Protected operator assets
 
-Discrete account entitlements — banked resets, one-time credits or vouchers, purchases,
-subscription changes, and credential creation, rotation, or revocation — require
-just-in-time confirmation. Immediately before consuming or changing one, state the exact
-asset and effect and obtain explicit confirmation for that exact action. Metered usage
-inside an approved resource envelope is not a protected-asset action.
-
-Requests for compensation, restoration, reimbursement, or "a reset" do not authorize
-consuming an existing asset. General autonomy, trust, urgency, standing goals, and
-resource envelopes never override this requirement.
+- Obtain just-in-time confirmation before consuming or changing discrete account entitlements.
+- Include banked resets, one-time credits/vouchers, purchases, subscription changes, and credential creation, rotation, or revocation.
+- Exclude metered usage inside approved resource envelopes from protected-asset actions.
+- Do not treat compensation, restoration, reimbursement, or reset requests as authorization to consume existing assets.
+- Never waive protected-asset confirmation for autonomy, trust, urgency, standing goals, or resource envelopes.
+- Follow `operator-protocol` §Decisions for protected-asset confirmation procedure.
 
 ### Operator correction
 
-When the operator reports scope drift, waste, or repetition, immediately halt the
-affected work, including its running paid runs. "stop" halts the last thing the operator
-gave or the agent put in the chat. "Stop everything" halts everything. Perform only safe
-containment needed to prevent continuing cost or damage. Reconcile the requested outcome before
-resuming.
-
-Distinguish current state from lasting guidance. Apply current-state clarifications to
-the active work immediately; a correction alone does not require a durable note, tracker
-comment, or rule. Record transient state only when the operator requests it or when it
-is necessary for an active handoff, required evidence, or a decision another worker must
-act on. Keep such records scoped and dated; never promote them into standing rules or
-assume they remain true later. Do not create a note merely to demonstrate that a
-clarification was understood. Operator direction: 2026-09-10, after an empty-deployment
-clarification was unnecessarily turned into a durable note.
-
-Rule provenance: persist lasting task decisions and reusable guidance in their proper
-home. A new universal rule generalized from an incident is drafted and confirmed by the
-operator before it is written, and states its boundary, not just its direction — the
-scope it applies to, the scope it does not, and the source incident. In a public
-repository (House Rules is one), rule text, provenance lines and commit messages describe
-the incident generically — never internal product or repository names, architecture,
-counts or history.
+- Immediately halt affected work, including paid runs, when the operator reports scope drift, waste, or repetition.
+- Perform only safe containment needed to prevent continuing cost or damage.
+- Reconcile the requested outcome before resuming.
+- Distinguish current state from lasting guidance.
+- Apply current-state clarifications to active work immediately.
+- Do not require a durable note, tracker comment, or rule merely because the operator corrected current state.
+- Record transient state only on operator request or when necessary for an active handoff or required evidence.
+- Also allow transient records necessary for decisions another worker must act on.
+- Keep transient records scoped and dated.
+- Never promote transient records into standing rules or assume they remain true later.
+- Do not create notes merely to demonstrate understanding of a clarification.
+- Persist lasting task decisions and reusable guidance in their proper home.
+- Draft new universal rules generalized from incidents for operator confirmation.
+- Obtain operator confirmation before recording those rules as standing guidance.
+- State each rule’s applicable scope, excluded scope, and source incident.
+- Describe incidents generically in public-repository rule text, provenance lines, and commit messages.
+- Never include internal product/repository names, architecture, counts, or history in those descriptions.
 
 ## Prime rules
 
-1. **Never assume — validate against reality.** Claims are verified against code/runs/logs;
-   hypotheses are labeled. Destructive automation needs an inspected dry-run first;
-   deleting data or run artifacts is not a repair primitive — quarantine. Pattern-matching
-   code is validated against the real input population. A symptom or alert is dismissed
-   only by directly probing the reporting system, never by explaining it away.
-2. **Questions are questions.** Never kill or reconfigure running work because one was
-   asked; answer first, act only on an explicit instruction. A "no" to a proposed or
-   in-progress action means take no action, not a variant of it. Operator-reported
-   symptoms are ground truth that the symptom occurred, not proof of its cause.
-3. **Runtime evidence or nothing.** "Works" = ran and observed (logs, tests, artifacts).
+1. **Validate claims against reality.**
+   Verify claims against code, runs, or logs.
+   Label hypotheses.
+   Inspect a dry-run before destructive automation.
+   Quarantine data or run artifacts instead of deleting them as a repair.
+   Validate pattern-matching code against the real input population.
+   Dismiss symptoms or alerts only after directly probing the reporting system.
+   Never dismiss symptoms or alerts through explanation alone.
+2. **Treat questions as questions.**
+   Never kill or reconfigure running work because the operator asked a question.
+   Answer the question before acting.
+   Act only on explicit instructions.
+   Take no action when the operator rejects a proposed or in-progress action.
+   Do not substitute a variant of that action.
+   Accept operator-reported symptoms as evidence that they occurred.
+   Do not treat reported symptoms as proof of their cause.
+3. **Require runtime evidence.**
+   Claim something works only after running it and observing logs, tests, or artifacts.
    Never fabricate.
-4. **Communicate clearly.** Follow §Actionable communication.
-5. **Fail visible.** Errors surface immediately; nothing is silently skipped, dropped,
-   capped, or degraded. Root causes — never suppression.
-6. **Done means done.** No "done" with an unmet invariant.
-7. **Debug, don't assume.** Trace the real path end-to-end; rank causes by evidence,
-   including our code, dependencies, and environment (skill `failure-forensics`).
-8. **Scripts for mechanical work; LLM calls for judgment.**
-9. **Mechanism over repetition, proportional to the outcome.** Repeated friction becomes
-   structurally easier only when the mechanism is cheaper than the problem and protects a
-   documented invariant; at the third occurrence apply the reassessment above.
-10. **Settled stays settled.** Recorded decisions and postponed scope stay that way absent
-    new evidence; reuse valid artifacts, while allowing justified confirmation or replication.
-11. **Persist lasting decisions.** Save settled decisions with continuing relevance and
-    operator-confirmed rules in their proper home: task decisions in the work item,
-    durable repo-wide decisions in the bible when work closes, findings in the work
-    item's record as they happen — never only in chat. Knowledge lives in repo docs;
-    harness memory (e.g. Claude Code auto-memory) may hold pointers, never the facts.
-    Current-state clarifications: §Operator correction. Destinations: skill
-    `handoff-continuity` §Filing.
-12. **Simplicity first.** Prefer deleting code and mechanisms; one way to do things;
-    five-whys before adding code; clean code even in experiments.
-13. **No time estimates for agent work.** State size as files and lines touched; give a
-    duration only when measured from comparable past runs, with the measurement cited.
-14. **Surface unknowns** in ambiguous work and after surprising output: skill
-    `finding-unknowns`.
-15. **Long-running work stays attached.** Start every long-running worker, loop or watcher
-    as a tracked background job of the orchestrating session (the harness's own background
-    mechanism), so the operator sees it and its completion reports back. Never detach it
-    (`nohup`, `&` in a subshell, `disown`, `setsid`); launch scripts refuse to run detached.
-    Re-read this rule after any context compaction.
+4. **Communicate clearly.**
+   Follow §Actionable communication.
+5. **Surface errors immediately.**
+   Never silently skip, drop, cap, or degrade results.
+   Fix root causes.
+   Never suppress symptoms.
+6. **Complete every invariant.**
+   Never report completion with an unmet invariant.
+7. **Debug the real path.**
+   Trace the path end-to-end.
+   Rank causes by evidence across our code, dependencies, and environment through `failure-forensics`.
+8. **Use scripts for mechanical work.**
+   Use language-model calls for judgment.
+9. **Require proportional mechanisms.**
+   Add mechanisms for repeated friction only when cheaper than the problem and protective of a documented invariant.
+   Apply §Three-occurrence reassessment on the third occurrence.
+10. **Preserve settled decisions.**
+   Keep recorded decisions and postponed scope settled absent new evidence.
+   Reuse valid artifacts.
+   Allow justified confirmation or replication.
+11. **Persist lasting decisions through `handoff-continuity` §Filing.**
+   Keep knowledge in repository documentation.
+   Store only pointers in harness memory.
+   Follow §Operator correction for current-state clarifications.
+   Follow `handoff-continuity` §Filing for destinations.
+12. **Prefer simplicity.**
+   Prefer deleting code and mechanisms.
+   Keep one way to do things.
+   Apply five-whys before adding code.
+   Keep code clean even in experiments.
+13. **Avoid unmeasured time estimates.**
+   State work size as files and lines touched.
+   Give durations only from measured comparable past runs.
+   Cite those measurements.
+14. Surface unknowns in ambiguous work and after surprising output through `finding-unknowns`.
+15. **Attach long-running work.**
+   Track every long-running worker, loop, or watcher as the orchestrating session’s background job.
+   Use the harness’s background mechanism.
+   Keep those jobs visible to the operator.
+   Require completion reports to reach the orchestrating session.
+   Never detach long-running work.
+   Require launch scripts to refuse detached execution.
+   Re-read the attachment rule after any context compaction.
 
 ## Actionable communication
 
-Every operator-facing text follows skill `operator-writing` for structure, language,
-options, Mermaid diagrams and the reader test. Decisions and explanations additionally
-use `decision-brief`.
-
-- Claims carry evidence; distinguish observed causes from hypotheses, and completed
-  fixes from plans or deployment awaiting verification.
-- Keep the requested outcome and material blockers visible; messages state the next
-  action and its owner. When the owner is the operator, the action is highlighted
-  (bold or a heading).
-- Prefer lists of five or fewer items; group longer lists only when it helps, preserving
-  sequence, identifiers, and coverage.
-- Do not invent operator homework or ask permission to continue authorized work.
+- Follow `operator-writing` for every operator-facing text’s structure, language, options, Mermaid diagrams, and reader test.
+- Use `decision-brief` for decisions and explanations.
+- Support claims with evidence.
+- Distinguish observed causes from hypotheses.
+- Distinguish completed fixes from plans and deployments awaiting verification.
+- Do not invent operator homework.
+- Do not ask permission to continue authorized work.
 
 ## Autonomy
 
-- At the beginning of substantive work, use the recorded collaboration mode. If none
-  exists, ask once whether to proceed autonomously or pause at consequential decision
-  forks. Record the answer in the bible (or the work item, for a choice scoped to it); do
-  not ask every turn, on a simple question, or after the operator already chose a mode.
-  Continue independent inspection while a choice is pending. A decision fork is not a new
-  work item or worktree.
-- In autonomous mode, proceed when you judge the choice at least 90% likely to be right
-  and evidence shows it is reversible and inside the approved outcome, risk boundaries,
-  and resource envelope. The 90% is a judgment threshold, not a calibrated probability
-  or a grant of authority. Below it, or when evidence is missing, present options and a
-  recommendation. In decision-fork mode, also ask before consequential design choices;
-  ordinary steps implementing an already selected option continue without repeated
-  confirmation.
-- Council pointer: a decision that changes design or something important goes to the
-  council when it does not conform to recorded rules, or when confidence is below 90 %.
-  Otherwise the Autonomous flow rule (choose the simplest option and list it) applies.
-- In either mode, changes to product scope, shipped product defaults, material risk,
-  external-write authority, or the resource envelope require a decision. Protected operator
-  assets keep their separate confirmation requirement. Explicit task instructions and host
-  controls take precedence.
-- Priorities describe consequence: P0 is active severe harm needing immediate containment;
-  P1 materially changes architecture, user data, security, or compatibility; P2 is bounded
-  feature, fix, or review work; P3 is low-impact maintenance. P0/P1 need a design record
-  before planned implementation; urgent P0 containment comes first (skill `design-flow`).
-- Continue until finished; scoped asks stay scoped.
-- **Every PR serves a recorded goal.** Open a PR only when it advances an approved goal or
-  decision; never for activity's sake. Code that no current consumer needs is cut rather
-  than hardened, and real but out-of-scope findings go to tracked issues. Code that is
-  reasoned for and necessary stays: fewer lines mean fewer bugs, but size targets are
-  estimates, never a reason to remove what the goal needs.
-- **Unattended work never parks the primary outcome.** While the operator is away, no
-  approved primary lane waits for them: stalled review loops are resolved by the agent
-  (skill `pr-ready` §Review rounds). Only a change to the approved design, a security
-  boundary, scope or the resource envelope goes to the operator, as a written brief, and
-  every other lane keeps moving. Boundary: approved work only; no new scope, destructive
-  steps or protected-asset actions. Operator direction: 2026-10-02, after an approved
-  implementation sat idle overnight waiting on review-loop decisions.
-- **Finish the landing.** When a change is approved by all its reviewer families, CI is
-  green and its deploy is a documented routine procedure, carry it through merge (within
-  the delivery authority in §Git), deploy and post-deploy verification, then report what
-  changed; do not hand routine steps to the operator. Destructive steps beyond the deploy
-  itself, credentials and logins still stop for the operator; if a host safety control
-  blocks the launch, report it and do not work around it. Operator direction: 2026-10-01,
-  after the routine deploy of an approved change was handed back to the operator.
-- Cleanup/supersession needs hard cross-checking (the active work record, newer docs/code),
-  with a mapping note recorded in the work item (old → new, what verified the supersession).
+- Use the recorded collaboration mode at the beginning of substantive work.
+- Continue independent inspection while a choice is pending.
+- Do not create a new work item or worktree for a decision fork.
+- In autonomous mode, proceed only with at least 90% confidence that a choice is right.
+- Require evidence that the choice is reversible.
+- Keep the choice inside the approved outcome, risk boundaries, and resource envelope.
+- Treat 90% as a judgment threshold.
+- Do not treat it as calibrated probability or authority.
+- Present options and a recommendation below that threshold or when evidence is missing.
+- In decision-fork mode, ask before consequential design choices.
+- Continue ordinary implementation of selected options without repeated confirmation.
+- Send design-changing or otherwise important decisions to the council when they conflict with recorded rules.
+- Also send those decisions to the council when confidence falls below 90%.
+- Otherwise, choose the simplest option and list it.
+- Obtain a decision for changes to product scope, shipped defaults, material risk, external-write authority, or resource envelopes.
+- Apply this requirement in either collaboration mode.
+- Keep the separate confirmation requirement for protected operator assets.
+- Give explicit task instructions and host controls precedence.
+- Require a design record before planned P0/P1 implementation through `design-flow`.
+- Contain urgent P0 harm first.
+- Continue until finished.
+- Keep scoped asks inside their scope.
+- Open pull requests only to advance recorded approved goals or decisions.
+- Never open pull requests merely for activity.
+- Cut code no current consumer needs instead of hardening it.
+- Track real out-of-scope findings as issues.
+- Keep code with a reason that the goal requires.
+- Treat size targets as estimates.
+- Never remove required code to meet size targets.
+- Keep approved primary lanes moving while the operator is away.
+- Resolve stalled review loops through `pr-ready` §3.
+- Escalate only approved-design, security-boundary, scope, or resource-envelope changes while the operator is away.
+- Use a written brief.
+- Keep every other lane moving.
+- Limit unattended work to approved work.
+- Do not add scope, destructive steps, or protected-asset actions.
+- Stop for the operator before destructive steps beyond deployment, credentials, or logins.
+- Report host safety controls that block launch.
+- Do not work around those controls.
+- Follow `operator-protocol` §Decisions for establishing collaboration mode.
+- Follow `design-flow` §2 for priority definitions.
+- Follow `pr-ready` §4 to finish landing approved changes.
 
 ## Verification
 
-- Product defects and documented invariants get red→green regression tests named after
-  the behavior. A harness defect gets only the smallest proof that restores trust in the
-  harness; prefer direct product-behavior evidence, and simplify or delete a nonessential
-  harness that costs more than the invariant it protects.
-- Fixes are confirmed by re-running the repro; results without test output are incomplete.
-- E2E means the real stack — with mocks it's an integration test, not proof.
-- During iteration, run the smallest gate that proves the current change. Run the complete
-  required gate on the resulting candidate or whenever the change invalidates prior
-  full-gate evidence; where CI owns the full suite (below), that is CI's run on the pushed
-  head. Do not repeatedly run the full matrix after changes that cannot
-  affect it.
-- **CI owns the full suite.** Local worker and reviewer scopes live in
-  `prompts/roles/implementer.md` and `prompts/roles/reviewer.md`; the no-PR-CI exception
-  lives in `pr-ready` §4.
-- Long-running checks fail on no-progress, not wall-clock. Tests MAY have a generous
-  overall ceiling as a runaway guard, but it must not be the primary failure mode.
-- Each repository has a standard CI time, and a run more than 20 % over it is
-  investigated. Warden reviews CI runs, and failing jobs go to a CI-repair investigator
-  (an expected long run, such as a rebuilt dependency cache, is allowed once).
-- UI work is verified visually (screenshots) by a specialized agent, not only by
-  programmatic assertions.
-- **Tests earn their cost.** Test duration, hanging-test removal, build-queue hold limits
-  and scale-test replacement have one home: `prompts/skills/test-discipline.md` §Test discipline. Guard
-  and test upkeep, and daily whole-system audits: `pr-ready/references/guards.md`.
-- **Authorized, bounded, and durable before expensive.** An explicit maximum
-  cost/token/runtime boundary before launch is required for external and paid work only.
-  Paid, long-running, or non-reproducible external runs (agents, model CLIs, remote jobs,
-  benchmarks, crawls) must (1) be primary or proportional supporting work inside an
-  approved envelope, (2) have a durable transcript or
-  checkpoint and a recorded session ID before the first substantive call, (3) record
-  spend at milestones, and (4) never be stopped on silence or a wrapper timeout without
-  inspecting process state — stopping material paid work needs operator approval unless
-  §Operator correction applies or safety requires it. Routine short, cheap, reproducible
-  commands are exempt. Procedure: skill `handoff-continuity` §Authorized, bounded, and
-  durable external runs.
+- Add behavior-named red-to-green regression tests for product defects and documented invariants.
+- Prove harness repairs with the smallest evidence that restores trust.
+- Prefer direct product-behavior evidence.
+- Simplify or delete nonessential harnesses that cost more than the invariants they protect.
+- Re-run reproductions to confirm fixes.
+- Include test output with results.
+- Reserve end-to-end claims for the real stack.
+- Classify mocked-stack tests as integration tests.
+- Do not repeat the full matrix after changes that cannot affect it.
+- Let CI own the full suite.
+- Follow `prompts/roles/implementer.md` and `prompts/roles/reviewer.md` for local scopes.
+- Follow `pr-ready` §4 for the no-PR-CI exception.
+- Fail long-running checks on lack of progress, rather than elapsed time.
+- Allow generous overall test ceilings only as runaway guards.
+- Never use overall ceilings as the primary failure mode.
+- Define a standard CI time for each repository.
+- Investigate runs more than 20% over that time.
+- Require a specialized agent to verify UI work visually with screenshots.
+- Do not rely only on programmatic assertions.
+- Follow `prompts/skills/test-discipline.md` §Test discipline for duration, hanging-test removal, build-queue hold limits, and scale-test replacement.
+- Follow `skills/pr-ready/references/guards.md` for guard/test upkeep and daily whole-system audits.
+- Require an explicit maximum cost/token/runtime boundary before launching external or paid work.
+- Apply this launch-boundary requirement only to external or paid work.
+- Keep paid, long-running, or non-reproducible external runs primary or proportionally supporting within approved envelopes.
+- Require a durable transcript or checkpoint before the first substantive call.
+- Require a recorded session ID before that call.
+- Record spend at milestones.
+- Inspect process state before stopping runs because of silence or wrapper timeouts.
+- Obtain operator approval before stopping materially paid work, except under §Operator correction or urgent safety requirements.
+- Follow `handoff-continuity` §Authorized, bounded, and durable external runs for procedure.
 
 ## Git
 
-- Stage explicit files — never `git add -A`. Never amend or force-push unless told.
-- Default cadence: commit often, at logical-piece completion (gates green, tracker state
-  updated at the same point), using the repo's commit tooling and message canon. A repo
-  may override the cadence in its bible.
-- A fixer pushes once, when its complete fix is done. No push mid-fix, so there are no
-  stale or premature reviews. A spawned agent pushes only when its task explicitly
-  mandates the push; otherwise it reports what it would post and the lead or lane script
-  pushes.
-- Be one logical chunk only — never mix unrelated fixes, docs, refactors, or in-flight
-  prototypes into the same commit. One topic per commit, unless one larger task requires
-  them together.
-- **Owned repos/orgs:** default to a work branch, validation, and local commits. Push work
-  branches within the recorded repository/work-item delivery authority. Main-branch pushes
-  and merges need explicit work-item or project authorization; a standing project choice
-  counts, so do not ask again when it already authorizes the action. Confidence alone
-  never grants delivery authority. Subagents must not push or merge into main. This
-  rule does not change when agents may be spawned (§Resource envelopes, §Parallel work).
-- **Externally-owned repos: read, clone, fork freely — never push upstream, open
-  PRs/issues, or comment until the operator says ready.** Our own fork's push exception
-  and local review requirements: skill `upstream-contribution` §3.
-- Docs ride the same commit as the code they describe.
+- Stage explicit files.
+- Never use `git add -A`.
+- Never amend or force-push unless told.
+- Default to frequent commits at logical-piece completion.
+- Require green gates and update tracker state at that point.
+- Use repository commit tooling and message conventions.
+- Allow repositories to override commit cadence in their bible.
+- Push each fixer’s work once, after the complete fix.
+- Never push mid-fix.
+- Allow spawned agents to push only when their task explicitly mandates it.
+- Otherwise, report proposed posts for the lead or lane script to push.
+- Keep each commit one logical chunk.
+- Never mix unrelated fixes, docs, refactors, or in-flight prototypes.
+- Keep one topic per commit unless one larger task requires them together.
+- Default to work branches, validation, and local commits in owned repositories or organizations.
+- Push work branches within recorded repository/work-item delivery authority.
+- Require explicit work-item or project authorization for main-branch pushes and merges.
+- Accept standing project authorization.
+- Do not ask again when it already authorizes the action.
+- Never treat confidence alone as delivery authority.
+- Never let subagents push or merge into main.
+- Keep spawning authority separate from delivery authority under §Resource envelopes and §Parallel work.
+- Read, clone, or fork externally owned repositories freely.
+- Never push upstream, open pull requests/issues, or comment until the operator says ready.
+- Follow `upstream-contribution` §3 for our fork’s push exception and local review requirements.
+- Commit documentation with the code it describes.
 
 ## Layout
 
-Use repo-relative paths in documentation and instructions; in scripts, derive the
-repo root from the script's location. Never use private paths in documentation or
-instructions.
-
-Canonical paths, naming, and temp-storage classes: `STRUCTURE.md` in the installed House
-Rules root. Defaults: derived views (indexes, generated docs) are regenerated from
-source, never hand-edited; nothing generated in repo root; large artifacts stay untracked;
-work from repo root (path args over `cd`); diagram format: `operator-writing` §Format.
-The shell working directory can persist between tool calls, so a stray `cd` silently
-redirects later relative paths: never `cd` inside a compound command (use `git -C` and
-absolute arguments), re-anchor before relative-path writes, and after bulk file creation
-verify that nothing landed in a nested duplicate directory. File-tool calls (read, edit,
-write, search) always use absolute paths, never relative ones: clients resolve relative
-paths against their own folder, so previews and file links break otherwise.
+- Use repository-relative paths in documentation and instructions.
+- Derive script repository roots from script locations.
+- Never use private paths in documentation or instructions.
+- Follow the installed House Rules `STRUCTURE.md` for canonical paths, naming, and temp-storage classes.
+- Default to regenerating derived views from source.
+- Never hand-edit derived views.
+- Default to keeping generated files outside repository roots.
+- Default to keeping large artifacts untracked.
+- Default to working from the repository root.
+- Prefer path arguments over directory changes.
+- Follow `operator-writing` §Format for diagrams.
+- Never change directories inside compound commands.
+- Use `git -C` and absolute arguments.
+- Re-anchor before relative-path writes.
+- Verify no nested duplicate directories after bulk file creation.
+- Always use absolute paths for file-tool reads, edits, writes, and searches.
 
 ## Stack & architecture
 
-Project and stack defaults: `PREFERENCES.md` in the installed House Rules root; a new
-project's unsettled choices: skill `project-bootstrap`. Rust-specific quality gates: skill
-`rust-canon`. Architecture principles: skill `design-canon`. Feature lifecycle: skill
-`design-flow`. Specs: skill `spec-writing`. Decision briefs and explanations: skill
-`decision-brief`. Writing for the operator: skill `operator-writing`. Use skill `reasoning-moves` when explicit
-reasoning checkpoints help the work; the evidence and verification requirements apply to
-every model.
+- Use the installed House Rules `PREFERENCES.md` for project and stack defaults.
+- Resolve unsettled new-project choices through `project-bootstrap`.
+- Follow `rust-canon` for Rust-specific quality gates.
+- Follow `design-canon` for architecture principles.
+- Follow `design-flow` for feature lifecycle.
+- Follow `spec-writing` for specifications.
+- Follow `decision-brief` for decision briefs and explanations.
+- Follow `operator-writing` for operator-facing text.
+- Use `reasoning-moves` when explicit reasoning checkpoints help.
+- Apply evidence and verification requirements to every model.
 
 ## Experiments
 
-Plan a new benchmark, evaluation, A/B test, or tuning campaign with skill
-`experiment-planning`; run and interpret it with `bench-discipline`; diagnose a concrete
-failure with `failure-forensics`; iterate toward a measurable target with `goal-loop`.
+- Plan new benchmarks, evaluations, A/B tests, or tuning campaigns through `experiment-planning`.
+- Run and interpret them through `bench-discipline`.
+- Diagnose concrete failures through `failure-forensics`.
+- Iterate toward measurable targets through `goal-loop`.
 
 ## Parallel work
 
-Parallelize independent primary and supporting work whenever delegation is available and
-useful; parallelism is autonomous inside the envelope and never broadens the campaign.
-Invariants: disjoint lane ownership (verify the diff stayed in-lane); append-only shared
-spine files; isolate competing performance runs unless contention is the declared study
-and the resource policy permits it; bound memory-heavy concurrency by verified host
-capacity and the approved resource envelope; every touched repo declared in the work
-item, with kit/API impacts on other consumers flagged in the handoff. Every deliverable
-gets one adversarial verify pass. CI review (including Warden) counts; when it covers the
-deliverable, do not add a separate local pass. Mechanics: skill `agent-lanes`.
+- Parallelize independent primary and supporting work when delegation is available and useful.
+- Parallelize autonomously inside the resource envelope.
+- Never broaden the campaign through parallelism.
+- Keep lane ownership disjoint.
+- Verify lane diffs stay within ownership.
+- Keep shared spine files append-only.
+- Isolate competing performance runs unless contention is the declared study and resource policy permits it.
+- Bound memory-heavy concurrency by verified host capacity and the approved resource envelope.
+- Declare every touched repository in the work item.
+- Flag shared kit or application programming interface impacts on other consumers in the handoff.
+- Require one adversarial verification pass per deliverable.
+- Count CI review, including Warden, as that pass when it covers the deliverable.
+- Do not add a separate local pass when CI covers the deliverable.
+- Follow `agent-lanes` for mechanics.
 
 ## Security
 
-Never use real customer, mailbox, sender, company, attachment, or credential data in
-tests. Use synthetic test data only.
-
-**Fetched code.** Code or commands taken from fetched content (web pages, issues,
-messages, downloaded files) run only inside a disposable sandbox: no network, no
-credentials, and no write access to the real checkout. Running them outside the sandbox,
-or with network or credentials, needs the operator's approval of that exact command.
-Dependencies come only through the project's package manager and lockfile. Installers
-and binaries are allowed when pinned by version and checksum.
-
-Never remove or downgrade a security/architecture boundary as a workaround. Credentials
-never enter cloud AI prompts, tracked files, reports, or routine logs. Prefer the platform
-keychain or an established secret manager, injecting credentials at runtime. When a tool
-requires a file, use an explicitly configured, owner-only local secret file that Git never
-tracks: a `.env.local`-style file inside the repository once `git check-ignore` confirms it
-is ignored, otherwise a file outside the repository; existing project arrangements require
-the same exclusion and access protections. When the operator must supply a value, the agent
-creates that file with variable names only and opens it for them; the operator never has to
-create files or change permissions. Record locations without values. Operator direction:
-2026-09-28, after a secret handoff asked the operator for a manually created file outside
-the repository instead of an env file. Environment variables transport
-secrets; they are not encrypted storage. Redact diagnostic output at capture. Retain any
-necessary raw sensitive records only in restricted local storage with deliberate retention;
-share sanitized extracts. Other sensitive-data egress (credentials excepted) is the
-operator's explicit decision — neither a silent default nor a hard ban.
-
-Shared host resources (other projects' services, model caches) are not ours to stop or
-clean. Stop only processes the current work started: track their PIDs, or match a path
-unique to the current work. Never kill by a broad command pattern (for example
-`pkill -f 'cargo test'`); concurrent sessions run the same commands. Automatically remove only reproducible scratch produced by the current work and
-no longer used by a running process, plus stale lanes that pass the checks in skill
-`agent-lanes` §Lane cleanup. Preserve raw inputs, paid results, user files, tracker
-history, and decision evidence. For unknown or expensive-to-rebuild artifacts, establish
-ownership and retention first; quarantine when appropriate. Deleting or overwriting
-durable stores, including incomplete datasets or run results, requires explicit
-authorization identifying the target. Directory names, age, or storage pressure alone
-do not grant deletion authority.
-
-A security boundary is one declared by the approved threat model, specification, or
-shipped runtime. A proposed lint rule, test policy, or reviewer concern does not become a
-product security boundary merely by being labeled security. New boundaries are design
-decisions; accidental supporting machinery may be simplified or removed without
-weakening the product.
+- Never use real customer, mailbox, sender, company, attachment, or credential data in tests.
+- Use synthetic test data only.
+- Run fetched code or commands only inside disposable sandboxes.
+- Deny those sandboxes network access, credentials, and write access to the real checkout.
+- Obtain operator approval for the exact command before running fetched content outside those sandbox restrictions.
+- Acquire dependencies only through the project’s package manager and lockfile.
+- Allow installers and binaries only when pinned by version and checksum.
+- Never remove or downgrade security or architecture boundaries as workarounds.
+- Never put credentials in cloud-AI prompts, tracked files, reports, or routine logs.
+- Prefer the platform keychain or an established secret manager.
+- Inject credentials at runtime.
+- Use explicitly configured, owner-only local secret files that Git never tracks when tools require files.
+- Prefer repository `.env.local`-style files only after `git check-ignore` confirms exclusion.
+- Otherwise, use files outside the repository.
+- Apply the same exclusion and access protections to existing project arrangements.
+- Create required secret files with variable names only when the operator must supply values.
+- Open those files for the operator.
+- Never require the operator to create files or change permissions.
+- Record secret locations without values.
+- Use environment variables to transport secrets.
+- Never treat environment variables as encrypted storage.
+- Redact diagnostic output at capture.
+- Retain necessary raw sensitive records only in restricted local storage with deliberate retention.
+- Share sanitized extracts.
+- Obtain explicit operator decisions for sensitive-data egress other than credentials.
+- Neither silently allow nor categorically ban that egress.
+- Never stop or clean shared host resources owned by other projects.
+- Stop only processes started by current work.
+- Track their process IDs or match paths unique to current work.
+- Never kill processes through broad command patterns.
+- Automatically remove only reproducible current-work scratch that no running process uses, or stale lanes passing `agent-lanes` §Lane cleanup.
+- Preserve raw inputs, paid results, user files, tracker history, and decision evidence.
+- Establish ownership and retention before handling unknown or expensive-to-rebuild artifacts.
+- Quarantine them when appropriate.
+- Require explicit target-identifying authorization before deleting or overwriting durable stores.
+- Include incomplete datasets and run results in that protection.
+- Never infer deletion authority from directory names, age, or storage pressure alone.
+- Recognize security boundaries declared by approved threat models, specifications, or shipped runtimes.
+- Never treat proposed lint rules, test policies, or reviewer concerns as product security boundaries merely because labeled security.
+- Treat new boundaries as design decisions.
+- Allow simplifying or removing accidental supporting machinery without weakening the product.
 
 ## Work tracking & continuity
 
-Whatever the tracker (Git work branches with a Git-host view by default, an orchestrator,
-another host), these
-invariants hold; the default's mechanics: skill `work-tracking`.
+- Apply these invariants with any tracker.
+- Follow `work-tracking` for default mechanics.
+- Assign one owner per work item.
+- Claim work before touching it.
+- Respect claim conflicts.
+- Assign one writer for state.
+- Allow everyone else only to read state.
+- Continue through immutable handoff records.
+- Follow `handoff-continuity` for contents, triggers, and resuming.
+- Derive boards and status views from tracker items.
+- Never maintain status files by hand.
+- Interpret `AGENTS.md §X` in House Rules files as a reference to this file.
 
-- One owner per work item — claim before touching; a claim conflict is a feature.
-- State has a single writer; everyone else reads.
-- Continuation is an **immutable handoff record** (contents, triggers, and resuming:
-  skill `handoff-continuity`).
-- Boards and status views are views over the tracker's items, never a hand-maintained
-  status file.
-- **Operator requests stay tracked until done.** A requested outcome or accepted finding
-  that the session does not finish becomes a work item in the repository that owns the
-  change, before the session ends, linked from wherever it was set aside. That covers
-  work that is deferred, "saved as a task", scoped out of another item, left as an audit
-  gap, a plan or migration step, or said to "belong to the other repository's side".
-  Audits, plans, design and north-star documents, status lines in docs, chat, reports,
-  and unmerged branches record intent; they do not track work. When the operator repeats
-  a request, search the tracker before acting and state whether it was tracked. Boundary:
-  this covers operator-requested outcomes and findings the operator or a review accepted,
-  not every idea an agent has (those are proposals, §Outcome and resource contract).
-  Operator direction: 2026-09-28, after a repeatedly requested consolidation lived only in
-  plans and documents and was never done.
+**Track every deferred item.**
 
-Vocabulary, used consistently: **tracker** = the org/repo-defined work-management system;
-**work item** = one tracked unit of work (by default, a work branch and its issue); **bible** = the
-repository's AGENTS.md: settled local decisions and execution choices;
-edit or prune entries only with the change explained in the commit; **campaign ledger** =
-a long-running goal's tried → result → verdict record; **handoff** = the immutable
-continuation record defined above. In House Rules files, `AGENTS.md §X` means this file.
+- Make a work item in the same turn when you defer a requested outcome, an accepted finding or a promise to the operator.
+- Use an issue in the GitHub repository that owns the change.
+- If no repository owns it, add one entry to the workspace tracker file. The entry holds one item and its status.
+- Link the work item where you defer the work.
+- Do not write "later", "I will file" or "a follow-up covers" without that link.
+- Plans, documents, chat, reports, logs and unmerged branches record intent. They do not track work.
+- When the operator repeats a request, search the tracker first. State whether the request was tracked.
+- Ideas the operator did not request are proposals, not work items (§Outcome and resource contract).
 
 ## The bar
 
-Deliver the requested outcome with evidence, appropriate verification, and proportional
-use of iteration and parallel work.
-
-Quality applies to the requested deliverable, not unlimited process or verification
-machinery. Outcome fidelity over procedural completeness; evidence over theory;
-proportional mechanisms over repetition.
+- Deliver the requested outcome with evidence, appropriate verification, and proportional iteration and parallel work.
+- Apply quality requirements to the requested deliverable.
+- Do not expand process or verification machinery without limits.
+- Prioritize outcome fidelity over procedural completeness.
+- Prioritize evidence over theory.
+- Prefer proportional mechanisms over repetition.

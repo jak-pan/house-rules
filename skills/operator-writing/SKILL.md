@@ -37,6 +37,10 @@ reader test.
   Unconnected subgraphs render side by side, so use separate diagrams with text between
   them. When the client shows Mermaid as source, render it with the client's visual tool.
 
+- Prefer lists of five or fewer items.
+- Group longer lists only when helpful.
+- Preserve sequence, identifiers, and coverage when grouping.
+
 ## Structure
 
 Lead with the result or the action the reader must take. Then explain in this order, using
@@ -62,6 +66,10 @@ Rules:
 - Short chat replies use the same order in compressed form: result → why → what is next.
   Omit empty parts; do not add parts the message does not need.
 
+- Keep the requested outcome and material blockers visible.
+- State the next action and its owner in messages.
+- Highlight operator-owned actions with bold text or a heading.
+
 ## GitHub text
 
 Issues, PR bodies, review comments, replies to review and commit messages use the forms in
@@ -76,10 +84,6 @@ Issues, PR bodies, review comments, replies to review and commit messages use th
   mid-phrase. Automatically filed issues follow the issue form too.
 - Commit messages state the old behavior, its consequence, then the change. No gate logs,
   no internal round labels, no references to files outside the repository.
-
-Operator direction: 2026-10-04, after issue and PR bodies relied on internal labels and
-omitted reproduction and test evidence; an upstream contribution in this form was chosen
-as the model.
 
 ## Questions to the operator
 

@@ -38,8 +38,7 @@ model stack in an unrelated application.
   dependency's own build acquires and verifies them from its own source of truth; a
   consumer may at most supply a credential. When that fails in a consumer's environment,
   fix the dependency, not the consumer. Pinning the dependency's own version (a lockfile or
-  pin file) is not reaching into its internals. Operator direction: 2026-09-28, after a
-  product's CI had to mirror a kit's native library releases into its own repository.
+  pin file) is not reaching into its internals.
 - **One parameterized pipeline** with skip/reuse flags — never forked ad-hoc flows tweaked
   independently. **One mechanism per concept**: duplicate paths doing "basically the same
   thing" get merged; dead or rule-violating paths get deleted completely.
@@ -52,8 +51,7 @@ model stack in an unrelated application.
   should land on the shared mechanism instead where that is practical. Boundary:
   covers infrastructure that has, or should have, one owner (queues, transports,
   provider wrappers, storage backends); product-specific behaviour built on top of it
-  stays in the product. Operator direction: 2026-09-28, after a consumer forked a shared
-  mechanism it could not use as it stood.
+  stays in the product.
 - **Pipeline-order invariants are written down** as an explicit ordered list (what runs
   before what, and why) and re-checked after every refactor — they are the first
   casualties of refactors and context resets.

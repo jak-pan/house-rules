@@ -51,10 +51,13 @@ containment needs no design approval. Until the operator approves, the design st
 contradicts a recorded plan, another design, or another repository's roadmap names the
 contradiction and resolves it in the same approval. Boundary: this governs approval of the
 design record; implementation inside an approved P0/P1 design follows the normal autonomy
-rules. Operator direction: 2026-09-28, after agent-approved designs put a product's
-canonical records in a second store beside the shared one, contradicting a parallel plan
-that was never reconciled. Priorities follow the base definitions.
+rules. Use the priority definitions below.
 P2/P3 may skip the doc but still need a plan note in the issue body.
+
+- Classify P0 as active severe harm requiring immediate containment.
+- Classify P1 as material changes to architecture, user data, security, or compatibility.
+- Classify P2 as bounded feature, fix, or review work.
+- Classify P3 as low-impact maintenance.
 
 ## 3. Prototype (UX-heavy features only)
 
@@ -84,6 +87,8 @@ One branch per issue per repository (`STRUCTURE.md`); test-first red→green. Be
 package's first code, a design-spec reviewer checks its spec sections against the recorded
 decisions. Implementation choices, escalation boundaries and reviewer-marked operator
 decisions follow the [worker rules](../../prompts/roles/implementer.md).
+
+- Read the design doc, then the architecture doc, then code before feature work.
 
 ## Design changes
 

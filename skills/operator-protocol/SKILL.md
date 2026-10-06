@@ -22,6 +22,9 @@ expertise, tone, or visual style. Technology and presentation choices belong to
 - A request for more depth expands effort only inside the agreed scope and resource limits.
 - Questions and reported symptoms: AGENTS.md prime rule 2.
 
+- On "stop", halt the last thing the operator gave or the agent put in the chat.
+- On "Stop everything", halt everything.
+
 ## Progress
 
 Report at meaningful intervals with real counters, artifact locations, and actual cost
@@ -43,6 +46,12 @@ settled questions.
 Changing a measured experiment setting follows the recorded experiment plan. An improved
 score alone never authorizes changing a shipped product default or invalidating baseline
 comparability; both need a recorded decision (AGENTS.md §Autonomy).
+
+- Immediately before consuming or changing a protected asset, state its exact identity and effect.
+- Obtain explicit confirmation for that exact action.
+- When no collaboration mode exists, ask once whether to proceed autonomously or pause at consequential decision forks.
+- Record the collaboration mode in the bible, or the work item for an item-scoped choice.
+- Do not ask every turn, on simple questions, or after the operator already chose a mode.
 
 ## Collaboration
 
