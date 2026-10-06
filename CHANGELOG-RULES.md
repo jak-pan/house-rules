@@ -47,3 +47,9 @@ Operator directions: 2026-09-09, after a release-blocker report lacked context; 
 explicitly extend problem-first explanations with useful technical proof to all agents, chat
 interactions, and GitHub PRs/comments after an issue thread obscured a contact-list defect
 behind its investigation history.
+
+## skills/operator-writing — GitHub text
+
+Operator direction: 2026-10-04, after issue and PR bodies relied on internal labels and
+omitted reproduction and test evidence; an upstream contribution in this form was chosen
+as the model.

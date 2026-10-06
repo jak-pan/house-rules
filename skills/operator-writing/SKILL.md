@@ -43,10 +43,10 @@ reader test.
   give each option or item its own short section instead.
 - Diagrams are Mermaid in files and chat, never ASCII art or indented text trees.
   Orient them vertically, with groups and comparisons stacked rather than side by side.
-  Unconnected subgraphs render side by side, so use separate diagrams with text between
-  them. When the client shows Mermaid as source, render it with the client's visual tool.
-- A file the reader must open that lies outside the open workspace (scratch, temporary or
-  another repository) is sent with the client's file-sending tool. A link to it does not open.
+  Draw unconnected groups as separate diagrams, with text between them; one diagram would
+  place them side by side.
+- Give every file the reader must open as an absolute path. If the client cannot open that
+  path, also send the file with the client's file-sending tool, when it has one.
 
 ## Structure
 
@@ -59,8 +59,8 @@ only the parts the message needs:
 4. **Facts:** what exists or happened, each with its evidence link.
 5. **Problem:** what breaks or is missing, shown in the example.
 6. **Change or options:** what changed, or the options, numbered 1, 2, 3.
-7. **Recommendation and next step:** one prominent recommendation with short trade-offs, and
-   who acts next. Keep any order the operator asked for.
+7. **Recommendation and next step:** one prominent recommendation, with its trade-offs when it
+   has any, and who acts next. Keep any order the operator asked for.
 
 Rules:
 
@@ -89,21 +89,7 @@ Rules:
 ## GitHub text
 
 Issues, PR bodies, review comments, replies to review and commit messages use the forms in
-[references/github-text.md](references/github-text.md). In short:
-
-- Lead with the observable behavior and its effect; history comes last or not at all.
-- Every claim names the commit or version it was seen on, with a full-SHA permalink, a
-  command, a count or a verbatim log line. Untested claims say "From code reading".
-- Show each regression test as failing on the base and passing on the head.
-- State limits: what was not run, not built or not covered.
-- Titles name the behavior in plain words, never an internal label or code, and never stop
-  mid-phrase. Automatically filed issues follow the issue form too.
-- Commit messages state the old behavior, its consequence, then the change. No gate logs,
-  no internal round labels, no references to files outside the repository.
-
-Operator direction: 2026-10-04, after issue and PR bodies relied on internal labels and
-omitted reproduction and test evidence; an upstream contribution in this form was chosen
-as the model.
+[references/github-text.md](references/github-text.md).
 
 ## Questions to the operator
 
