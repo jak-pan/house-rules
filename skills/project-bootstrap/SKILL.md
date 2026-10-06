@@ -34,7 +34,7 @@ questions to a small script or analysis.
 
 Choose components per `PREFERENCES.md`. Record purpose, acceptance, deployment/data needs,
 selected stack, and consequential overrides with reasons in CONTEXT.md. Put concise
-execution choices in the bible (repository AGENTS.md): collaboration mode, tracker and
+execution choices in the bible (repository .agents/rules.md): collaboration mode, tracker and
 project board, delivery permissions, and verified build/test commands. Reference global
 House Rules instead of copying its base. Record unresolved decisions in the existing work
 item.

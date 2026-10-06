@@ -1,6 +1,6 @@
 ---
 name: handoff-continuity
-description: Session continuity — immutable handoff records before compaction, campaign ledgers, AGENTS.md bible maintenance, dated reports, filing, and durable paid runs. Use before context compaction, at session end, when work spans sessions, when spawning successor agents, when the operator says "handover", and before launching paid, long-running, or non-reproducible external runs.
+description: Session continuity — immutable handoff records before compaction, campaign ledgers, .agents/rules.md bible maintenance, dated reports, filing, and durable paid runs. Use before context compaction, at session end, when work spans sessions, when spawning successor agents, when the operator says "handover", and before launching paid, long-running, or non-reproducible external runs.
 license: MIT
 ---
 
@@ -34,7 +34,7 @@ and link it from the handoff; no separate incident log or entry is needed when t
 is nothing material to preserve. A near miss does not automatically justify a new
 standing rule; follow rules/core.md §Operator correction.
 
-## The bible (repository AGENTS.md)
+## The bible (repository .agents/rules.md)
 
 Reading order: rules/core.md §Session start. Append settled repo-wide decisions to the bible
 (timing: rules/core.md prime rule 11) so they're never re-litigated: chosen models, rejected

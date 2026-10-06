@@ -32,7 +32,8 @@ instructions, adds a pointer to House Rules, and installs the skills in each pro
 supported location. Models, permissions, plugins, and MCP connections stay in native
 settings; external integrations remain owned by their products.
 
-Do not copy the shared base into every project. Repository `AGENTS.md` and `CONTEXT.md`
+Do not copy the shared base into every project. In managed repositories, `AGENTS.md`
+is the [loader](STRUCTURE.md#managed-repository-loader); `.agents/rules.md` and `CONTEXT.md`
 hold local decisions. The `project-bootstrap` skill applies defaults automatically and
 asks only about consequential unknowns. An override can be as simple as “This project
 uses Python and FastAPI; retain that stack.”
