@@ -94,48 +94,41 @@ Issues, PR bodies, review comments, replies to review and commit messages use th
 
 ## Questions to the operator
 
-A question the operator must answer is a short block, placed after the explanation:
-
-> **N · Decision: one direct question naming the concrete choices?**
-> *Why:* one or two sentences, each marked (fact) or (assessment).
-> *Answer:* the exact reply words, for example `keep` or `remove`; "not decided", "need more
-> information about …" or "not applicable because …" also work.
-> *Then:* what changes after the answer.
-
-- The type word is Decision (choose, approve, accept a risk), Design (define intended
-  behavior) or Evidence (provide a record).
-- Number questions 1, 2, 3 across the whole message, never 1a, 1b. Group them under plain
-  section labels (for example "General", then one label per topic) and keep counting
-  across sections.
-- The operator may answer several questions in one line, for example `1 keep, 2 yes`.
-- Work the agent's own team must do (tests, replays, verification) is never a question to
-  the operator. List it as an internal task.
-
-Example with two sections. Section labels stay outside the quotes; each question is its
-own quote. Every line inside a question ends with a backslash, so GitHub files and comments
-show it as a separate line:
+Questions the operator must answer come after the explanation, as a numbered list under
+plain section labels:
 
 **General**
 
-> **1 · Decision: approve the writing-rules PR so it can merge?**\
-> *Why:* (fact) The PR restores the writing rules removed without a decision.\
-> *Answer:* `approve`, or the edits you want.\
-> *Then:* the PR merges, and the rules apply from the next message.
+1. **Decision: approve the writing-rules PR so it can merge?**\
+   *Why:* (fact) The PR restores the writing rules removed without a decision.\
+   *Answer:* `approve`, or the edits you want.\
+   *Then:* the PR merges, and the rules apply from the next message.
 
 **Warden updates**
 
-> **2 · Decision: run House Rules updates from a timer or inside the review loop?**\
-> *Why:* (fact) A stuck fetch inside the review loop delays reviews for up to 120 seconds.
-> (assessment) A timer removes that delay and adds no new code path.\
-> *Answer:* `timer` or `loop`.\
-> *Then:* the next fix commit implements the chosen option.
+2. **Decision: run House Rules updates from a timer or inside the review loop?**\
+   *Why:* (fact) A stuck fetch inside the review loop delays reviews for up to 120 seconds.
+   (assessment) A timer removes that delay and adds no new code path.\
+   *Answer:* `timer` or `loop`.\
+   *Then:* the next fix commit implements the chosen option.
+3. **Evidence: send the error text from the failed install?**\
+   *Why:* (fact) The install log on the host ends before the error.\
+   *Answer:* paste the text, or `not available`.\
+   *Then:* the cause goes into the install issue.
 
-> **3 · Evidence: send the error text from the failed install?**\
-> *Why:* (fact) The install log on the host ends before the error.\
-> *Answer:* paste the text, or `not available`.\
-> *Then:* the cause goes into the install issue.
-
-The operator answers all three in one line: `1 approve, 2 timer, 3 not available`.
+- The first words name the type: Decision (choose, approve, accept a risk), Design (define
+  intended behavior) or Evidence (provide a record).
+- *Why* has one or two sentences, each marked (fact) or (assessment). *Answer* gives the
+  exact reply words; "not decided", "need more information about …" or "not applicable
+  because …" also work. *Then* says what changes after the answer.
+- Numbering continues across sections (1, 2, 3), never 1a, 1b. Section labels are plain
+  bold lines, one for general questions and one per topic.
+- No quotes or tables. Each line inside a question ends with a backslash, so GitHub files
+  show it as a separate line.
+- The operator may answer several questions in one line, for example
+  `1 approve, 2 timer, 3 not available`.
+- Work the agent's own team must do (tests, replays, verification) is never a question to
+  the operator. List it as an internal task.
 
 ## Checks before sending
 
