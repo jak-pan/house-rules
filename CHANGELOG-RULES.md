@@ -157,3 +157,9 @@ memory; the mode had been removed, and the claim reached an operator decision.
 
 Operator direction: 2026-10-06; footnotes and source lists were harder to read than the claim
 with its evidence linked or named inside the sentence.
+
+## skills/operator-writing/SKILL.md — Questions to the operator (answer prompt)
+
+Operator direction: 2026-10-06; the three-item answer list took five lines of height in chat
+and appeared under reminders that held no question. The prompt is now a short label with a
+monospace code-block example, shown only under a fully written question list.

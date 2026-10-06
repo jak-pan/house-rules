@@ -98,11 +98,12 @@ Without the text, the cause stays a guess between a missing permission and a wro
 `FACT` An earlier cleanup removed several writing rules without an operator decision; it puts them back. `FACT` It changes only the operator-writing skill and the rules changelog.\
 Agents on this machine use the rules from their next session; Warden and the lanes get them only after their House Rules pins move.
 
-**Answer with one numbered line per question, like so:**
-
-1. 1
-2. explain how the install link could be wrong
-3. ok
+**Answer like so:**
+```text
+ 1. 1
+ 2. explain how the install link could be wrong
+ 3. ok
+```
 ````
 
 - Write each topic as a level-2 heading.
@@ -124,9 +125,11 @@ Agents on this machine use the rules from their next session; Warden and the lan
 - When the answer is text, name the text in the question title, for example "Send the
   error text …?".
 - Put no reply line, answer box, quote or table in the questions.
-- End the message with the bold line "Answer with one numbered line per question, like so:".
-- Below it, give a three-line numbered example: an option number, a request for more
-  context and `ok`.
+- End a fully written question list with the bold line "Answer like so:".
+- Below it, give a three-line example in a `text` code block, each line indented by one
+  space: an option number, a request for more context and `ok`.
+- Show the answer prompt only under a fully written question list, never as a reminder of
+  earlier questions.
 - Treat an answer that asks for more context as a new question: explain, then ask again.
 - Never ask the operator about work the agent's own team must do (tests, replays,
   verification). List it as an internal task.
