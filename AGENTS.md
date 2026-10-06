@@ -29,8 +29,8 @@ trackers.
 2. Subsystem `CONTEXT.md`/`README.md` before touching that subsystem; read context files
    fully, not summaries.
 3. After any context reset, including a compaction, re-read the bible and any active campaign
-   ledger, and reload the skills the current task uses; operator-facing text always needs skill
-   `operator-writing`.
+   ledger. Reload the skills the current task uses.
+   For operator-facing text, see §Actionable communication.
 4. Feature reading order: design doc → architecture doc → code.
 
 ## Outcome and resource contract
