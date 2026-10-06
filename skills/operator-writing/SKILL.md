@@ -113,8 +113,7 @@ Issues, PR bodies, review comments, replies to review and commit messages use th
 
 ## Questions to the operator
 
-Questions the operator must answer come after the explanation. Each topic is a level-2
-heading; each question is a level-3 heading with its number typed in. See the rendered
+Questions the operator must answer come after the explanation. See the rendered
 [example](references/question-example.md).
 
 - Write each topic as a level-2 heading.
