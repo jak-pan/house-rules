@@ -892,9 +892,10 @@ class AnsweredRestoreTest(unittest.TestCase):
 
     def test_paid_runs_parallel_but_same_experiment_settles_first(self):
         rules = self.text("skills/bench-discipline/SKILL.md")
-        self.assertIn("Paid runs may run in parallel inside the approved envelope.", rules)
-        self.assertIn("Before a new run of the same experiment starts, "
-                      "finish or cancel its in-flight run.", rules)
+        self.assertIn("Paid runs may run in parallel inside the approved envelope. "
+                      "Before a new run of the same experiment starts, "
+                      "finish or cancel its in-flight run. "
+                      "The agent chooses which, by best judgment.", rules)
         self.assertNotIn("Finish in-flight paid", rules)
 
     def test_waste_does_not_reduce_rigor(self):
