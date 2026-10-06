@@ -100,12 +100,14 @@
 - Follow `handoff-continuity` for contents, triggers, and resuming.
 - Derive boards and status views from tracker items.
 - Never maintain status files by hand.
+- The workspace tracker file under "Track every deferred item" is the one exception.
 
 **Track every deferred item.**
 
 - Make a work item in the same turn when you defer a requested outcome, an accepted finding or a promise to the operator.
-- Use an issue in the GitHub repository that owns the change.
-- If no repository owns it, add one entry to the workspace tracker file. The entry holds one item and its status.
+- Use the workspace's tracker. By default, that is an issue in the GitHub repository that owns the change.
+- If no repository exists for the item, add one entry to the workspace tracker file. The entry holds one item and its status.
+- That file is the one exception to the status-file and two-tracker rules.
 - Link the work item where you defer the work.
 - Do not write "later", "I will file" or "a follow-up covers" without that link.
 - Plans, documents, chat, reports, logs and unmerged branches record intent. They do not track work.

@@ -2,6 +2,12 @@
 
 Source notes for House Rules invariants and procedures.
 
+## rules/delivery.md — Track every deferred item (tracker choice)
+
+Operator decision: 2026-10-07, issue #54, option 1. A GitHub issue is the default tracker; the workspace
+tracker file is allowed only when no repository exists, and the status-file and two-tracker rules name it as
+their one exception.
+
 ## rules/writing.md — Self-contained text
 
 Operator direction: 2026-10-07, after an agent twice asked the operator to answer "the 11
