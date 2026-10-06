@@ -69,7 +69,8 @@ happened, why it matters and what to do, in that order.
   as settled.
 - Label a claim `FACT` only after you verified it yourself, in this session, against its
   primary source: the code at a named commit, a command you ran, or a log or record you read.
-- Give that evidence with the `FACT`: a link, the command, or the quoted line.
+- Put the evidence for a `FACT` inside its sentence: link the claim's key words to the
+  source, or name the file and line, the command, or the quoted output in a few words.
 - A claim you remember, infer, read in a summary, or receive from another agent or an earlier
   session is never a `FACT`. Verify it first, or label it `ASSUMPTION` and name its source.
 
