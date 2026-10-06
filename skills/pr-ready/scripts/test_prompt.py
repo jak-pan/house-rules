@@ -890,9 +890,13 @@ class AnsweredRestoreTest(unittest.TestCase):
                       "change are not comparable", rules)
         self.assertNotIn("N≥2", rules)
 
-    def test_finish_paid_runs_before_new_runs(self):
-        self.assertIn("Finish in-flight paid runs before starting new ones.",
-                      self.text("skills/bench-discipline/SKILL.md"))
+    def test_paid_runs_parallel_but_same_experiment_settles_first(self):
+        rules = self.text("skills/bench-discipline/SKILL.md")
+        self.assertIn("Paid runs may run in parallel inside the approved envelope. "
+                      "Before a new run of the same experiment starts, "
+                      "finish or cancel its in-flight run. "
+                      "The agent chooses which, by best judgment.", rules)
+        self.assertNotIn("Finish in-flight paid", rules)
 
     def test_waste_does_not_reduce_rigor(self):
         rules = self.text("skills/bench-discipline/SKILL.md")

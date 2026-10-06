@@ -87,8 +87,9 @@ Retrieval evaluations also apply the [retrieval rules](references/retrieval-eval
   including confirmation of a null result or a correctness check.
 - Reuse valid compatible artifacts and resume completed stages. A planned independent
   replicate is new evidence, not redundant work. Inspect in-flight work before launching
-  duplicates; obey the approved concurrency and stop conditions. Finish in-flight paid
-  runs before starting new ones.
+  duplicates; obey the approved concurrency and stop conditions. Paid runs may run in
+  parallel inside the approved envelope. Before a new run of the same experiment starts,
+  finish or cancel its in-flight run. The agent chooses which, by best judgment.
 - Validate a judge or grader against its specification and representative source-backed
   examples before trusting it. Inspect relevant raw traces when aggregate results are
   surprising; use `failure-forensics` for an unexplained failure or regression.
