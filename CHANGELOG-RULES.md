@@ -108,3 +108,8 @@ Operator direction:
 ## skills/work-tracking/SKILL.md — External reporting
 
 Operator direction: 2026-10-04.
+
+## skills/bench-discipline/SKILL.md — Cost ladder (parallel paid runs)
+
+Operator direction: 2026-10-06, House Rules audit; the restored rule blocked unrelated
+parallel runs.
