@@ -103,7 +103,7 @@ For each selected product and configuration home:
    ```
 
 3. Inside that block, instruct the agent to read the permanent House Rules
-   `AGENTS.md` at session start and after every context compaction or reset, load its
+   `INDEX.md` at session start and after every context compaction or reset, load its
    required rule files and only relevant House Rules Skills, use `STRUCTURE.md` for
    artifact placement, and keep native product configuration
    outside House Rules. Use resolved absolute paths from this computer. Install this
@@ -114,7 +114,7 @@ For each selected product and configuration home:
    <!-- house-rules:begin -->
    # Shared operating foundation (House Rules)
 
-   At session start and after every context compaction or reset, read `<HOUSE_RULES_ROOT>/AGENTS.md`.
+   At session start and after every context compaction or reset, read `<HOUSE_RULES_ROOT>/INDEX.md`.
    It is the index for collaboration, verification, autonomy, and durable
    execution rules. Load the rule files and Skills that its conditions select.
    Repository-local rules supply project details and win over shared preferences; all work remains subject to the host's instruction hierarchy

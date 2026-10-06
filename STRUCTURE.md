@@ -49,7 +49,7 @@ A managed repository uses exactly this `AGENTS.md`:
 
 ```markdown
 # AGENTS.md
-This repository is managed by [House Rules](<House Rules URL>). Read House Rules `AGENTS.md` first and follow it.
+This repository is managed by [House Rules](<House Rules URL>). Read House Rules `INDEX.md` first and follow it.
 This repository's own rules are in [.agents/rules.md](.agents/rules.md).
 ```
 

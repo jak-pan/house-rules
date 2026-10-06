@@ -246,8 +246,8 @@ def verify(root, home, findings, selected):
 
 
 def always_load(root, findings):
-    """Rule files the index (AGENTS.md "Always load") requires, so the check follows the index."""
-    index = root / "AGENTS.md"
+    """Rule files the index (INDEX.md "Always load") requires, so the check follows the index."""
+    index = root / "INDEX.md"
     if not is_file(index):
         findings.append(f"missing index: {index}")
         return []

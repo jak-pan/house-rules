@@ -49,9 +49,9 @@ The placeholder `<HOUSE_RULES_COMMIT>` means the named commit selected for the r
 
 ## Current behavior and prior evidence
 
-`FACT` The current [House Rules loader at <HOUSE_RULES_ROOT>/AGENTS.md](../../AGENTS.md)
+`FACT` The current [House Rules index at <HOUSE_RULES_ROOT>/INDEX.md](../../INDEX.md)
 loads pr-ready for “Push preparation, review rounds, review fixes, or PR merges.”
-`FACT` The current [House Rules loader at <HOUSE_RULES_ROOT>/AGENTS.md](../../AGENTS.md)
+`FACT` The current [House Rules index at <HOUSE_RULES_ROOT>/INDEX.md](../../INDEX.md)
 loads operator-writing for “Any operator-facing text.”
 `FACT` The current [skills/pr-ready/scripts/prompt.py](../../skills/pr-ready/scripts/prompt.py)
 reads include files from the checkout through `path.open`, rather than from Git objects.

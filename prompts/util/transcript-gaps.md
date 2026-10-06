@@ -2,7 +2,7 @@
 
 Inputs supplied by the caller: a JSONL batch from the transcript extractor, the House
 Rules checkout, and the optional `TRANSCRIPT_GAPS_DECISIONS_FILE` path. Read the batch,
-AGENTS.md, all rule, skill and prompt files, and the configured decisions file in full. If an
+INDEX.md, all rule, skill and prompt files, and the configured decisions file in full. If an
 input cannot be read, report the blocked comparison; do not interpret missing input as
 evidence of a gap. An unset decisions path means no separate decisions file was selected.
 

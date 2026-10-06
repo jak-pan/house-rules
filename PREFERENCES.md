@@ -1,6 +1,6 @@
 # Project defaults
 
-These stack defaults apply whenever House Rules is installed. Overrides follow AGENTS.md,
+These stack defaults apply whenever House Rules is installed. Overrides follow INDEX.md,
 and an existing coherent project stack also takes precedence over them. Overrides need
 no separate approval ritual; record consequential choices and their rationale in the
 project's CONTEXT.md. New projects: skill `project-bootstrap`.
