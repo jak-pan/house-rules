@@ -18,7 +18,7 @@ most common failure: a term, a mechanism or a side effect the reader cannot see.
 | Size | Shape |
 |---|---|
 | One or two decisions in chat | The per-decision block below, plus a short glossary of only the terms it uses and a one-line answer format. |
-| Three or more decisions, or any decision that changes a design | A Markdown document with the full structure below (skill `operator-writing` §Format), sent to the operator as a file they can open, never only a local path. |
+| Three or more decisions, or any decision that changes a design | A Markdown document with the full structure below ([rules/writing.md §Format](../../rules/writing.md#format)), sent to the operator as a file they can open, never only a local path. |
 | A follow-up asking for depth on one decision | That decision's block again, expanded, with a diagram of the data or flow it concerns. Keep its ID. |
 
 ## Explaining on request
@@ -66,15 +66,13 @@ Ground every claim in the current spec or code; say where the spec is silent.
 
 ## Rules
 
-- Label claims `FACT`, `ASSUMPTION`, `ESTIMATE`, `ASSESSMENT` or `DECISION`. Quote an
-  existing decision; never present a settled operator decision as open, or your own choice
-  as settled.
+- Follow [rules/writing.md §Claim labels](../../rules/writing.md#claim-labels).
 - One recommendation per decision. Options must be genuinely viable.
 - Stable decision IDs (`Decision 1`, `Decision 2`) across the brief and every follow-up.
   Option formatting: [operator-writing §Structure](../operator-writing/SKILL.md#structure).
 - Concrete over abstract: real names, sizes and numbers with their basis, and a
   before/after example for every change.
-- Comparisons and diagrams follow `operator-writing` §Format.
+- Comparisons and diagrams follow [rules/writing.md §Format](../../rules/writing.md#format).
 - Organize by consequence, not by the order the work happened. No activity logs.
 - After the operator answers, record each choice where it belongs (rules/core.md prime rule
   11) and stop asking about it.

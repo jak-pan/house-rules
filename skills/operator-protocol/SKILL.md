@@ -26,7 +26,7 @@ expertise, tone, or visual style. Technology and presentation choices belong to
 ## Progress
 
 Report at meaningful intervals with real counters, artifact locations, and actual cost
-when relevant (content: skills/operator-writing/SKILL.md §Communication rules). For paid or
+when relevant (content: [rules/writing.md §Communication rules](../../rules/writing.md#communication-rules)). For paid or
 non-reproducible work, include the durable record and resumable session ID (rules/delivery.md
 §Verification).
 

@@ -588,7 +588,7 @@ class RuleOwnershipTest(unittest.TestCase):
     def test_work_sizing_belongs_to_prime_rule_13(self):
         for path, target in (
             ("skills/decision-brief/SKILL.md", "../../rules/core.md#prime-rules"),
-            ("skills/operator-writing/SKILL.md", "../../rules/core.md#prime-rules"),
+            ("rules/writing.md", "core.md#prime-rules"),
             (
                 "skills/operator-writing/references/github-text.md",
                 "../../../rules/core.md#prime-rules",
@@ -602,7 +602,7 @@ class RuleOwnershipTest(unittest.TestCase):
                     text, r"[Tt]ime estimates|agent-days|files and lines touched"
                 )
         self.assertIn("Give no unmeasured time estimates", self.text("rules/core.md"))
-        self.assertIn("No filler", self.text("skills/operator-writing/SKILL.md"))
+        self.assertIn("No filler", self.text("rules/writing.md"))
         github = self.text("skills/operator-writing/references/github-text.md")
         self.assertIn('No ceremony. A "found by" line is allowed', github)
 
@@ -761,16 +761,16 @@ class AnsweredRestoreTest(unittest.TestCase):
 
     def test_progress_example_explains_pull_request(self):
         detail = self.text("skills/operator-writing/SKILL.md").split(
-            "- **Detail test:**", 1
-        )[1].split("Decisions use skill", 1)[0]
+            "### Checks before sending", 1
+        )[1].split("## GitHub text", 1)[0]
         example = detail.split("Example:", 1)[1]
         self.assertNotRegex(example, r"\bPR\b")
         self.assertIn("A pull request gets at most three fix rounds.", example)
 
     def test_progress_example_preserves_operator_decisions(self):
         detail = self.text("skills/operator-writing/SKILL.md").split(
-            "- **Detail test:**", 1
-        )[1].split("Decisions use skill", 1)[0]
+            "### Checks before sending", 1
+        )[1].split("## GitHub text", 1)[0]
         self.assertNotIn("Nothing waits for you", detail)
         self.assertIn("within approved authority.", detail)
         self.assertIn("Routine work continues.", detail)
@@ -789,15 +789,13 @@ class AnsweredRestoreTest(unittest.TestCase):
         self.assertNotIn("reader test", session)
         communication = self.text("skills/operator-writing/SKILL.md").split(
             "## Communication rules", 1
-        )[1].split("## Language", 1)[0]
+        )[1].split("## Structure", 1)[0]
         self.assertIn("Follow `operator-writing` for every operator-facing text’s "
                       "structure, language, options, Mermaid diagrams, and reader test.",
                       communication)
 
     def test_detail_test_keeps_adjacent_consequences(self):
-        detail = self.text("skills/operator-writing/SKILL.md").split(
-            "- **Detail test:**", 1
-        )[1].split("Decisions use skill", 1)[0]
+        detail = self.text("rules/writing.md").split("- **Detail test:**", 1)[1]
         for requirement in (
             "limit, stop, failure or change",
             "the same or the next sentence",
@@ -816,8 +814,8 @@ class AnsweredRestoreTest(unittest.TestCase):
             self.assertIn(requirement, rules)
 
     def test_list_coverage_and_operator_action(self):
-        # A107–A109: reporting procedure belongs to operator-writing.
-        rules = self.text("skills/operator-writing/SKILL.md")
+        # List formatting is general; action guidance is operator-specific.
+        rules = self.text("skills/operator-writing/SKILL.md") + self.text("rules/writing.md")
         for requirement in ("Keep the requested outcome and material blockers visible.",
                             "State the next action and its owner in messages.",
                             "Prefer lists of five or fewer items.",
@@ -1072,7 +1070,7 @@ class InvariantsOnlyTest(unittest.TestCase):
         agents += "\n" + (ROOT / "STRUCTURE.md").read_text().split(
             "## Layout\n", 1)[1].split("```", 1)[0]
         agents += "\n" + (ROOT / "skills/operator-writing/SKILL.md").read_text().split(
-            "## Communication rules\n", 1)[1].split("## Language", 1)[0]
+            "## Communication rules\n", 1)[1].split("## Structure", 1)[0]
         agents = agents.replace(self.TRACKING_RULE, "").replace(self.RESTORED_TRACKING, "")
         agents = re.sub(r"(?m)^#.*$", "", agents)
         blocks = re.split(r"\n\s*\n|\n(?=\s*(?:[-*]|\d+\.)\s)", agents)
@@ -1155,14 +1153,14 @@ class RuleIndexTest(unittest.TestCase):
                 continue
             with self.subTest(line=line):
                 if section == "Always load":
-                    self.assertRegex(line, r"^- \[[^]]+\]\(rules/(?:core|outcome|delivery)\.md\)$")
+                    self.assertRegex(line, r"^- \[[^]]+\]\(rules/(?:core|outcome|delivery|writing)\.md\)$")
                 else:
                     self.assertRegex(line, r"^- [^:]+: load \[[^]]+\]\([^)]+\)\.$")
 
     def test_index_loads_every_skill_and_rule_file_with_resolving_relative_links(self):
         index = (ROOT / "AGENTS.md").read_text()
         targets = re.findall(r"\[[^]]+\]\(([^)]+)\)", index)
-        required = {"rules/core.md", "rules/outcome.md", "rules/delivery.md",
+        required = {"rules/core.md", "rules/outcome.md", "rules/delivery.md", "rules/writing.md",
                     "STRUCTURE.md", "PREFERENCES.md"}
         required.update(str(path.relative_to(ROOT))
                         for path in (ROOT / "skills").glob("*/SKILL.md"))
@@ -1557,7 +1555,7 @@ class AuditRestorationTest(unittest.TestCase):
         index = (ROOT / "AGENTS.md").read_text()
         always = index.split("## Always load\n", 1)[1].split("## Load when", 1)[0]
         self.assertIn("At session start and after every reset or compaction, read these files in full:", always)
-        self.assertEqual(re.findall(r"\((rules/[^)]+)\)", always), ["rules/core.md", "rules/outcome.md", "rules/delivery.md"])
+        self.assertEqual(re.findall(r"\((rules/[^)]+)\)", always), ["rules/core.md", "rules/outcome.md", "rules/delivery.md", "rules/writing.md"])
 
 
 class AcceptedScopeRegressionTest(unittest.TestCase):
@@ -1649,6 +1647,68 @@ class AcceptedScopeRegressionTest(unittest.TestCase):
             "Follow rules/delivery.md §Verification for CI review, failure routing "
             "and the expected-long-run exception.", procedure,
         )
+
+
+class AlwaysLoadedWritingTest(unittest.TestCase):
+    def test_original_introduction_is_preserved_in_its_rule_owners(self):
+        general = " ".join((ROOT / "rules/writing.md").read_text().split())
+        operator = " ".join((ROOT / "skills/operator-writing/SKILL.md").read_text().split())
+        for sentence, owner, other in (
+            ("The reader must understand the text without any other document.", general, operator),
+            ("They should know what happened, why it matters and what to do, in that order.", general, operator),
+            ("This skill combines a controlled language (ASD-STE100, applied at about 80 %) "
+             "with an explanation-first structure and a reader test.", operator, general),
+            ("Decisions use skill `decision-brief` for their full content; "
+             "this skill sets how all of it is written.", operator, general),
+        ):
+            with self.subTest(sentence=sentence):
+                self.assertEqual(owner.count(sentence), 1)
+                self.assertNotIn(sentence, other)
+
+    def test_general_writing_rules_are_always_loaded(self):
+        self.assertIn("rules/writing.md governs all text", (ROOT / "rules/core.md").read_text())
+
+    def test_moved_sections_have_one_rule_owner(self):
+        writing = ROOT / "rules/writing.md"
+        self.assertTrue(writing.is_file())
+        general = " ".join(writing.read_text().split())
+        operator = " ".join((ROOT / "skills/operator-writing/SKILL.md").read_text().split())
+        for sentence in (
+            "One fact per sentence. Prefer short sentences; split one that carries more than one fact.",
+            "Keep the source's uncertainty and qualifiers.",
+            "Support claims with evidence.",
+            "Distinguish observed causes from hypotheses.",
+            "Distinguish completed fixes from plans and deployments awaiting verification.",
+            "Make every file reference a link that works where the text is read.",
+            "Diagrams are Mermaid in files and chat, never ASCII art or indented text trees.",
+            "Prefer lists of five or fewer items.",
+            "Group longer lists only when helpful.",
+            "Preserve sequence, identifiers, and coverage when grouping.",
+            "For each limit, stop, failure or change, state what it means for the reader.",
+        ):
+            with self.subTest(sentence=sentence):
+                self.assertIn(sentence, general)
+                self.assertNotIn(sentence, operator)
+        for heading in ("Language", "Format", "Checks before sending"):
+            self.assertIn("## " + heading, general)
+            self.assertNotRegex((ROOT / "skills/operator-writing/SKILL.md").read_text(),
+                                rf"(?m)^## {re.escape(heading)}$")
+
+    def test_claim_labels_have_one_definition_and_linked_consumers(self):
+        definition = "Label claims `FACT`, `ASSUMPTION`, `ESTIMATE`, `ASSESSMENT` or `DECISION`."
+        owners = [path.relative_to(ROOT).as_posix()
+                  for folder in ("rules", "skills", "prompts")
+                  for path in (ROOT / folder).rglob("*.md")
+                  if definition in " ".join(path.read_text().split())]
+        self.assertEqual(owners, ["rules/writing.md"])
+        for skill in ("operator-writing", "decision-brief", "reasoning-moves"):
+            with self.subTest(skill=skill):
+                text = (ROOT / f"skills/{skill}/SKILL.md").read_text()
+                self.assertIn("../../rules/writing.md#claim-labels", text)
+        questions = (ROOT / "skills/operator-writing/SKILL.md").read_text().split(
+            "## Questions to the operator", 1)[1]
+        self.assertIn("`FACT` or `ASSESSMENT`", questions)
+        self.assertNotRegex(questions, r"`(?:fact|assessment)`")
 
 
 if __name__ == "__main__":

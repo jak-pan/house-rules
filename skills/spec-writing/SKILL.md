@@ -27,7 +27,7 @@ from it without asking questions.** The document must explain the product and it
   what's stored. Multiple examples beat prose every time.
 - **Exact signatures, not descriptions**: real type/trait/schema definitions, module
   layout, integration points. Prose describing code is a smell; code is shorter.
-- **Diagrams**: format follows `operator-writing` §Format (doc tiers:
+- **Diagrams**: format follows [rules/writing.md §Format](../../rules/writing.md#format) (doc tiers:
   skill `design-canon` §Docs).
 - **Authoritative framing**: decisions are stated as decisions ("X does Y via Z"), with
   a Decisions section recording each choice AND its rejected alternatives with why.

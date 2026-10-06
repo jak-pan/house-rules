@@ -1,7 +1,7 @@
 # GitHub text: issues, PRs, review comments, replies, fix commits
 
 Forms for every issue, PR body, review comment, reply to review and fix-commit message.
-The language rules of skill `operator-writing` apply to all of them. Examples are adapted
+The language rules of [rules/writing.md](../../../rules/writing.md#language) apply to all of them. Examples are adapted
 from a public upstream durability report and its fix; names are shortened.
 
 ## 1. Rules for all GitHub text

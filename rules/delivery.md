@@ -128,7 +128,7 @@
 - Default to keeping large artifacts untracked.
 - Default to working from the repository root.
 - Prefer path arguments over directory changes.
-- Follow `operator-writing` §Format for diagrams.
+- Follow [rules/writing.md §Format](writing.md#format) for diagrams.
 - Never change directories inside compound commands.
 - Use `git -C` and absolute arguments.
 - Re-anchor before relative-path writes.

@@ -48,6 +48,7 @@ selected collaboration mode come from rules/core.md; these checkpoints do not re
 ## Report
 
 - Distinguish measured results, source-backed facts, extrapolations, and hypotheses.
+  Use [rules/writing.md §Claim labels](../../rules/writing.md#claim-labels).
   Attach the evidence and limitation needed to assess a consequential claim; do not
   require a label on every ordinary sentence.
 - For noisy comparisons, report per skill `bench-discipline` §Measurement and uncertainty.
