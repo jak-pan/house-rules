@@ -210,15 +210,17 @@ class CollectionAcceptanceTest(unittest.TestCase):
         self.assertEqual(contract, (
             'one per ISSUE item, as "### <title>" then the body. '
             'The title names the behavior in plain words (no internal labels, codes or round names, never cut mid-phrase). '
-            'The body follows [the issue form](../../skills/operator-writing/references/github-text.md#2-issue).\n'
+            'The body follows [the issue form](../../skills/operator-writing/references/github-issue-form.md).\n'
         ))
-        form = (ROOT / "skills/operator-writing/references/github-text.md").read_text()
-        issue_form = form.split("## 2. Issue\n", 1)[1].split("## 3. PR body\n", 1)[0]
+        form = (ROOT / "skills/operator-writing/references/github-issue-form.md").read_text()
+        issue_form = form
+        guide = (ROOT / "skills/operator-writing/references/github-text.md").read_text()
+        self.assertIn("Follow [the issue form](github-issue-form.md).", guide)
         self.assertNotIn("prompts/util/issue-report.md", issue_form)
         for requirement in ("## Evidence", "## Cause", "## Acceptance criteria", "Label untested parts", "full SHA"):
             self.assertIn(requirement, issue_form)
-        self.assertIn("Code references are full-SHA permalinks.", form)
-        self.assertIn('Label each claim that no test covers as "From code reading" or "Hypothesis".', form)
+        self.assertIn("Code references are full-SHA permalinks.", guide)
+        self.assertIn('Label each claim that no test covers as "From code reading" or "Hypothesis".', guide)
         owners = [p for p in ROOT.rglob("*.md")
                   if "The title names the behavior in plain words" in p.read_text()]
         self.assertEqual(owners, [contract_path])
@@ -231,12 +233,22 @@ class CollectionAcceptanceTest(unittest.TestCase):
                 for requirement in (
                     "## Evidence", "## Cause", "## Acceptance criteria",
                     "Label untested parts", "full SHA",
-                    "Code references are full-SHA permalinks.",
-                    'Label each claim that no test covers as "From code reading" or "Hypothesis".',
                 ):
                     self.assertIn(requirement, prompt.stdout)
                 self.assertIn('"## Issues to file"', prompt.stdout)
                 self.assertNotIn("3–6 line body", prompt.stdout)
+
+    def test_triager_and_checker_include_only_the_issue_form(self):
+        form_path = "skills/operator-writing/references/github-issue-form.md"
+        for role in ("triager", "checker"):
+            with self.subTest(role=role):
+                includes = PromptTest().run_prompt("--list", f"prompts/roles/{role}.md")
+                self.assertEqual(includes.returncode, 0, includes.stderr)
+                self.assertNotIn("skills/operator-writing/references/github-text.md", includes.stdout.splitlines())
+                self.assertEqual(includes.stdout.splitlines().count(form_path), 1)
+                prompt = PromptTest().run_prompt(f"prompts/roles/{role}.md")
+                self.assertEqual(prompt.returncode, 0, prompt.stderr)
+                self.assertEqual(prompt.stdout.count((ROOT / form_path).read_text()), 1)
 
     def test_triage_preserves_requirements_without_a_decision(self):
         text = (ROOT / "prompts/util/triage-classes.md").read_text()

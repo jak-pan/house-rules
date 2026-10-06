@@ -1,1 +1,1 @@
-one per ISSUE item, as "### <title>" then the body. The title names the behavior in plain words (no internal labels, codes or round names, never cut mid-phrase). The body follows [the issue form](../../skills/operator-writing/references/github-text.md#2-issue).
+one per ISSUE item, as "### <title>" then the body. The title names the behavior in plain words (no internal labels, codes or round names, never cut mid-phrase). The body follows [the issue form](../../skills/operator-writing/references/github-issue-form.md).
