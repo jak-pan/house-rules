@@ -54,8 +54,9 @@ happened, why it matters and what to do, in that order.
   with web links.
 - Pin a web link to a commit when it cites evidence.
 - Send a file that no link can open with the client's file-sending tool, when it has one.
-- Name a file that does not exist yet in words, not as a path; the client turns a path into
-  a link that cannot open.
+- In chat, the client turns every written path into a link counted from the session root.
+  Write a path in chat only as an absolute path or as a path from the session root.
+- Name a file that does not exist yet in words, not as a path.
 - Write a PR or issue reference as a Markdown link: `[#52](https://github.com/owner/repo/pull/52)`.
 - Prefer lists of five or fewer items.
 - Group longer lists only when helpful.
