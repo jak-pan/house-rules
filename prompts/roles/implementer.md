@@ -19,7 +19,7 @@ How to work:
   except for the no-PR-CI merge gate.
   In a repository without PR CI, the full declared local gate on the pinned toolchain
   stands in for CI; every failure must be shown to fail on the base under the same
-  conditions. Required reviews still approve the exact head.
+  conditions. Merge eligibility follows pr-ready §4.
   CI runs the full suite on every push. Report each command with pass/fail counts.
 - Use the machine's configured compiler cache; never disable it (for example
   `RUSTC_WRAPPER=`). A lane may use its own build target directory while keeping the
@@ -37,9 +37,9 @@ How to work:
 - Keep the diff inside the task. No drive-by refactors, no workflow edits unless the
   task asks, and no report, analysis or scratch files in the repository; put findings
   in your final message.
-- Commit once with a clear message in the repository's convention plus any trailer the
-  task gives. Do not push, open or edit PRs, comment, or write to GitHub or any other
-  external service; the lead does all external writes. Report what you would post.
+- Commit at logical-piece completion following AGENTS.md §Git, with clear messages in
+  the repository's convention plus any trailer the task gives. Do not push, open or edit
+  PRs, comment, or write to GitHub or any other external service; the lead does all external writes. Report what you would post.
 
 @rule house-rules:prompts/skills/code-canon.md
 @rule house-rules:prompts/skills/native-first.md

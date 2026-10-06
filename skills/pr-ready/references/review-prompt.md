@@ -9,7 +9,6 @@ each of its blocking items RESOLVED or NOT, then look for new issues in <new com
 Scope: <modules/directories>. Spec: <document and sections>; read the module README.
 Blocking review against the shared reviewer pack, focused on: <the invariants that matter for this
 change, e.g. authorization on every path, crash/replay, bounded cost>.
-Under <N> lines of explanation where possible; never omit findings to fit a length target.
 ```
 
 ## Fix prompt template

@@ -29,7 +29,8 @@ a clarification is proposed in the same PR.
 Requirement removals and spec/code drift follow `design-flow` §Design changes.
 
 **Loop:** follow [pr-ready §3](../SKILL.md#3-review-rounds). Merge eligibility is in
-[pr-ready §4](../SKILL.md#4-merge-and-cleanup). Track confirmed findings per family.
+[pr-ready §4](../SKILL.md#4-merge-and-cleanup). Track confirmed findings per family;
+drop pairings that mostly produce noise.
 
 Launch: `scripts/review-panel.sh <name> <checkout> <base-prompt> [reviewer ...]`
 (default reviewers: the generalists of the configured families).
