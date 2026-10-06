@@ -113,38 +113,54 @@ Issues, PR bodies, review comments, replies to review and commit messages use th
 ## Questions to the operator
 
 Questions the operator must answer come after the explanation, as a numbered list under
-plain section labels:
+plain bold section labels. Example:
 
 **General**
 
-1. **Decision: approve the writing-rules PR so it can merge?**\
-   *Why:* (fact) The PR restores the writing rules removed without a decision.\
-   *Answer:* `approve`, or the edits you want.\
-   *Then:* the PR merges, and the rules apply from the next message.
+1. **Merge #52, the writing-rules PR?**\
+   ***Why:*** `fact` An earlier cleanup removed several writing rules without an operator
+   decision; #52 puts them back. `fact` It changes only the operator-writing skill, one line
+   of AGENTS.md and the rules changelog.\
+   Agents on this machine use the rules from their next session; Warden and the lanes get
+   them only after their House Rules pins move.\
+   Reply `ok`, or send your edits.
 
-**Warden updates**
+**Warden**
 
-2. **Decision: run House Rules updates from a timer or inside the review loop?**\
-   *Why:* (fact) A stuck fetch inside the review loop delays reviews for up to 120 seconds.
-   (assessment) A timer removes that delay and adds no new code path.\
-   *Answer:* `timer` or `loop`.\
-   *Then:* the next fix commit implements the chosen option.
-3. **Evidence: send the error text from the failed install?**\
-   *Why:* (fact) The install log on the host ends before the error.\
-   *Answer:* paste the text, or `not available`.\
-   *Then:* the cause goes into the install issue.
+2. **What should Warden do with a review request in an unmanaged repository?**\
+   ***Why:*** `fact` Five repositories are unmanaged. `fact` Today Warden ignores the request
+   and nobody sees why. `assessment` A silent skip looks like an outage.\
+   Either option also applies to repositories added later.
+   1. One comment saying the repository is not managed by House Rules (recommended).
+   2. A silent skip, visible only in Warden's host log.
+3. **Send the error text from the failed App install?**\
+   ***Why:*** `fact` GitHub opened the organization settings page instead of the install
+   page. `fact` Warden's host log has no entry from that time. `assessment` The error is
+   probably visible only in the browser.\
+   Without the text, the cause stays a guess between a missing permission and a wrong link.\
+   Reply with the pasted text, or `not available`.
 
-- The first words name the type: Decision (choose, approve, accept a risk), Design (define
-  intended behavior) or Evidence (provide a record).
-- *Why* has one or two sentences, each marked (fact) or (assessment). *Answer* gives the
-  exact reply words; "not decided", "need more information about …" or "not applicable
-  because …" also work. *Then* says what changes after the answer.
-- Numbering continues across sections (1, 2, 3), never 1a, 1b. Section labels are plain
-  bold lines, one for general questions and one per topic.
+The operator answers with a numbered list that mirrors the questions; a choice is answered
+with the option's number:
+
+```text
+1. ok
+2. 1
+3. not available
+```
+
+- The title is one direct question.
+- ***Why:*** gives the context in one to three sentences. Each sentence starts with the
+  inline-code flag `fact` or `assessment`.
+- The next line says what happens after the answer, only when the reader could not infer it.
+- A choice lists its options as a nested numbered list, each with what changes and its side
+  effect. Exactly one option is marked "(recommended)". Option text never repeats the word
+  "Option".
+- The reply line comes last. Yes, no and approval questions accept `ok`. A choice needs no
+  reply line: the answer is the option's number.
+- Numbering continues across sections (1, 2, 3), never 1a, 1b.
 - No quotes or tables. Each line inside a question ends with a backslash, so GitHub files
   show it as a separate line.
-- The operator may answer several questions in one line, for example
-  `1 approve, 2 timer, 3 not available`.
 - Work the agent's own team must do (tests, replays, verification) is never a question to
   the operator. List it as an internal task.
 
