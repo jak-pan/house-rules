@@ -103,8 +103,8 @@ For each selected product and configuration home:
    ```
 
 3. Inside that block, instruct the agent to read the permanent House Rules
-   `AGENTS.md` at the start of every session, load only relevant House Rules Skills, use
-   `STRUCTURE.md` for artifact placement, and keep native product configuration
+   `AGENTS.md` at session start and after every context compaction or reset, load only
+   relevant House Rules Skills, use `STRUCTURE.md` for artifact placement, and keep native product configuration
    outside House Rules. Use resolved absolute paths from this computer. Install this
    exact adapter text, replacing `<HOUSE_RULES_ROOT>` with the permanent absolute
    path:
@@ -113,9 +113,9 @@ For each selected product and configuration home:
    <!-- house-rules:begin -->
    # Shared operating foundation (House Rules)
 
-   At the start of every session, read `<HOUSE_RULES_ROOT>/AGENTS.md`. It is the canonical
-   source for collaboration, verification, autonomy, and durable execution
-   rules. Repository-local rules supply project details and win over shared
+   At session start and after every context compaction or reset, read `<HOUSE_RULES_ROOT>/AGENTS.md`.
+   It is the canonical source for collaboration, verification, autonomy, and durable
+   execution rules. Repository-local rules supply project details and win over shared
    preferences; all work remains subject to the host's instruction hierarchy
    and access controls.
 
@@ -270,9 +270,124 @@ Report filesystem and runtime verification separately.
 source folder. Never use a temporary folder such as a downloads folder or a package-manager
 cache as the source.
 
-To update, pull the Git checkout, then repeat planning and verification. Compare the Skill list with the receipt:
-link new Skills and remove owned links to Skills that no longer exist. Symlinked Skills
-pick up source changes immediately; copied Skills require an explicit refresh.
+Use the Python 3.9 or later standard-library sync script from the permanent checkout:
+
+```sh
+python3 "<HOUSE_RULES_ROOT>/scripts/sync.py"  # update checkout and report installation drift
+```
+
+On a clean default-branch checkout, the script fetches the default branch and runs
+`git merge --ff-only --no-overwrite-ignore <fetched-revision>` when there are remote
+updates and no local commits ahead of the remote. The merge uses the captured fetched
+revision and aborts if incoming tracked paths would overwrite ignored local files.
+Dirty, detached, non-default, ahead and diverged checkouts are reported and never updated.
+It then checks every configured home's managed block, missing or stale Skill links, owned links to
+removed Skills, and same-name entries in the other scanned Skill folders. Git and
+filesystem errors reach the caller. Findings collected before a verification error are
+retained, and the summary identifies incomplete coverage. Exit codes are 0 for no
+findings, 1 for reported drift or conflicts, and 2 for an error.
+
+The scheduled run reports drift; an agent repairs it by following §3, including the
+no-write plan in §2 and the verification in §5. The script does not modify instruction
+files, Skill entries, backups, receipts or the custom index, and does not start agent
+sessions. Runtime discovery remains the separate check in §5.
+
+Only present product homes are selected from the baseline locations in §1, respecting
+`CLAUDE_CONFIG_DIR`, `CODEX_HOME` and `KIMI_CODE_HOME` when set; explicit environment
+homes must be existing absolute directories. An existing default
+Codex directory without `config.toml` or `auth.json` is an error. Extra homes go in
+the gitignored `custom/sync.env`, one assignment per home; repeat keys for several
+homes. Values are absolute paths parsed with POSIX shell quoting, with `#` comments
+allowed. Use single quotes for paths containing backslashes, including Windows drive
+and UNC paths; unquoted or double-quoted backslashes can be consumed as escapes.
+The script parses these assignments as data; it never executes shell code or expands
+variables. Extra homes must exist, and extra Codex homes must meet §1's identification
+rule. Without this file, only the baseline homes are checked.
+
+```sh
+CODEX_HOME="<EXTRA_CODEX_HOME>"
+CODEX_HOME="<ANOTHER_CODEX_HOME>"
+CLAUDE_CONFIG_DIR="<EXTRA_CLAUDE_HOME>"
+KIMI_CODE_HOME="<EXTRA_KIMI_HOME>"
+```
+
+For native Windows homes, preserve backslashes with single quotes:
+
+```sh
+CODEX_HOME='C:\Users\example\.codex-extra'
+CODEX_HOME='\\server\share\.codex-extra'
+```
+
+Verification honors Codex's override file and follows instruction symlinks. The
+managed block must equal the exact §3 template. Malformed or multiple blocks and
+unrelated same-name entries are reported for inspection. Links are expected only in
+§1's designated folders; owned shadowing entries are reported in the other scanned
+folders. `$CODEX_HOME/skills/.system/` is excluded.
+
+Link ownership follows §2. The script reads `source_root` and `previous_roots` (absolute
+path strings) from machine-readable JSON installation receipts in
+`custom/installations/` to recognize links to earlier source roots. It does not read
+run history. Other receipt formats and checked copies require manual inspection by
+an agent following §3. A copied Skill is reported as a same-name conflict because the
+script checks for links; it does not replace it. Symlinked Skills pick up source changes
+immediately. No ownership is inferred from a matching name or from following an
+unrelated link.
+
+For a daily schedule, adapt one of these examples locally. Replace every placeholder
+with an absolute path, XML-escape plist values, and keep the installed schedule and
+logs outside tracked files. These examples are documentation, not installed jobs.
+
+macOS launchd, saved locally as `~/Library/LaunchAgents/org.house-rules.sync.plist`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>org.house-rules.sync</string>
+  <key>ProgramArguments</key><array>
+    <string>PYTHON3_PATH</string>
+    <string>HOUSE_RULES_ROOT/scripts/sync.py</string>
+  </array>
+  <key>StartCalendarInterval</key><dict>
+    <key>Hour</key><integer>9</integer>
+    <key>Minute</key><integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key><string>LOG_DIRECTORY/house-rules-sync.log</string>
+  <key>StandardErrorPath</key><string>LOG_DIRECTORY/house-rules-sync.err</string>
+</dict></plist>
+```
+
+For twice daily, replace `StartCalendarInterval`'s dict with an array of two dicts,
+using hours 9 and 21 and minute 0. Create the log directory first.
+
+Linux systemd user service, saved locally as
+`~/.config/systemd/user/house-rules-sync.service`:
+
+```ini
+[Unit]
+Description=Update and verify House Rules installations
+
+[Service]
+Type=oneshot
+ExecStart="<PYTHON3_PATH>" "<HOUSE_RULES_ROOT>/scripts/sync.py"
+```
+
+Companion `~/.config/systemd/user/house-rules-sync.timer`:
+
+```ini
+[Unit]
+Description=Check House Rules daily
+
+[Timer]
+OnCalendar=*-*-* 09:00:00
+Unit=house-rules-sync.service
+
+[Install]
+WantedBy=timers.target
+```
+
+For twice daily, add `OnCalendar=*-*-* 21:00:00`. The user journal retains output,
+including nonzero results; do not configure the service to treat findings as success.
 
 If the source folder moves, update every managed block and owned link, search instruction
 files and repository `AGENTS.md` files for the old root path, and record the old root in
