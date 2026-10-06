@@ -35,7 +35,9 @@ The foundation design owns the always-loaded rules and the House Rules index ren
   `<HOUSE_RULES_ROOT>/.agents/rules.md`.
 - **Description:** the frontmatter description that each host shows when matching a task to a skill.
 - **Everyday reply:** a chat answer, greeting, progress note or short report in chat.
-- **Operator document:** a brief, report, ledger, design or decision document written for the operator.
+  For skill loading, an interactive chat review report is an everyday reply, including the fixed report format.
+- **Operator document:** a brief, report, ledger, design or decision document written for the operator,
+  excluding interactive chat review reports for skill loading.
 - **Canary run:** a headless session whose tool log shows which files and skills the agent loaded.
   Canary evidence comes from the tool log, never from the agent's own report.
 
@@ -166,7 +168,7 @@ Add the review trigger after bench-discipline:
 Replace the operator-writing trigger:
 
 ```markdown
-- Operator documents (briefs, reports, ledgers), questions to the operator, or GitHub text: load [operator-writing](skills/operator-writing/SKILL.md).
+- Operator documents (briefs, reports, ledgers; excluding interactive chat review reports), questions to the operator, or GitHub text: load [operator-writing](skills/operator-writing/SKILL.md).
 ```
 
 Replace the pr-ready trigger:
@@ -193,7 +195,7 @@ The implementation changes the description in
 [skills/operator-writing/SKILL.md](../../skills/operator-writing/SKILL.md):
 
 ```yaml
-description: Structure and question format for operator documents (briefs, reports, ledgers, design and decision documents), questions the operator must answer, and GitHub text (issues, PR bodies, review comments, replies, commit messages). Use when writing one of these, including questions raised during a review. Everyday chat replies follow the writing rules in the foundation and do not load this skill.
+description: Structure and question format for operator documents (briefs, reports, ledgers, design and decision documents; excluding interactive chat review reports), questions the operator must answer, and GitHub text (issues, PR bodies, review comments, replies, commit messages). Use when writing one of these, including questions raised during a review. Everyday chat replies, including interactive chat review reports in the fixed report format, follow the writing rules in the foundation and do not load this skill unless they need an operator question or GitHub text.
 ```
 
 The operator-writing skill keeps its document structure, option numbering, diagrams, numbered steps and worked example.
@@ -279,6 +281,8 @@ New tests:
   The test rejects copied review criteria and a live-checkout fallback in the change-review skill.
 - `test_review_and_writing_triggers_are_aligned` checks the three index triggers and their matching skill descriptions.
   The test reads `<HOUSE_RULES_ROOT>/INDEX.md` after the foundation rename.
+  The test checks that the definitions, operator-writing trigger and description classify interactive chat review reports
+  as everyday replies for skill loading, while operator questions and GitHub text still load operator-writing.
 - `test_plain_review_uses_one_reviewer_and_fixed_format` checks the one-reviewer default and shorter-report exception.
   The test also checks that review questions use the operator-writing question format.
 
