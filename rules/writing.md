@@ -3,6 +3,15 @@
 The reader must understand the text without any other document. They should know what
 happened, why it matters and what to do, in that order.
 
+## Self-contained text
+
+- YOU MUST make every message stand alone. Never send the reader to find text elsewhere:
+  "my last message", "the questions above", "as discussed earlier" or "see the PR".
+- To mention an earlier question, decision or finding, restate it in full in this message.
+  Otherwise, leave it out.
+- A count or label ("the 11 questions", "question 4", "9a-1") never replaces the items it
+  names.
+
 ## Communication rules
 
 - Support claims with evidence.
@@ -78,6 +87,7 @@ happened, why it matters and what to do, in that order.
 
 - **Reader test:** read only this text as if no other document exists. The reader can tell
   why it matters, what to choose or do, and what happens next.
+  Find every reference to an earlier message, question or document, and restate its content.
 - **Language test:** no unexplained acronym or label; every sentence states one fact; no
   option or decision appears before its explanation.
 - **Detail test:** every fact the decision or action depends on is present.

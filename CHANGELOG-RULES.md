@@ -2,6 +2,12 @@
 
 Source notes for House Rules invariants and procedures.
 
+## rules/writing.md — Self-contained text
+
+Operator direction: 2026-10-07, after an agent twice asked the operator to answer "the 11
+questions in my last message" when that message did not contain them; the operator asked
+for this rule to be hardened.
+
 ## rules/core.md — prime rule 13 (measured durations)
 
 Operator direction: 2026-10-03, after time estimates proved uncalibrated and stretched
