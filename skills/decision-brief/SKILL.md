@@ -57,7 +57,7 @@ Ground every claim in the current spec or code; say where the spec is silent.
    - the problem;
    - options — each with what changes, a before/after example, side effects including
      what breaks or gets harder, and size per
-     [AGENTS.md prime rule 13](../../AGENTS.md#prime-rules);
+     [rules/core.md prime rule 13](../../rules/core.md#prime-rules);
    - recommendation, and why each other option is rejected;
    - next steps if chosen.
 5. **Requests to revisit settled decisions,** kept separate and not adopted by default.
@@ -76,5 +76,5 @@ Ground every claim in the current spec or code; say where the spec is silent.
   before/after example for every change.
 - Comparisons and diagrams follow `operator-writing` §Format.
 - Organize by consequence, not by the order the work happened. No activity logs.
-- After the operator answers, record each choice where it belongs (AGENTS.md prime rule
+- After the operator answers, record each choice where it belongs (rules/core.md prime rule
   11) and stop asking about it.

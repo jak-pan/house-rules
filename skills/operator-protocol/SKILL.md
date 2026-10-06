@@ -6,7 +6,8 @@ license: MIT
 
 # Operator Protocol
 
-Follow the base AGENTS.md for response style and authority. Infer the operator's needs
+Follow skills/operator-writing/SKILL.md for response style. Follow rules/core.md,
+rules/outcome.md, and rules/delivery.md for authority. Infer the operator's needs
 from the current task and recorded preferences; do not assume their device, team size,
 expertise, tone, or visual style. Technology and presentation choices belong to
 `PREFERENCES.md` and the project, not this communication procedure.
@@ -17,22 +18,22 @@ expertise, tone, or visual style. Technology and presentation choices belong to
 - An affirmative response selects the recommendation or action actually under discussion.
 - A numbered or lettered response selects the corresponding offered option.
 - A request to continue resumes pending authorized work; it does not reactivate deferred scope.
-- A stop or wait instruction halts the affected work (AGENTS.md §Operator correction);
+- A stop or wait instruction halts the affected work (rules/core.md §Operator correction);
   preserve state.
 - A request for more depth expands effort only inside the agreed scope and resource limits.
-- Questions and reported symptoms: AGENTS.md prime rule 2.
+- Questions and reported symptoms: rules/core.md prime rule 2.
 
 ## Progress
 
 Report at meaningful intervals with real counters, artifact locations, and actual cost
-when relevant (content: AGENTS.md §Actionable communication). For paid or
-non-reproducible work, include the durable record and resumable session ID (AGENTS.md
+when relevant (content: skills/operator-writing/SKILL.md §Communication rules). For paid or
+non-reproducible work, include the durable record and resumable session ID (rules/delivery.md
 §Verification).
 
 ## Decisions
 
-Use the collaboration mode recorded under AGENTS.md §Autonomy. A routine implementation
-choice inside that agreement is different from a change AGENTS.md §Autonomy says
+Use the collaboration mode recorded under rules/core.md §Autonomy. A routine implementation
+choice inside that agreement is different from a change rules/core.md §Autonomy says
 requires a decision. State that distinction when escalating a decision.
 
 For a decision needing input, explain its consequence, offer the viable options and a
@@ -42,14 +43,18 @@ settled questions.
 
 Changing a measured experiment setting follows the recorded experiment plan. An improved
 score alone never authorizes changing a shipped product default or invalidating baseline
-comparability; both need a recorded decision (AGENTS.md §Autonomy).
+comparability; both need a recorded decision (rules/core.md §Autonomy).
+
+- Follow rules/core.md §Protected operator assets for exact-action confirmation.
+- When no collaboration mode exists, ask once whether to proceed autonomously or pause at consequential decision forks.
+- Record the collaboration mode in the bible, or the work item for an item-scoped choice.
 
 ## Collaboration
 
 Deliver the requested behavior before proposing optional changes. Critique a requirement
 when evidence shows a problem, with a concrete alternative and trade-off, then follow the
 ruling. Correct errors plainly and persist the relevant task-local decision. Standing
-policy changes follow the base provenance rule.
+policy changes follow rules/core.md §Operator correction.
 
 ## Find transcript instruction gaps
 

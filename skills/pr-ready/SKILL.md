@@ -7,7 +7,7 @@ license: MIT
 # PR Ready
 
 One loop per change: local gate → push → CI → review round → fix → … → merge → cleanup.
-Verification invariant: AGENTS.md §Verification. Local work follows
+Verification invariant: rules/delivery.md §Verification. Local work follows
 [`prompts/roles/implementer.md`](../../prompts/roles/implementer.md); reviewer test scope is in
 [`prompts/roles/reviewer.md`](../../prompts/roles/reviewer.md).
 
@@ -41,6 +41,8 @@ Verification invariant: AGENTS.md §Verification. Local work follows
   changes; toolchain, lockfile and build-script matrices belong to CI.
 - Report the exact commands, filters and pass/fail counts.
 
+- Follow rules/delivery.md §Verification for iteration gates and renewal of invalidated verification evidence.
+
 ## 2. Push and CI
 
 - Write the PR body, review comments, replies and commit messages in the forms of skill
@@ -49,17 +51,19 @@ Verification invariant: AGENTS.md §Verification. Local work follows
 - Open PRs as drafts (`gh pr create --draft`) while work is in progress; mark them ready
   (`gh pr ready`) only once the local gate passes. Ready means "review this": a server-side
   review gate reviews each new head of a ready PR and ignores drafts. Draft status does
-  not change the complete-fix push rule in AGENTS.md §Git.
+  not change the complete-fix push rule in rules/delivery.md §Git.
 - Push; wait for CI to finish green on the exact head commit.
 - On a CI failure, reproduce only the failing tests locally. Before attributing a failure
   to the change, compare it against the default branch under the same conditions.
+
+- Follow rules/delivery.md §Verification for CI review, failure routing and the expected-long-run exception.
 
 ## 3. Review rounds
 
 **Where reviews run.** If the repository has a server-side review gate (a review app
 running in CI), pushing triggers the review. Otherwise the agent runs the panel locally.
 Required reviews are defined only in §4. Adversarial verification scope and the single-pass
-rule: AGENTS.md §Parallel work.
+rule: rules/delivery.md §Parallel work.
 External repositories always get local review rounds (skill `upstream-contribution`).
 
 **Review bar.** [`prompts/util/review-bar.md`](../../prompts/util/review-bar.md) holds the bar;
@@ -93,7 +97,7 @@ load no other rules. Specialist dispatch follows
   [`prompts/roles/reviewer.md`](../../prompts/roles/reviewer.md).
 - The fixer follows the [fixer role](../../prompts/roles/fixer.md) for accepted scope and
   the [worker pack](../../prompts/roles/implementer.md) for implementation, with commit
-  cadence from AGENTS.md §Git.
+  cadence from rules/delivery.md §Git.
   The next review names that commit or those commits and marks each prior blocker RESOLVED
   or NOT. A fixer never approves its own fix.
 - Finding disposition follows the [shared review bar](../../prompts/util/review-bar.md).
@@ -110,7 +114,7 @@ load no other rules. Specialist dispatch follows
   never pushes onto a head that moved. Merge eligibility has one home: §4.
 - **Repeat defects.** Use the repair order in
   [No fortification](../../prompts/skills/no-fortification.md); the general third-occurrence checkpoint
-  remains AGENTS.md §Three-occurrence reassessment.
+  remains rules/outcome.md §Three-occurrence reassessment.
 - **No idle gaps.** A fix run pushes and starts its review in the same job; a review that
   needs a fix starts the fix in the same job. The lead intervenes only for decisions.
 - **Conflicting findings: analyze before fixing.** When reviewers' findings pull against
@@ -119,8 +123,7 @@ load no other rules. Specialist dispatch follows
   starts from first principles: what the mechanism is for, what the spec actually
   requires (quoted), and which findings are requirements versus a reviewer's assumption.
   Only then does it compare mechanisms and recommend one. The next fix implements that
-  recommendation; a genuine spec gap goes to the operator. Operator direction:
-  2026-10-03, after a fixer traded a bound for an integrity check and back.
+  recommendation; a genuine spec gap goes to the operator.
 - **One fixer per branch; every review feeds it.** A branch never has two fixers at once
   (parallel fixers duplicate builds and conflict). Every finished review, from any
   reviewer at any speed, joins the branch's fix queue. When the fixer is idle, the
@@ -133,8 +136,7 @@ load no other rules. Specialist dispatch follows
   need one; a slower reviewer keeps reviewing its snapshot in the background, and its
   report becomes queued input. At the final head the slow reviewer still reviews, but
   only the diff since its last reviewed head. Merge eligibility: §4.
-  Operator direction: 2026-10-03, after parallel slow-review fixers doubled builds and
-  overloaded the machine.
+
 - **Current base before the final round.** Merge the default branch into the PR branch
   before its final review, so the reviewed head is what CI and the merge see.
 
@@ -155,3 +157,7 @@ load no other rules. Specialist dispatch follows
   auto-merge unless the operator asked.
 - Then update the tracking item, delete the branch, and remove the lane (skill
   `agent-lanes` §Lane cleanup).
+
+- When all reviewer families approve, CI passes, and deployment is documented routine procedure, finish landing.
+- Merge within rules/delivery.md §Git delivery authority, deploy, verify after deployment, then report changes.
+- Do not hand routine landing steps to the operator.

@@ -11,6 +11,16 @@ happened, why it matters and what to do, in that order. This skill combines a co
 language (ASD-STE100, applied at about 80 %) with an explanation-first structure and a
 reader test.
 
+## Communication rules
+
+- Follow `operator-writing` for every operator-facing text’s structure, language, options, Mermaid diagrams, and reader test.
+- Use `decision-brief` for decisions and explanations.
+- Support claims with evidence.
+- Distinguish observed causes from hypotheses.
+- Distinguish completed fixes from plans and deployments awaiting verification.
+- Do not invent operator homework.
+- Do not ask permission to continue authorized work.
+
 ## Language
 
 - One fact per sentence. Instructions: at most 20 words. Descriptions: at most 25 words.
@@ -24,7 +34,7 @@ reader test.
   evidence does not show. Never drop a hedge, exception or consequence that changes what a
   statement means for the reader.
 - No filler, no marketing adjectives, no ceremonial openings or closings.
-- Size work per [AGENTS.md prime rule 13](../../AGENTS.md#prime-rules).
+- Size work per [rules/core.md prime rule 13](../../rules/core.md#prime-rules).
 
 ## Format
 
@@ -36,6 +46,10 @@ reader test.
   Orient them vertically, with groups and comparisons stacked rather than side by side.
   Unconnected subgraphs render side by side, so use separate diagrams with text between
   them. When the client shows Mermaid as source, render it with the client's visual tool.
+
+- Prefer lists of five or fewer items.
+- Group longer lists only when helpful.
+- Preserve sequence, identifiers, and coverage when grouping.
 
 ## Structure
 
@@ -62,6 +76,10 @@ Rules:
 - Short chat replies use the same order in compressed form: result → why → what is next.
   Omit empty parts; do not add parts the message does not need.
 
+- Keep the requested outcome and material blockers visible.
+- State the next action and its owner in messages.
+- Highlight operator-owned actions with bold text or a heading.
+
 ## GitHub text
 
 Issues, PR bodies, review comments, replies to review and commit messages use the forms in
@@ -76,10 +94,6 @@ Issues, PR bodies, review comments, replies to review and commit messages use th
   mid-phrase. Automatically filed issues follow the issue form too.
 - Commit messages state the old behavior, its consequence, then the change. No gate logs,
   no internal round labels, no references to files outside the repository.
-
-Operator direction: 2026-10-04, after issue and PR bodies relied on internal labels and
-omitted reproduction and test evidence; an upstream contribution in this form was chosen
-as the model.
 
 ## Questions to the operator
 

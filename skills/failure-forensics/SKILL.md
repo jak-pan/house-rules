@@ -38,7 +38,7 @@ model evaluation it might be input → ingestion → candidates → effective pr
 - Inspect effective runtime values rather than inferring them only from configuration
   code. Cross-check suspicious outputs and labels against source data.
 - If evidence is missing, add the smallest instrumentation that answers the causal
-  question. Apply AGENTS.md's credential, data, and egress policies before capturing or
+  question. Apply rules/core.md §Security before capturing or
   exporting payloads; use redacted or synthetic reproductions where needed. Never dump
   secrets merely to obtain a complete trace.
 - For an aggregate regression, compare changed items or representative failures and
@@ -68,12 +68,12 @@ implausible. Check affected consumers before changing shared defaults.
    or documented invariant. If the cause remains uncertain, label a diagnostic change
    or temporary mitigation accurately; do not call it a root-cause fix.
 2. Repair the defect without silently dropping failures, weakening required assertions,
-   or bypassing a security boundary. Follow AGENTS.md for material risk and scope changes.
-3. Add the regression evidence AGENTS.md §Verification requires; for a harness defect,
+   or bypassing a security boundary. Follow rules/core.md §Autonomy for material risk and scope changes.
+3. Add the regression evidence rules/delivery.md §Verification requires; for a harness defect,
    avoid growing a generalized analyzer to fix a local harness mistake.
-4. Confirm per AGENTS.md §Verification. For intermittent failures, explain what the
+4. Confirm per rules/delivery.md §Verification. For intermittent failures, explain what the
    confirmation establishes and what uncertainty remains.
-5. Apply AGENTS.md's three-occurrence reassessment when that condition is reached.
+5. Apply rules/outcome.md §Three-occurrence reassessment when that condition is reached.
 
 Diagnostic instrumentation is temporary unless ongoing observability is required.
 Validate new analysis tools against a hand-verified case before relying on their output;

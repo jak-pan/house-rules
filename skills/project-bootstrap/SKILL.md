@@ -22,10 +22,10 @@ Ask only questions that remain unanswered and affect outcome, operations, or aut
   affect that choice? Inspect known constraints before asking.
 - Do requirements justify overriding a default or adding another language/component
   (`PREFERENCES.md`)?
-- Which collaboration mode applies (AGENTS.md §Autonomy)?
+- Which collaboration mode applies (rules/core.md §Autonomy)?
 - Is the default issue/branch/PR workflow suitable (skill `work-tracking`), does the
   repository have a Git host, and what delivery authority is actually recorded
-  (AGENTS.md §Git)?
+  (rules/delivery.md §Git)?
 
 Ask per skill `operator-protocol` §Decisions. Do not add hypothetical infrastructure
 questions to a small script or analysis.

@@ -32,32 +32,36 @@ When preparing a handoff, capture consequential near misses caught by chance: wh
 almost went wrong, what caught it, and which gap remains. Use the existing work record
 and link it from the handoff; no separate incident log or entry is needed when there
 is nothing material to preserve. A near miss does not automatically justify a new
-standing rule; follow AGENTS.md's rule-provenance requirement.
+standing rule; follow rules/core.md §Operator correction.
 
 ## The bible (repository AGENTS.md)
 
-Reading order: AGENTS.md §Session start. Append settled repo-wide decisions to the bible
-(timing: AGENTS.md prime rule 11) so they're never re-litigated: chosen models, rejected
+Reading order: rules/core.md §Session start. Append settled repo-wide decisions to the bible
+(timing: rules/core.md prime rule 11) so they're never re-litigated: chosen models, rejected
 alternatives (with the evidence), credential-provider locations, owned defaults,
 environment facts that were forgotten twice.
 
 ## Filing
 
-Destinations for findings (AGENTS.md prime rule 11):
+Destinations for findings (rules/core.md prime rule 11):
 
 - experiments/results → the work item's record and the campaign ledger
 - audits/reviews → dated `docs/reports/YYYY-MM-DD-topic.md`
 - operational knowledge → RUNBOOK.md; architecture → docs system map + deep dives
 - open follow-ups, deferrals, and plan steps → work items in the owning repository
-  (AGENTS.md §Work tracking & continuity); a report, doc, or plan links them but never
+  (rules/delivery.md §Work tracking & continuity); a report, doc, or plan links them but never
   stands in for them
 
 Paths for runs, reports, ledgers, debug evidence, and scratch: `STRUCTURE.md`.
 
+- Follow rules/core.md prime rule 11 for decision and finding timing and destinations.
+- Cross-check cleanup or supersession against the active work record and newer docs/code.
+- Record old-to-new mappings and verification evidence in the work item.
+
 ## Authorized, bounded, and durable external runs
 
-Scope and authorization: AGENTS.md §Verification. Before launch, record the envelope that
-authorizes the run (AGENTS.md §Resource envelopes) in the active work record: approved
+Scope and authorization: rules/delivery.md §Verification. Before launch, record the envelope that
+authorizes the run (rules/outcome.md §Resource envelopes) in the active work record: approved
 agents/providers, concurrency, round limits, cost/token/runtime boundary, and stop
 condition.
 
@@ -65,7 +69,7 @@ Before the first substantive call of any paid, long-running, or non-reproducible
 agent/model/tool run:
 
 1. Choose a durable path for stdout/stderr or the native session transcript. Apply
-   AGENTS.md §Security: redact at capture and restrict any necessary sensitive raw records.
+   rules/core.md §Security: redact at capture and restrict any necessary sensitive raw records.
 2. Enable the tool's persistent/resumable session mode where available.
 3. Record the session/process ID, exact model/tool, start time, cost/budget boundary, and
    output path in the active work record.
@@ -73,18 +77,20 @@ agent/model/tool run:
    resumed before allowing major spend or runtime to accumulate.
 
 At meaningful milestones, record actual spend, tokens, runtime, and rounds against the
-remaining envelope (what counts as a new round: AGENTS.md §Resource envelopes).
+remaining envelope (what counts as a new round: rules/outcome.md §Resource envelopes).
 
 During a quiet or apparently stalled run, distinguish UI/wrapper silence from process
 failure: inspect the process, terminal/session state, transcript growth, checkpoints, and
 provider status. A timeout is an observation, not authorization to kill the run.
 
 Before interrupt/restart/replacement, persist the latest recoverable output and decide
-whether the evidence proves no progress. For a materially paid or unique run, obtain the
-operator's approval unless AGENTS.md §Operator correction applies. An urgent safety stop
+whether the evidence proves no progress. For a materially paid or unique run, apply the
+approval requirement and exceptions in rules/delivery.md §Verification. An urgent safety stop
 takes precedence; capture only what can be captured without delaying it. If durable
 capture cannot be established at launch, ask the operator to accept the loss risk or use
 a cheaper/reproducible probe instead.
+
+- Apply the routine-command exemption in rules/delivery.md §Verification.
 
 ## Resuming
 

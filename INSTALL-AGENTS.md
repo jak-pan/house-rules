@@ -103,8 +103,9 @@ For each selected product and configuration home:
    ```
 
 3. Inside that block, instruct the agent to read the permanent House Rules
-   `AGENTS.md` at session start and after every context compaction or reset, load only
-   relevant House Rules Skills, use `STRUCTURE.md` for artifact placement, and keep native product configuration
+   `AGENTS.md` at session start and after every context compaction or reset, load its
+   required rule files and only relevant House Rules Skills, use `STRUCTURE.md` for
+   artifact placement, and keep native product configuration
    outside House Rules. Use resolved absolute paths from this computer. Install this
    exact adapter text, replacing `<HOUSE_RULES_ROOT>` with the permanent absolute
    path:
@@ -114,9 +115,9 @@ For each selected product and configuration home:
    # Shared operating foundation (House Rules)
 
    At session start and after every context compaction or reset, read `<HOUSE_RULES_ROOT>/AGENTS.md`.
-   It is the canonical source for collaboration, verification, autonomy, and durable
-   execution rules. Repository-local rules supply project details and win over shared
-   preferences; all work remains subject to the host's instruction hierarchy
+   It is the index for collaboration, verification, autonomy, and durable
+   execution rules. Load the rule files and Skills that its conditions select.
+   Repository-local rules supply project details and win over shared preferences; all work remains subject to the host's instruction hierarchy
    and access controls.
 
    Load only the House Rules Skills relevant to the task. Use
@@ -220,6 +221,7 @@ configured family; `--list` shows what each CLI offers.
 
 Filesystem verification:
 
+- every rule file under `rules/` named by the index exists;
 - every House Rules Skill destination resolves to the intended source or matches the
   checked source bytes;
 - every instruction file contains exactly one House Rules block (counting old `forge:`
@@ -281,7 +283,8 @@ On a clean default-branch checkout, the script fetches the default branch and ru
 updates and no local commits ahead of the remote. The merge uses the captured fetched
 revision and aborts if incoming tracked paths would overwrite ignored local files.
 Dirty, detached, non-default, ahead and diverged checkouts are reported and never updated.
-It then checks every configured home's managed block, missing or stale Skill links, owned links to
+It then checks the required `rules/core.md`, `rules/outcome.md`, and `rules/delivery.md` files,
+then every configured home's managed block, missing or stale Skill links, owned links to
 removed Skills, and same-name entries in the other scanned Skill folders. Git and
 filesystem errors reach the caller. Findings collected before a verification error are
 retained, and the summary identifies incomplete coverage. Exit codes are 0 for no
