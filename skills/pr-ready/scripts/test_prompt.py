@@ -1708,6 +1708,17 @@ class AlwaysLoadedWritingTest(unittest.TestCase):
             self.assertNotRegex((ROOT / "skills/operator-writing/SKILL.md").read_text(),
                                 rf"(?m)^## {re.escape(heading)}$")
 
+    def test_fact_label_requires_own_verification(self):
+        labels = " ".join((ROOT / "rules/writing.md").read_text().split("## Claim labels", 1)[1]
+                          .split("## Checks before sending", 1)[0].split())
+        for requirement in (
+            "Label a claim `FACT` only after you verified it yourself, in this session, against its primary source",
+            "Give that evidence with the `FACT`",
+            "is never a `FACT`. Verify it first, or label it `ASSUMPTION` and name its source.",
+        ):
+            with self.subTest(requirement=requirement):
+                self.assertIn(requirement, labels)
+
     def test_claim_labels_have_one_definition_and_linked_consumers(self):
         definition = "Label claims `FACT`, `ASSUMPTION`, `ESTIMATE`, `ASSESSMENT` or `DECISION`."
         owners = [path.relative_to(ROOT).as_posix()
