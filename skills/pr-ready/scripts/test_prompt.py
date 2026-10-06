@@ -210,6 +210,7 @@ class CollectionAcceptanceTest(unittest.TestCase):
         self.assertEqual(contract, (
             'one per ISSUE item, as "### <title>" then the body. '
             'The title names the behavior in plain words (no internal labels, codes or round names, never cut mid-phrase). '
+            'The body follows skill operator-writing references/github-text.md section 2 (issue). '
             'The body states: '
             'what happens and its effect first; current behavior with file:line at the commit SHA you reviewed; '
             'evidence (a command, test or quoted line; say "From code reading" when untested); '
