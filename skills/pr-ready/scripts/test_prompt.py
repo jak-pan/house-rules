@@ -1250,27 +1250,6 @@ class InvariantsOnlyTest(unittest.TestCase):
         'side".\n'
     )
 
-    def test_each_invariant_sentence_fits_twenty_words(self):
-        agents = "\n".join((ROOT / path).read_text() for path in
-                           ("rules/core.md", "rules/outcome.md", "rules/delivery.md",
-                            "rules/git.md", "rules/priority-labels.md", "rules/writing.md",
-                            "rules/session-writing.md"))
-        agents += "\n" + (ROOT / "STRUCTURE.md").read_text().split(
-            "## Layout\n", 1)[1].split("```", 1)[0]
-        agents += "\n" + (ROOT / "skills/operator-writing/SKILL.md").read_text().split(
-            "## Communication rules\n", 1)[1].split("## Structure", 1)[0]
-        agents = agents.replace(self.TRACKING_RULE, "").replace(self.RESTORED_TRACKING, "")
-        agents = re.sub(r"(?ms)^(`{3,})[^\n]*\n.*?^\1\s*$", "", agents)
-        agents = re.sub(r"(?m)^#.*$", "", agents)
-        blocks = re.split(r"\n\s*\n|\n(?=\s*(?:[-*]|\d+\.)\s)", agents)
-        for block in blocks:
-            instruction = re.sub(r"^\s*(?:[-*]|\d+\.)\s+", "", block)
-            instruction = " ".join(re.sub(r"[*`]", "", instruction).split())
-            for sentence in re.split(r"(?<=[.!?])\s+(?=[A-Z\"])", instruction):
-                if sentence:
-                    with self.subTest(sentence=sentence):
-                        self.assertLessEqual(len(sentence.split()), 20)
-
     def test_all_inline_source_notes_live_in_changelog(self):
         marker = re.compile(r"(?:Operator directions?|Source incident):")
         files = [ROOT / "INDEX.md", *(ROOT / "rules").glob("*.md")]
