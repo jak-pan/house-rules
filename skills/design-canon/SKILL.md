@@ -47,7 +47,7 @@ model stack in an unrelated application.
   database"), the gap is fixed in the module that owns the mechanism, and the consumer
   adapts to that. A local copy in the consumer is a new duplicate, however temporary it
   is called. A change that adds behaviour to a known duplicate is blocked in review until
-  the duplicate's removal is tracked (AGENTS.md §Work tracking & continuity), and it
+  the duplicate's removal is tracked (rules/delivery.md §Work tracking & continuity), and it
   should land on the shared mechanism instead where that is practical. Boundary:
   covers infrastructure that has, or should have, one owner (queues, transports,
   provider wrappers, storage backends); product-specific behaviour built on top of it
@@ -81,16 +81,16 @@ model stack in an unrelated application.
 - **Distrust accidental design.** Every structure should have a defensible reason or be simplified.
   Less is usually more.
 - **Now-vs-later is explicit.** Postponed scope is recorded as TODO (it stays postponed:
-  AGENTS.md prime rule 10); bleeding-edge is chosen deliberately when justified, not
+  rules/core.md prime rule 10); bleeding-edge is chosen deliberately when justified, not
   drifted into.
 
 ## Security & sovereignty
 
 - Keep credentials separate from ordinary product data; storage and diagnostic capture
-  follow AGENTS.md §Security.
+  follow rules/core.md §Security.
 - Prefer local models for private processing where hardware allows (e.g. MLX/Ollama on
   Apple Silicon), with hardware-adaptive local/cloud routing and local redaction before
-  any cloud egress. Egress itself follows AGENTS.md §Security.
+  any cloud egress. Egress itself follows rules/core.md §Security.
 
 ## Spec-first UX
 
@@ -102,4 +102,4 @@ must exist and be satisfying.
 ## Docs
 
 - Two tiers: one clean system map for high-level understanding + deep dives per feature.
-- Doc sweeps after design changes (same-commit rule: AGENTS.md §Git).
+- Doc sweeps after design changes (same-commit rule: rules/delivery.md §Git).

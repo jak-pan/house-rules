@@ -42,8 +42,7 @@ adapted to the House Rules lifecycle.)
 
 **Question discipline**: design-time and mid-execution uncertainty questions are welcome;
 one precise question beats a confidently-bad decision. The forbidden thing is permission
-theater: asking to continue work that is already authorized (AGENTS.md §Actionable
-communication). How to ask, and to keep unblocked work moving meanwhile: skill
+theater: asking to continue work that is already authorized (skills/operator-writing/SKILL.md §Communication rules). How to ask, and to keep unblocked work moving meanwhile: skill
 `operator-protocol` §Decisions.
 
 ## During implementation
@@ -83,5 +82,4 @@ Significant work means P0/P1, or any diff spanning multiple modules.
   House Rules skills and repo bibles after major model changes and delete rules that now just
   add noise. Rules are load-bearing or they're clutter.
 - Recurring interview answers and blindspot findings should produce proactive proposals
-  for improving the design, bible, or skills. Persistence follows AGENTS.md §Operator
-  correction.
+  for improving the design, bible, or skills. Persistence follows rules/core.md §Operator correction.

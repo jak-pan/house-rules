@@ -8,7 +8,7 @@ license: MIT
 
 Produce the smallest durable plan that makes the study interpretable and bounded.
 Use existing repository evidence and the operator's choices before asking questions.
-This procedure does not expand authorization; AGENTS.md defines decision authority,
+This procedure does not expand authorization; rules/core.md and rules/outcome.md define decision authority,
 collaboration mode, resource limits, and security requirements.
 
 ## Inspect before asking

@@ -53,7 +53,7 @@ cargo test --release --workspace --all-features --no-fail-fast
 
 Zero warnings is the bar. The repo's architecture guard scripts, if any, run after
 structural changes. Env-mutating tests use `#[serial(env)]`; test data follows
-AGENTS.md §Security. Fixtures are date-relative (no fixture rot).
+rules/core.md §Security. Fixtures are date-relative (no fixture rot).
 
 ## Config layering (default for Rust products)
 
@@ -74,12 +74,12 @@ Apply this section only to components that actually use models; do not add a mod
 
 - The settled model stack (embedder + dims, reranker, workhorse LLM, judge — with exact
   reasoning-effort levels per role) lives in the repo bible. Treat it as settled
-  (AGENTS.md prime rule 10); never substitute.
+  (rules/core.md prime rule 10); never substitute.
 - Cheap/free-first: the cheapest model that clears the quality bar wins; report cost per
   run; no expensive models outside the approved standing or campaign resource envelope.
 - Local inference and cloud egress: skill `design-canon` §Security & sovereignty.
 - Inspect the configured credential provider without displaying values; credential
-  storage and diagnostic capture follow AGENTS.md §Security.
+  storage and diagnostic capture follow rules/core.md §Security.
 
 ## Storage
 

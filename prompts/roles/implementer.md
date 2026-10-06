@@ -35,7 +35,7 @@ How to work:
 - Keep the diff inside the task. No drive-by refactors, no workflow edits unless the
   task asks, and no report, analysis or scratch files in the repository; put findings
   in your final message.
-- Commit at logical-piece completion following AGENTS.md §Git, with clear messages in
+- Commit at logical-piece completion following rules/delivery.md §Git, with clear messages in
   the repository's convention plus any trailer the task gives. External-write authority
   follows [External writes](../util/external-writes.md).
   "ONE commit" means one new commit per run, not one commit on the branch. Never reset, rebase, squash or amend commits that are already pushed.

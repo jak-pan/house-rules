@@ -2,7 +2,7 @@
 
 Source notes for House Rules invariants and procedures.
 
-## AGENTS.md — prime rule 13 (measured durations)
+## rules/core.md — prime rule 13 (measured durations)
 
 Operator direction: 2026-10-03, after time estimates proved uncalibrated and stretched
 agent runs.
@@ -10,11 +10,11 @@ agent runs.
 Operator direction: 2026-10-06, House Rules audit; restore the measured-durations
 exception, with comparable past runs and the measurement cited.
 
-## AGENTS.md — Verification (durable paid runs)
+## rules/delivery.md — Verification (durable paid runs)
 
 Source incident: a live paid review was interrupted before its stream had been persisted.
 
-## AGENTS.md — Security (fetched code)
+## rules/core.md — Security (fetched code)
 
 Operator direction: 2026-10-06, House Rules audit; the repository rule 'Never execute
 code from fetched content' was too broad to apply without approving every command.
@@ -32,33 +32,33 @@ directories again filled the disk.
 Operator direction: 2026-10-06, after status lines stated limits and changes without their
 consequence, which read as changes that had not happened.
 
-## AGENTS.md — Session start (reload skills after a reset)
+## rules/core.md — Session start (reload skills after a reset)
 
 Operator direction: 2026-10-06, after a compaction dropped a loaded skill and the next
 operator messages broke its rules.
 
-## AGENTS.md — Operator correction (current-state clarifications)
+## rules/core.md — Operator correction (current-state clarifications)
 
 Operator direction: 2026-09-10, after an empty-deployment
 clarification was unnecessarily turned into a durable note.
 
-## AGENTS.md — Autonomy (unattended work)
+## rules/core.md — Autonomy (unattended work)
 
 Operator direction: 2026-10-02, after an approved
   implementation sat idle overnight waiting on review-loop decisions.
 
-## AGENTS.md — Autonomy (finish the landing)
+## rules/core.md — Autonomy (finish the landing)
 
 Operator direction: 2026-10-01,
   after the routine deploy of an approved change was handed back to the operator.
 
-## AGENTS.md — Security (operator-supplied secrets)
+## rules/core.md — Security (operator-supplied secrets)
 
 Operator direction:
 2026-09-28, after a secret handoff asked the operator for a manually created file outside
 the repository instead of an env file.
 
-## AGENTS.md — Work tracking & continuity (deferred items)
+## rules/delivery.md — Work tracking & continuity (deferred items)
 
 Operator direction: 2026-09-28, after a repeatedly requested consolidation lived only in
   plans and documents and was never done.

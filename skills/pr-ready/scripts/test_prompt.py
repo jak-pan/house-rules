@@ -122,7 +122,7 @@ class PromptTest(unittest.TestCase):
         self.assert_failure(self.run_prompt("missing.md"), "missing.md")
 
     def test_section_reference_fails(self):
-        for path in ("AGENTS.md#prime-rules", "missing.md#section"):
+        for path in ("rules/core.md#prime-rules", "missing.md#section"):
             with self.subTest(path=path):
                 self.assert_failure(self.run_prompt(text="@rule house-rules:" + path + "\n"),
                                     "section")
@@ -526,7 +526,7 @@ class RuleOwnershipTest(unittest.TestCase):
             result = PromptTest().run_prompt(str(role.relative_to(ROOT)))
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(" ".join(result.stdout.split()).count(canon), 1)
-        self.assertIn("prompts/skills/no-fortification.md", self.text("AGENTS.md"))
+        self.assertIn("../prompts/skills/no-fortification.md", self.text("rules/outcome.md"))
 
     def test_external_write_prohibition_reaches_every_role_once(self):
         contract = (ROOT / "prompts/util/external-writes.md").read_text()
@@ -577,11 +577,11 @@ class RuleOwnershipTest(unittest.TestCase):
 
     def test_work_sizing_belongs_to_prime_rule_13(self):
         for path, target in (
-            ("skills/decision-brief/SKILL.md", "../../AGENTS.md#prime-rules"),
-            ("skills/operator-writing/SKILL.md", "../../AGENTS.md#prime-rules"),
+            ("skills/decision-brief/SKILL.md", "../../rules/core.md#prime-rules"),
+            ("skills/operator-writing/SKILL.md", "../../rules/core.md#prime-rules"),
             (
                 "skills/operator-writing/references/github-text.md",
-                "../../../AGENTS.md#prime-rules",
+                "../../../rules/core.md#prime-rules",
             ),
         ):
             with self.subTest(path=path):
@@ -591,7 +591,7 @@ class RuleOwnershipTest(unittest.TestCase):
                 self.assertNotRegex(
                     text, r"[Tt]ime estimates|agent-days|files and lines touched"
                 )
-        self.assertIn("Avoid unmeasured time estimates", self.text("AGENTS.md"))
+        self.assertIn("Avoid unmeasured time estimates", self.text("rules/core.md"))
         self.assertIn("No filler", self.text("skills/operator-writing/SKILL.md"))
         github = self.text("skills/operator-writing/references/github-text.md")
         self.assertIn('No ceremony. A "found by" line is allowed', github)
@@ -739,7 +739,7 @@ class RuleOwnershipTest(unittest.TestCase):
         canon = (self.root / "prompts/skills/test-discipline.md").read_text()
         self.assertIn("## Test discipline\n", canon)
         self.assertNotIn("## Tests\n", canon)
-        self.assertIn("§Test discipline", self.text("AGENTS.md"))
+        self.assertIn("§Test discipline", self.text("rules/delivery.md"))
         guards = self.text("skills/pr-ready/references/guards.md")
         self.assertIn("prompts/skills/test-discipline.md", guards)
         self.assertNotIn("prompts/skills/test-discipline.md#tests", guards)
@@ -769,26 +769,27 @@ class AnsweredRestoreTest(unittest.TestCase):
         )
 
     def test_reset_reloads_skills_and_references_the_writing_rule_owner(self):
-        session = self.text("AGENTS.md").split("## Session start", 1)[1].split(
-            "## Outcome and resource contract", 1
+        session = self.text("rules/core.md").split("## Session start", 1)[1].split(
+            "### Protected operator assets", 1
         )[0]
         self.assertIn("including a compaction", session)
         self.assertIn("reload the skills the current task uses", session.lower())
-        self.assertIn("§Actionable communication", session)
-        self.assertNotIn("operator-writing", session)
-        communication = self.text("AGENTS.md").split(
-            "## Actionable communication", 1
-        )[1].split("## Autonomy", 1)[0]
+        self.assertIn("skills/operator-writing/SKILL.md §Communication rules", session)
+        self.assertEqual(session.count("skills/operator-writing/SKILL.md"), 1)
+        self.assertNotIn("reader test", session)
+        communication = self.text("skills/operator-writing/SKILL.md").split(
+            "## Communication rules", 1
+        )[1].split("## Language", 1)[0]
         self.assertIn("Follow `operator-writing` for every operator-facing text’s "
                       "structure, language, options, Mermaid diagrams, and reader test.",
                       communication)
 
     def test_reset_instructions_fit_the_twenty_word_limit(self):
-        session = self.text("AGENTS.md").split("## Session start", 1)[1].split(
-            "## Outcome and resource contract", 1
+        session = self.text("rules/core.md").split("## Session start", 1)[1].split(
+            "### Protected operator assets", 1
         )[0]
         reset = session.split("After any context reset", 1)[1].split(
-            "Follow §Actionable communication", 1
+            "Follow skills/operator-writing/SKILL.md §Communication rules", 1
         )[0]
         for sentence in ("After any context reset" + reset).split("."):
             if sentence.strip():
@@ -814,7 +815,7 @@ class AnsweredRestoreTest(unittest.TestCase):
                 self.assertIn(requirement, detail)
 
     def test_measured_duration_exception(self):
-        rules = self.text("AGENTS.md")
+        rules = self.text("rules/core.md")
         for requirement in ("State work size as files and lines touched.",
                             "Give durations only from measured comparable past runs.",
                             "Cite those measurements."):
@@ -839,7 +840,7 @@ class AnsweredRestoreTest(unittest.TestCase):
         self.assertIn('On "Stop everything", halt everything.', rules)
 
     def test_one_adversarial_pass_per_deliverable(self):
-        rules = self.text("AGENTS.md")
+        rules = self.text("rules/delivery.md")
         self.assertIn("Require one adversarial verification pass per deliverable.", rules)
         self.assertIn("Count CI review, including Warden, as that pass when it covers "
                       "the deliverable.", rules)
@@ -863,13 +864,13 @@ class AnsweredRestoreTest(unittest.TestCase):
                       "recorded comparison trial.", merge)
 
     def test_external_and_paid_boundary_only(self):
-        rules = self.text("AGENTS.md")
+        rules = self.text("rules/delivery.md")
         self.assertIn("Require an explicit maximum cost/token/runtime boundary before "
                       "launching external or paid work.", rules)
         self.assertIn("Apply this launch-boundary requirement only to external or paid work.", rules)
 
     def test_council_pointer_without_workflow(self):
-        rules = self.text("AGENTS.md")
+        rules = self.text("rules/core.md")
         self.assertIn("Send design-changing or otherwise important decisions to the "
                       "council when they conflict with recorded rules.", rules)
         self.assertIn("Also send those decisions to the council when confidence falls "
@@ -930,13 +931,13 @@ class AnsweredRestoreTest(unittest.TestCase):
                       "factors before adding new ones.", rules)
 
     def test_no_progress_and_runaway_guard(self):
-        rules = self.text("AGENTS.md")
+        rules = self.text("rules/delivery.md")
         self.assertIn("Fail long-running checks on lack of progress, rather than elapsed time.", rules)
         self.assertIn("Allow generous overall test ceilings only as runaway guards.", rules)
         self.assertIn("Never use overall ceilings as the primary failure mode.", rules)
 
     def test_ci_runtime_policy(self):
-        rules = self.text("AGENTS.md")
+        rules = self.text("rules/delivery.md")
         for phrase in ("Define a standard CI time for each repository.",
                        "Investigate runs more than 20% over that time."):
             self.assertIn(phrase, rules)
@@ -948,12 +949,12 @@ class AnsweredRestoreTest(unittest.TestCase):
             self.assertIn(phrase, procedure)
 
     def test_specialized_visual_ui_verification(self):
-        rules = self.text("AGENTS.md")
+        rules = self.text("rules/delivery.md")
         self.assertIn("Require a specialized agent to verify UI work visually with screenshots.", rules)
         self.assertIn("Do not rely only on programmatic assertions.", rules)
 
     def test_fix_commit_cadence_and_complete_push(self):
-        rules = self.text("AGENTS.md")
+        rules = self.text("rules/delivery.md")
         self.assertIn("Push each fixer’s work once, after the complete fix.", rules)
         self.assertIn("Never push mid-fix.", rules)
         self.assertNotIn("one commit per round", self.text("skills/pr-ready/SKILL.md"))
@@ -987,21 +988,21 @@ class AnsweredRestoreTest(unittest.TestCase):
                       "that apply the same rules as Warden.", rules)
 
     def test_one_commit_topic_exception(self):
-        rules = self.text("AGENTS.md")
+        rules = self.text("rules/delivery.md")
         self.assertIn("Keep each commit one logical chunk.", rules)
         self.assertIn("Never mix unrelated fixes, docs, refactors, or in-flight prototypes.", rules)
         self.assertIn("Keep one topic per commit unless one larger task requires them together.", rules)
 
     def test_synthetic_test_data(self):
         self.assertIn("Never use real customer, mailbox, sender, company, attachment, "
-                      "or credential data in tests.", self.text("AGENTS.md"))
+                      "or credential data in tests.", self.text("rules/core.md"))
         self.assertNotIn("fixtures are synthetic", self.text("skills/rust-canon/SKILL.md"))
-        self.assertIn("test data follows AGENTS.md §Security",
+        self.assertIn("test data follows rules/core.md §Security",
                       self.text("skills/rust-canon/SKILL.md"))
 
     def test_fetched_code_exact_contract(self):
         # A197–A200: split the contract; keep each boundary and exception.
-        rules = self.text("AGENTS.md")
+        rules = self.text("rules/core.md")
         for requirement in (
             "Run fetched code or commands only inside disposable sandboxes.",
             "Deny those sandboxes network access, credentials, and write access to the real checkout.",
@@ -1014,7 +1015,7 @@ class AnsweredRestoreTest(unittest.TestCase):
                 self.assertIn(requirement, rules)
 
     def test_repo_relative_public_paths(self):
-        rules = self.text("AGENTS.md")
+        rules = self.text("STRUCTURE.md")
         self.assertIn("Use repository-relative paths in documentation and instructions.", rules)
         self.assertIn("Derive script repository roots from script locations.", rules)
         self.assertIn("Never use private paths in documentation or instructions.", rules)
@@ -1035,7 +1036,7 @@ class AnsweredRestoreTest(unittest.TestCase):
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, changelog)
-        self.assertNotIn("after time estimates proved uncalibrated", self.text("AGENTS.md"))
+        self.assertNotIn("after time estimates proved uncalibrated", self.text("rules/core.md"))
 
     def test_cost_canon_pointer_resolves(self):
         rules = self.text("prompts/util/cost-and-design.md")
@@ -1054,16 +1055,22 @@ class InvariantsOnlyTest(unittest.TestCase):
 - Do not write "later", "I will file" or "a follow-up covers" without that link.
 - Plans, documents, chat, reports, logs and unmerged branches record intent. They do not track work.
 - When the operator repeats a request, search the tracker first. State whether the request was tracked.
-- Ideas the operator did not request are proposals, not work items (§Outcome and resource contract).
+- Ideas the operator did not request are proposals, not work items (rules/outcome.md §Outcome and resource contract).
 """
 
     def test_approved_tracking_rule_is_exact(self):
-        agents = (ROOT / "AGENTS.md").read_text()
+        agents = (ROOT / "rules/delivery.md").read_text()
         self.assertEqual(agents.count(self.TRACKING_RULE), 1)
         self.assertNotIn("Operator requests stay tracked until done", agents)
 
     def test_each_invariant_sentence_fits_twenty_words(self):
-        agents = (ROOT / "AGENTS.md").read_text().replace(self.TRACKING_RULE, "")
+        agents = "\n".join((ROOT / path).read_text() for path in
+                           ("rules/core.md", "rules/outcome.md", "rules/delivery.md"))
+        agents += "\n" + (ROOT / "STRUCTURE.md").read_text().split(
+            "## Layout\n", 1)[1].split("```", 1)[0]
+        agents += "\n" + (ROOT / "skills/operator-writing/SKILL.md").read_text().split(
+            "## Communication rules\n", 1)[1].split("## Language", 1)[0]
+        agents = agents.replace(self.TRACKING_RULE, "")
         agents = re.sub(r"(?m)^#.*$", "", agents)
         blocks = re.split(r"\n\s*\n|\n(?=\s*(?:[-*]|\d+\.)\s)", agents)
         for block in blocks:
@@ -1076,7 +1083,7 @@ class InvariantsOnlyTest(unittest.TestCase):
 
     def test_all_inline_source_notes_live_in_changelog(self):
         marker = re.compile(r"(?:Operator directions?|Source incident):")
-        files = [ROOT / "AGENTS.md"]
+        files = [ROOT / "AGENTS.md", *(ROOT / "rules").glob("*.md")]
         files += list((ROOT / "skills").rglob("*.md"))
         files += list((ROOT / "prompts").rglob("*.md"))
         for path in files:
@@ -1116,7 +1123,7 @@ class InvariantsOnlyTest(unittest.TestCase):
             "skills/pr-ready/SKILL.md": (
                 "When all reviewer families approve, CI passes, and deployment is documented "
                 "routine procedure, finish landing.",
-                "Merge within AGENTS.md §Git delivery authority, deploy, verify after deployment, "
+                "Merge within rules/delivery.md §Git delivery authority, deploy, verify after deployment, "
                 "then report changes.",
                 "Do not hand routine landing steps to the operator.",
             ),
@@ -1126,6 +1133,36 @@ class InvariantsOnlyTest(unittest.TestCase):
             for instruction in instructions:
                 with self.subTest(path=path, instruction=instruction):
                     self.assertIn(instruction, text)
+
+
+class RuleIndexTest(unittest.TestCase):
+    def test_agents_contains_only_purpose_precedence_and_load_lines(self):
+        purpose = {
+            "House Rules provides shared operating rules and task-specific skills.",
+            "This file is its index.",
+            "- Apply repository instructions and explicit operator choices before House Rules.",
+            "- Respect host instruction hierarchy, permissions, access, and approval controls.",
+        }
+        for line in (ROOT / "AGENTS.md").read_text().splitlines():
+            if not line or line.startswith("#") or line in purpose:
+                continue
+            with self.subTest(line=line):
+                self.assertRegex(line, r"^- [^:]+: load \[[^]]+\]\([^)]+\)\.$")
+
+    def test_index_loads_every_skill_and_rule_file_with_resolving_relative_links(self):
+        index = (ROOT / "AGENTS.md").read_text()
+        targets = re.findall(r": load \[[^]]+\]\(([^)]+)\)", index)
+        required = {"rules/core.md", "rules/outcome.md", "rules/delivery.md",
+                    "STRUCTURE.md", "PREFERENCES.md"}
+        required.update(str(path.relative_to(ROOT))
+                        for path in (ROOT / "skills").glob("*/SKILL.md"))
+        self.assertEqual(set(targets), required)
+        self.assertEqual(len(targets), len(required))
+        for target in targets:
+            with self.subTest(target=target):
+                self.assertFalse(Path(target).is_absolute())
+                self.assertNotRegex(target, r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
+                self.assertTrue((ROOT / target).is_file())
 
 
 if __name__ == "__main__":

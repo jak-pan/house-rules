@@ -9,8 +9,7 @@ license: MIT
 Plan a new campaign, and revisit its plan, with skill `experiment-planning`; this skill
 executes and interprets the comparison.
 
-Paid experiments run autonomously inside the approved envelope (AGENTS.md §Resource
-envelopes); crossing it requires a proposed expansion, never a silent reduction of rigor.
+Paid experiments run autonomously inside the approved envelope (rules/outcome.md §Resource envelopes); crossing it requires a proposed expansion, never a silent reduction of rigor.
 
 **Waste is never answered by reducing rigor.** Making yourself less capable is not
 hardening.
@@ -55,7 +54,7 @@ Retrieval evaluations also apply the [retrieval rules](references/retrieval-eval
   for the lever under test. When a default flips, re-baseline — scores across a default
   change are not comparable; running the old value afterwards is a pinned, named test.
 - Keep experiment settings explicit and reproducible. Name the baseline configuration;
-  do not silently change shipped defaults to simplify a benchmark command (AGENTS.md
+  do not silently change shipped defaults to simplify a benchmark command (rules/core.md
   §Autonomy).
 - When drift or a configuration error affects a run, identify the affected measurements,
   record their validity limits, and repeat only the comparisons whose evidence is no
@@ -99,7 +98,7 @@ Retrieval evaluations also apply the [retrieval rules](references/retrieval-eval
 
 - Match the build profile, workload, and concurrency to the deployment or study question.
   Define expected resource behavior before diagnosing serialization or low utilization.
-  Isolation of competing performance runs: AGENTS.md §Parallel work. This skill does not
+  Isolation of competing performance runs: rules/delivery.md §Parallel work. This skill does not
   relax stronger shared-host, provider, or hardware restrictions.
 - Checkpoint expensive or non-reproducible stages according to the continuity policy.
   Record with each run: revision, effective configuration, dataset version, seed when

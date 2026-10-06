@@ -11,6 +11,16 @@ happened, why it matters and what to do, in that order. This skill combines a co
 language (ASD-STE100, applied at about 80 %) with an explanation-first structure and a
 reader test.
 
+## Communication rules
+
+- Follow `operator-writing` for every operator-facing text’s structure, language, options, Mermaid diagrams, and reader test.
+- Use `decision-brief` for decisions and explanations.
+- Support claims with evidence.
+- Distinguish observed causes from hypotheses.
+- Distinguish completed fixes from plans and deployments awaiting verification.
+- Do not invent operator homework.
+- Do not ask permission to continue authorized work.
+
 ## Language
 
 - One fact per sentence. Instructions: at most 20 words. Descriptions: at most 25 words.
@@ -24,7 +34,7 @@ reader test.
   evidence does not show. Never drop a hedge, exception or consequence that changes what a
   statement means for the reader.
 - No filler, no marketing adjectives, no ceremonial openings or closings.
-- Size work per [AGENTS.md prime rule 13](../../AGENTS.md#prime-rules).
+- Size work per [rules/core.md prime rule 13](../../rules/core.md#prime-rules).
 
 ## Format
 

@@ -8,7 +8,7 @@ and established project stacks override its defaults.
 
 ## What's included
 
-- [AGENTS.md](AGENTS.md): collaboration, autonomy, verification, and communication rules.
+- [AGENTS.md](AGENTS.md): the index for shared rule files and task-specific skills.
 - [PREFERENCES.md](PREFERENCES.md): Rust for durable native/systems work, TypeScript on
   Node for ordinary backends and scripts, static Svelte for browser UIs, and domain-specific
   alternatives where appropriate. Choose only the components needed.

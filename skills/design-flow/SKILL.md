@@ -37,12 +37,12 @@ the unknowns before writing the spec, not after implementing the wrong one. Then
 - **Key decisions with rejected alternatives** (why) — this section is what survives migration
 - end-state first (skill `design-canon` §Decisions)
 
-Gate: apply AGENTS.md §Autonomy and its recorded collaboration mode. In autonomous mode,
+Gate: apply rules/core.md §Autonomy and its recorded collaboration mode. In autonomous mode,
 a design entirely inside the approved outcome and decision boundaries may be marked
 `approved` at the base confidence threshold, with evidence recorded and the operator
 informed. Otherwise keep `draft` and ask about the consequential unresolved choice.
 Record whether approval came from the operator or delegated authority; do not imply
-operator review when it did not happen. A P0 or P1 design (AGENTS.md §Autonomy), and any
+operator review when it did not happen. A P0 or P1 design (rules/core.md §Autonomy), and any
 design that decides where canonical data lives, moves or creates a security boundary, or
 assigns ownership between repositories or modules, is approved only by the operator;
 delegated authority and confidence thresholds cover the remaining P2/P3 designs. Urgent P0
@@ -79,7 +79,7 @@ One question → `prototypes/spikes/YYYY-MM-DD-question/` with `SPIKE.md` (quest
 verdict). Throwaway by contract: code never lands in `src/`, deps never land in the
 product tree. Kill-or-promote: verdict feeds the design doc, then the spike is deletable.
 After 30 days without a verdict, review whether the spike is still useful; cleanup follows
-AGENTS.md §Security.
+rules/core.md §Security.
 
 ## 5. Implement
 
@@ -113,7 +113,7 @@ on merge (skill `work-tracking` §The host view) and carries this checklist:
   statuses)
 - durable decisions promoted from the issue → the bible
 - prototypes: keep hifi if it's the living reference, else delete; spikes killed
-- regression tests required by AGENTS.md §Verification exist and are green
+- regression tests required by rules/delivery.md §Verification exist and are green
 - **CI closing check: final handoff.** CI checks that the final handoff is authored by
   the current owner, mirrored to the issue, and every required section is non-empty
   (`None` when empty; skill `handoff-continuity`)

@@ -6,7 +6,7 @@ license: MIT
 
 # Work Tracking
 
-The default implementation of AGENTS.md §Work tracking & continuity. **Git is the record:**
+The default implementation of rules/delivery.md §Work tracking & continuity. **Git is the record:**
 each work item's claim, handoffs, and campaign attempts are commits on its work branch, so
 they travel with the code, work offline, and can be read by any Git-native orchestrator.
 **The Git host is the shared view:** issues, assignees, a project board, and pull requests,
@@ -47,7 +47,7 @@ updates itself; agents load it as its own Skill and MCP server, not as part of H
   unassign on the host.
 - Agents that share one host account tell lanes apart by the `Agent` trailer: an issue
   assigned to your login whose latest claim names another agent is taken.
-- Priority (AGENTS.md §Autonomy) is a `P0`–`P3` label; dependencies are the host's
+- Priority (rules/core.md §Autonomy) is a `P0`–`P3` label; dependencies are the host's
   blocked-by links.
 
 ## The Git record
@@ -88,7 +88,7 @@ repository requires squash merges, mirror every record before the merge.
   `agent-lanes`), Design (link to the design doc; `STRUCTURE.md`), Execution constraints
   (campaigns that use external resources: outcome, acceptance criteria, explicit
   exclusions, resource envelope, approved external providers, review-round expectations,
-  actual resource usage; AGENTS.md §Resource envelopes), and Pre-flight (multi-phase work:
+  actual resource usage; rules/outcome.md §Resource envelopes), and Pre-flight (multi-phase work:
   verified facts, wrong assumptions to avoid, phase status; maintained and pruned).
 - **Mirroring** — each record is posted as an issue comment headed with its kind and agent
   (`## Handoff — claude-1`) and ending with `Mirrors: <full commit sha>`. A record whose
@@ -151,7 +151,7 @@ When the host is reachable again, sync each work branch:
 2. If the issue is assigned to anyone but you, a remote branch for it exists that is not
    yours (another name, or your name with commits you lack:
    `git merge-base --is-ancestor origin/<branch> <branch>` fails), or its latest mirrored
-   claim names another agent, stop and coordinate (AGENTS.md §Work tracking); never merge another agent's
+   claim names another agent, stop and coordinate (rules/delivery.md §Work tracking & continuity); never merge another agent's
    claim into your branch.
 3. `git push -u origin <issue>-<slug>` (delete the old remote name if it was pushed),
    assign yourself, re-read the assignees, and set Status from the latest record.
@@ -248,5 +248,5 @@ into one attempt record linking the ledger at the last commit before deletion; m
 them. Rename its design doc and prototype folder to the issue number, and promote finished
 items' unpromoted decisions to the bible. Then delete the ledger and its mentions in
 repository canon in the same commit. Until that commit the existing ledger stays
-authoritative; the two never run as writable trackers side by side (AGENTS.md
+authoritative; the two never run as writable trackers side by side (rules/core.md
 §Applicability and loading).

@@ -6,7 +6,7 @@ license: MIT
 
 # Agent Lanes
 
-Mechanics for the parallel-work invariants in AGENTS.md §Parallel work. The main thread
+Mechanics for the parallel-work invariants in rules/delivery.md §Parallel work. The main thread
 stays interactive for the operator; heavy work goes to attached background agents/workflows with
 explicit goals.
 
@@ -21,7 +21,7 @@ explicit goals.
   checkout, and it deletes that directory when the lane ends.
   Compiler-cache policy: [worker rules](../../prompts/roles/implementer.md).
 - **Git limits.** Lanes push only their own work branches, within the delivery authority
-  recorded in the bible (policy: AGENTS.md §Git). Commits follow the repo's canon; lanes
+  recorded in the bible (policy: rules/delivery.md §Git). Commits follow the repo's canon; lanes
   report exactly which files they touched.
 - **Multi-repo work (owned repos) is normal.** One work item, a branch per repo touched
   (named per `STRUCTURE.md` after the owning issue),
@@ -30,7 +30,7 @@ explicit goals.
 - **Audits have round boundaries.** An audit-only request produces findings and proposed
   fixes. Repair and confirmation belong to the round when the operator requested them;
   do not infer mutation authority from a request to inspect or explain. What counts as a
-  new round: AGENTS.md §Resource envelopes.
+  new round: rules/outcome.md §Resource envelopes.
 
 ## Resource budgets
 
@@ -38,13 +38,13 @@ explicit goals.
   500 total, provider B under 2000 in total") — budgets are fleet-wide, not per-lane.
   ⚒ Make one lane the budget owner when several hit the same provider.
 - Record the intended concurrency and measurement conditions before launch (bounds and
-  isolation: AGENTS.md §Parallel work).
+  isolation: rules/delivery.md §Parallel work).
 - Builds and targeted tests follow `rust-canon` §Code rules and use the lane's own target
   directory, never a shared tree where a paused run may depend on the existing binary.
 
 ## Lane cleanup
 
-Housekeeping is part of the workflow, not a later chore. Cleanup follows AGENTS.md
+Housekeeping is part of the workflow, not a later chore. Cleanup follows rules/core.md
 §Security; these checks are what make a lane's leftovers removable.
 
 - **At lane end.** When its PR merges or the work is abandoned, the lane owner removes its
@@ -80,10 +80,10 @@ git worktree remove <wt> && git branch -D <branch>; git worktree prune
 ## Orchestration patterns
 
 - **Recon sweep → design → build → proportional critique → gate → fix.** When to add an
-  adversarial verifier: AGENTS.md §Parallel work.
+  adversarial verifier: rules/delivery.md §Parallel work.
 - **Decision handling.** Lanes decide and escalate per skill `operator-protocol`
   §Decisions.
-- **Attached workers.** AGENTS.md prime rule 15.
+- **Attached workers.** rules/core.md prime rule 15.
 - **Background monitors.** Every long-running run has a watcher that surfaces failures instantly
   and feeds concrete counters into status lines. Prove work is running: process name, output
   path, dashboard link.
