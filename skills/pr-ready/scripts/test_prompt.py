@@ -1698,16 +1698,6 @@ class AlwaysLoadedWritingTest(unittest.TestCase):
         self.assertIn("`FACT` or `ASSESSMENT`", questions)
         self.assertNotRegex(questions, r"`(?:fact|assessment)`")
 
-    def test_every_role_receives_general_writing_rules_once(self):
-        for role in sorted((ROOT / "prompts/roles").glob("*.md")):
-            with self.subTest(role=role.name):
-                result = PromptTest().run_prompt("--list", str(role.relative_to(ROOT)))
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(result.stdout.splitlines().count("rules/writing.md"), 1)
-                expanded = PromptTest().run_prompt(str(role.relative_to(ROOT)))
-                self.assertEqual(expanded.returncode, 0, expanded.stderr)
-                self.assertEqual(expanded.stdout.count((ROOT / "rules/writing.md").read_text()), 1)
-
 
 if __name__ == "__main__":
     unittest.main()

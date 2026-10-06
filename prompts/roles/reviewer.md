@@ -11,4 +11,3 @@ authority follows [External writes](../util/external-writes.md).
 @rule house-rules:prompts/skills/native-first.md
 @rule house-rules:prompts/skills/no-fortification.md
 @rule house-rules:prompts/skills/test-discipline.md
-@rule house-rules:rules/writing.md
