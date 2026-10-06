@@ -1,0 +1,308 @@
+from pathlib import Path
+import json
+import os
+import plistlib
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+
+
+SCRIPT = Path(__file__).with_name("transcript_gaps.py")
+FIXTURES = SCRIPT.parent / "fixtures"
+
+
+class TranscriptGapsTest(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        self.home = self.root / "home"
+        self.home.mkdir()
+        self.state = self.root / "state"
+        self.env = {"HOME": str(self.home), "PATH": os.defpath,
+                    "PYTHONDONTWRITEBYTECODE": "1",
+                    "TRANSCRIPT_GAPS_STATE_DIR": str(self.state)}
+
+    def run_script(self, script=SCRIPT, env=None):
+        return subprocess.run([sys.executable, str(script)], env=env or self.env,
+                              capture_output=True, text=True, timeout=5, cwd=self.root)
+
+    def fixture(self, name, destination):
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(FIXTURES / name, destination)
+        return destination
+
+    def rows(self):
+        batches = sorted(self.state.glob("messages-*.jsonl"), key=lambda p: p.stat().st_mtime_ns)
+        return [json.loads(line) for line in batches[-1].read_text().splitlines()]
+
+    def test_each_tool_keeps_exactly_human_text(self):
+        self.fixture("claude.jsonl", self.home / ".claude/projects/project/session.jsonl")
+        self.fixture("codex.jsonl", self.home / ".codex/sessions/date/session.jsonl")
+        self.fixture("codex-exec.jsonl", self.home / ".codex/sessions/date/agent.jsonl")
+        self.fixture("kimi.jsonl", self.home / ".kimi-code/user-history/history.jsonl")
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(Path(result.stdout.strip()).is_file())
+        self.assertEqual(Path(result.stdout.strip()).parent, self.state)
+        self.assertEqual(self.rows(), [
+            {"tool": "claude", "session": "claude-session", "timestamp": "2026-01-01T00:00:00Z",
+             "text": "Use clear labels."},
+            {"tool": "claude", "session": "claude-session", "timestamp": "2026-01-01T00:00:01Z",
+             "text": "Keep all text.\nIncluding this line."},
+            {"tool": "codex", "session": "codex-session", "timestamp": "2026-01-01T00:00:00Z",
+             "text": "Report failed checks."},
+            {"tool": "codex", "session": "codex-session", "timestamp": "2026-01-01T00:00:01Z",
+             "text": "Explain the AGENTS.md rule and <environment_context> tag."},
+            {"tool": "kimi", "session": "history", "timestamp": None,
+             "text": "Keep examples generic."},
+        ])
+
+    def test_no_new_messages_produces_nothing_and_changes_no_state(self):
+        self.fixture("kimi.jsonl", self.home / ".kimi-code/user-history/history.jsonl")
+        self.assertEqual(self.run_script().returncode, 0)
+        before = {p.name: (p.read_bytes(), p.stat().st_mtime_ns) for p in self.state.iterdir()}
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(before, {p.name: (p.read_bytes(), p.stat().st_mtime_ns)
+                                  for p in self.state.iterdir()})
+
+    def test_appended_messages_and_late_files_do_not_depend_on_dates(self):
+        path = self.fixture("kimi.jsonl", self.home / ".kimi-code/user-history/history.jsonl")
+        self.assertEqual(self.run_script().returncode, 0)
+        with path.open("a") as stream:
+            stream.write(json.dumps({"content": "Keep examples generic."}) + "\n")
+        self.fixture("claude.jsonl", self.home / ".claude/projects/late/session.jsonl")
+        self.assertEqual(self.run_script().returncode, 0)
+        self.assertEqual([r["text"] for r in self.rows()],
+                         ["Use clear labels.", "Keep all text.\nIncluding this line.",
+                          "Keep examples generic."])
+        self.assertEqual(self.run_script().stdout, "")
+
+    def test_local_config_sources_extra_homes_and_roots_without_changing_defaults(self):
+        checkout = self.root / "checkout"
+        script = checkout / "skills/operator-protocol/scripts/transcript_gaps.py"
+        script.parent.mkdir(parents=True)
+        shutil.copyfile(SCRIPT, script)
+        config = checkout / "custom/transcript-gaps.env"
+        config.parent.mkdir()
+        extra = self.root / "extra home"
+        claude = self.root / "extra projects"
+        self.fixture("codex.jsonl", extra / "sessions/date/session.jsonl")
+        self.fixture("claude.jsonl", claude / "project/session.jsonl")
+        self.assertEqual(self.run_script(script).stdout, "")
+        config.write_text('TRANSCRIPT_GAPS_CODEX_HOMES="' + str(extra) + '"\n'
+                          'TRANSCRIPT_GAPS_CLAUDE_ROOTS="' + str(claude) + '"\n')
+        result = subprocess.run(
+            ["/bin/sh", "-c", 'set -a; . "$1"; exec "$2" "$3"',
+             "transcript-gaps", str(config), sys.executable, str(script)],
+            env=self.env, capture_output=True, text=True, timeout=5, cwd=self.root,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual({row["tool"] for row in self.rows()}, {"claude", "codex"})
+
+    def test_home_overrides_and_overlapping_extra_paths(self):
+        codex = self.root / "codex home"
+        kimi = self.root / "kimi home"
+        self.env.update(CODEX_HOME=str(codex), KIMI_CODE_HOME=str(kimi),
+                        TRANSCRIPT_GAPS_CODEX_HOMES=str(codex) + os.pathsep + str(codex))
+        self.fixture("codex.jsonl", codex / "sessions/date/session.jsonl")
+        self.fixture("kimi.jsonl", kimi / "user-history/history.jsonl")
+        self.assertEqual(self.run_script().returncode, 0)
+        self.assertEqual(len(self.rows()), 3)
+
+    def test_writes_nothing_inside_checkout(self):
+        checkout = self.root / "checkout"
+        (checkout / ".git").mkdir(parents=True)
+        script = checkout / "skills/operator-protocol/scripts/transcript_gaps.py"
+        script.parent.mkdir(parents=True)
+        shutil.copyfile(SCRIPT, script)
+        self.fixture("kimi.jsonl", self.home / ".kimi-code/user-history/history.jsonl")
+
+        def snapshot():
+            return {str(p.relative_to(checkout)): (p.stat().st_mtime_ns,
+                                                  p.read_bytes() if p.is_file() else None)
+                    for p in checkout.rglob("*")}
+
+        before = snapshot()
+        self.assertEqual(self.run_script(script).returncode, 0)
+        self.assertEqual(before, snapshot())
+        for directory in (checkout / "state", checkout / ".git/state"):
+            self.env["TRANSCRIPT_GAPS_STATE_DIR"] = str(directory)
+            result = self.run_script(script)
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(result.stdout, "")
+            self.assertFalse(directory.exists())
+        self.assertEqual(before, snapshot())
+
+    def test_state_in_other_repository_or_symlink_is_rejected(self):
+        repository = self.root / "other"
+        repository.mkdir()
+        (repository / ".git").write_text("gitdir: placeholder\n")
+        alias = self.root / "alias"
+        alias.symlink_to(repository, target_is_directory=True)
+        for path in (repository / "state", alias / "state"):
+            self.env["TRANSCRIPT_GAPS_STATE_DIR"] = str(path)
+            result = self.run_script()
+            self.assertEqual(result.returncode, 2)
+            self.assertFalse(path.exists())
+
+    def test_marker_symlink_is_rejected_without_touching_target(self):
+        self.state.mkdir()
+        target = self.root / "target"
+        target.write_text("unchanged")
+        (self.state / "last-run.json").symlink_to(target)
+        result = self.run_script()
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(target.read_text(), "unchanged")
+
+    def test_output_symlink_cannot_redirect_writes_into_repository(self):
+        self.fixture("kimi.jsonl", self.home / ".kimi-code/user-history/history.jsonl")
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        batch = Path(result.stdout.strip())
+        repository = self.root / "repository"
+        (repository / ".git").mkdir(parents=True)
+        target = repository / "unchanged"
+        target.write_text("unchanged")
+        batch.unlink()
+        batch.symlink_to(target)
+        (self.state / "last-run.json").unlink()
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(batch.is_symlink())
+        self.assertEqual(target.read_text(), "unchanged")
+
+    def test_malformed_input_fails_without_advancing_marker_or_leaking_text(self):
+        path = self.fixture("kimi.jsonl", self.home / ".kimi-code/user-history/history.jsonl")
+        self.assertEqual(self.run_script().returncode, 0)
+        before = {p.name: p.read_bytes() for p in self.state.iterdir()}
+        with path.open("a") as stream:
+            stream.write('{"content":"unclosed synthetic value"\n')
+        result = self.run_script()
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stdout, "")
+        self.assertNotIn("unclosed synthetic value", result.stderr)
+        self.assertEqual(before, {p.name: p.read_bytes() for p in self.state.iterdir()})
+
+    def test_truncated_source_fails_visibly(self):
+        path = self.fixture("kimi.jsonl", self.home / ".kimi-code/user-history/history.jsonl")
+        self.assertEqual(self.run_script().returncode, 0)
+        path.write_text("")
+        result = self.run_script()
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("truncated", result.stderr)
+
+    def test_missing_codex_provenance_and_unknown_human_content_fail_closed(self):
+        path = self.home / ".codex/sessions/session.jsonl"
+        path.parent.mkdir(parents=True)
+        path.write_text('{"type":"response_item","payload":{"role":"user"}}\n')
+        self.assertEqual(self.run_script().returncode, 2)
+        path.unlink()
+        path = self.home / ".kimi-code/user-history/history.jsonl"
+        path.parent.mkdir(parents=True)
+        path.write_text('{"content":42}\n')
+        self.assertEqual(self.run_script().returncode, 2)
+
+    def test_malformed_structured_fields_fail_without_a_traceback(self):
+        path = self.home / ".codex/sessions/session.jsonl"
+        path.parent.mkdir(parents=True)
+        path.write_text('{"type":"session_meta","payload":null}\n')
+        result = self.run_script()
+        self.assertEqual(result.returncode, 2)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_codex_subagent_source_is_excluded(self):
+        path = self.fixture("codex-exec.jsonl", self.home / ".codex/sessions/session.jsonl")
+        lines = path.read_text().splitlines()
+        metadata = json.loads(lines[0])
+        metadata["payload"]["originator"] = "codex_cli_rs"
+        metadata["payload"]["source"] = {"subagent": {"thread_spawn": {}}}
+        path.write_text(json.dumps(metadata) + "\n" + lines[1] + "\n")
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(list(self.state.glob("messages-*.jsonl")), [])
+
+    def test_default_state_uses_user_state_directory_outside_checkout(self):
+        del self.env["TRANSCRIPT_GAPS_STATE_DIR"]
+        self.env["XDG_STATE_HOME"] = str(self.root / "user-state")
+        self.fixture("kimi.jsonl", self.home / ".kimi-code/user-history/history.jsonl")
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(Path(result.stdout.strip()).parent,
+                         self.root / "user-state/house-rules/transcript-gaps")
+
+    def test_injected_blocks_do_not_discard_human_blocks_in_same_item(self):
+        path = self.fixture("codex.jsonl", self.home / ".codex/sessions/session.jsonl")
+        self.assertEqual(self.run_script().returncode, 0)
+        with path.open("a") as stream:
+            stream.write(json.dumps({"type": "response_item", "timestamp": "2026-01-01T00:00:02Z",
+                                     "payload": {"type": "message", "role": "user", "content": [
+                                         {"type": "input_text", "text": "<environment_context>injected</environment_context>"},
+                                         {"type": "input_text", "text": "Keep the human block."}]}}) + "\n")
+        self.assertEqual(self.run_script().returncode, 0)
+        self.assertEqual([r["text"] for r in self.rows()], ["Keep the human block."])
+
+    def test_kimi_paths_are_not_slash_commands(self):
+        path = self.home / ".kimi-code/user-history/history.jsonl"
+        path.parent.mkdir(parents=True)
+        path.write_text('{"content":"/example/project needs clear documentation."}\n')
+        self.assertEqual(self.run_script().returncode, 0)
+        self.assertEqual(self.rows()[0]["text"], "/example/project needs clear documentation.")
+
+    def test_missing_extra_root_is_an_error(self):
+        self.env["TRANSCRIPT_GAPS_CODEX_HOMES"] = str(self.root / "missing")
+        result = self.run_script()
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stdout, "")
+        self.assertFalse(self.state.exists())
+
+    def test_excluded_new_entries_advance_marker_without_new_output(self):
+        path = self.fixture("kimi.jsonl", self.home / ".kimi-code/user-history/history.jsonl")
+        self.assertEqual(self.run_script().returncode, 0)
+        before = sorted(self.state.glob("messages-*.jsonl"))
+        with path.open("a") as stream:
+            stream.write('{"content":"/login"}\n')
+        self.assertEqual(self.run_script().stdout, "")
+        marker = (self.state / "last-run.json").read_bytes()
+        self.assertEqual(self.run_script().returncode, 0)
+        self.assertEqual(marker, (self.state / "last-run.json").read_bytes())
+        self.assertEqual(before, sorted(self.state.glob("messages-*.jsonl")))
+
+    def test_state_files_are_private_and_prior_batches_are_retained(self):
+        path = self.fixture("kimi.jsonl", self.home / ".kimi-code/user-history/history.jsonl")
+        first = self.run_script()
+        self.assertEqual(first.returncode, 0, first.stderr)
+        first_batch = Path(first.stdout.strip())
+        original = first_batch.read_bytes()
+        with path.open("a") as stream:
+            stream.write('{"content":"Preserve older findings."}\n')
+        second = self.run_script()
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertNotEqual(first.stdout, second.stdout)
+        self.assertEqual(first_batch.read_bytes(), original)
+        self.assertEqual(self.state.stat().st_mode & 0o777, 0o700)
+        for file in self.state.iterdir():
+            self.assertEqual(file.stat().st_mode & 0o777, 0o600)
+
+    def test_schedule_examples_are_weekly_and_shell_syntax_is_valid(self):
+        references = SCRIPT.parent.parent / "references"
+        plist = plistlib.loads((references / "transcript-gaps.plist").read_bytes())
+        calendar = plist["StartCalendarInterval"]
+        self.assertEqual(calendar, {"Weekday": 1, "Hour": 9, "Minute": 0})
+        timer = (references / "transcript-gaps.timer").read_text()
+        self.assertIn("OnCalendar=Mon *-*-* 09:00:00", timer)
+        service = (references / "transcript-gaps.service").read_text()
+        command = service.split("ExecStart=/bin/sh -c '")[1].rstrip().removesuffix("'")
+        for command in (plist["ProgramArguments"][2], command.replace("$$", "$")):
+            result = subprocess.run(["/bin/sh", "-n", "-c", command],
+                                    capture_output=True, text=True, timeout=5)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()

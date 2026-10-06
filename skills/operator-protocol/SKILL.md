@@ -50,3 +50,66 @@ Deliver the requested behavior before proposing optional changes. Critique a req
 when evidence shows a problem, with a concrete alternative and trade-off, then follow the
 ruling. Correct errors plainly and persist the relevant task-local decision. Standing
 policy changes follow the base provenance rule.
+
+## Find transcript instruction gaps
+
+Use this optional periodic step to find lasting human instructions that never reached
+House Rules or a local decisions file. Extraction uses only Python 3's standard library,
+with no model or network calls. Comparison uses the whole
+[compare prompt](../../prompts/util/transcript-gaps.md) in one locally configured,
+approved model run. Findings are proposals for the operator, not automatic rule edits.
+
+Run from a pinned House Rules checkout, optionally sourcing trusted local shell settings:
+
+```sh
+set -eu
+if [ -f custom/transcript-gaps.env ]; then
+    set -a
+    . ./custom/transcript-gaps.env
+    set +a
+fi
+python3 skills/operator-protocol/scripts/transcript_gaps.py
+```
+
+`custom/` is ignored by Git. Keep real source and decisions paths there or in the
+environment; never commit them. Settings are exported shell variables:
+
+| Variable | Meaning and default |
+|---|---|
+| `CODEX_HOME` | Primary Codex home; defaults to `~/.codex`. Reads `sessions/**/*.jsonl`. |
+| `KIMI_CODE_HOME` | Kimi home; defaults to `~/.kimi-code`. Reads `user-history/*.jsonl`. |
+| `TRANSCRIPT_GAPS_CODEX_HOMES` | Extra Codex homes, colon-separated on macOS/Linux; default empty. Reads each home's `sessions` tree in addition to the primary. |
+| `TRANSCRIPT_GAPS_CLAUDE_ROOTS` | Extra Claude project roots, colon-separated; default empty. Each has the same `*/*.jsonl` layout as `~/.claude/projects`, which is always read. |
+| `XDG_STATE_HOME` | Base user state directory; defaults to `~/.local/state`. |
+| `TRANSCRIPT_GAPS_STATE_DIR` | Marker and JSONL directory; defaults to `$XDG_STATE_HOME/house-rules/transcript-gaps`. Must be outside all repositories. |
+| `TRANSCRIPT_GAPS_DECISIONS_FILE` | Optional decisions file for the compare caller; default unset. Extraction does not read it. |
+
+Extraction prints only the new batch's absolute path. No new human text means no stdout;
+do not compare an old batch in that case. It reads all history on the first run, then
+uses byte offsets in `last-run.json`; offsets also include excluded entries. Batches are
+retained as `messages-<digest>.jsonl`, containing `tool`, `session`, `timestamp`, `text`.
+Run one extractor at a time. File order is tool, configured root, sorted directory and
+filename, then transcript line order; dates do not control incremental extraction.
+Sources must be append-only. Truncation, malformed JSON and incomplete lines fail visibly
+without advancing the marker. Newly created state directories are mode 0700; files are
+0600. No files are written into the checkout, and no content is sent by the extractor.
+
+Claude requires `origin.kind: human` and excludes meta entries, sidechains, peers and
+notifications. Codex uses user `response_item` messages, not their duplicate event log;
+it excludes exec/subagent sessions and injected rule/context/notification blocks.
+Kimi excludes slash commands. Its history stores only text: a missing timestamp stays
+null and `session` is the history-file stem, not a conversation ID. The compare prompt
+reports that missing provenance rather than guessing.
+
+Native cost is directory discovery plus sequential JSONL reads: new bytes and the Codex
+metadata line after the first run. The required offset marker avoids rereading old
+messages; JSONL batches carry the comparison input. There is no database, index or cache.
+
+Weekly examples: [launchd plist](references/transcript-gaps.plist),
+[systemd user timer](references/transcript-gaps.timer) and its
+[service](references/transcript-gaps.service). These are documentation, not installed
+schedules. Replace every `/placeholder/...` path in local copies. The local compare
+runner receives batch, whole prompt, optional decisions path and rules checkout as four
+arguments; choose its native model invocation locally, and save reports only in the
+state directory. Configure scheduler failure reporting locally. A failed comparison
+leaves its batch available for a manual rerun. Keep installed schedules untracked.

@@ -1,0 +1,7 @@
+[Unit]
+Description=Extract human instructions and compare with rules
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/bin/sh -c 'set -eu; rules="/placeholder/house-rules"; if [ -f "$$rules/custom/transcript-gaps.env" ]; then set -a; . "$$rules/custom/transcript-gaps.env"; set +a; fi; batch=$$("/placeholder/python3" "$$rules/skills/operator-protocol/scripts/transcript_gaps.py"); if [ -n "$$batch" ]; then "/placeholder/local-compare-runner" "$$batch" "$$rules/prompts/util/transcript-gaps.md" "$${TRANSCRIPT_GAPS_DECISIONS_FILE:-}" "$$rules"; fi'
