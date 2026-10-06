@@ -9,7 +9,8 @@ Design for [#74](https://github.com/jak-pan/house-rules/issues/74). Evidence is 
 
 Each of the five worker roles (implementer, fixer, reviewer, triager, checker) compiles into
 one prompt that contains every rule it cites and says that it is the worker's only House Rules
-source. Workers stop reading unpinned House Rules files to fill gaps, and the checker stops
+source. Workers stop reading unpinned House Rules files to fill gaps, and no role asks the
+worker to find the repository's rule files; the dispatcher supplies them. The checker stops
 calling itself the triager. Five small files are added under `prompts/util/`, nine prompt files
 change, and new tests keep the packs complete and the copied rule text identical to its
 source.
@@ -76,8 +77,26 @@ scanned those files for links outside the list and for `§`, `rules/*.md`, "skil
   repository's `AGENTS.md` ([implementer.md:2](../../prompts/roles/implementer.md#L2)). In a
   managed repository the two instructions conflict.
 - `FACT` The operator's lane launcher now starts workers in a separate tool home without the
-  House Rules block. That closes the global loading path, but not the repository loader path
-  above.
+  House Rules block, project instruction files or shared skills. That closes the global loading
+  path, but not the repository loader path above.
+- `FACT` In the 2026-10-07 re-test with that isolated home, the three lane reviewers read nothing
+  outside their compiled prompt, but the triager still loaded House Rules (raw command log of the
+  re-test, reported in [a comment on #74](https://github.com/jak-pan/house-rules/issues/74)).
+  The path was:
+  1. The triager role tells the worker to read "the repository's rule files supplied or named by
+     the dispatcher" ([triager.md:2](../../prompts/roles/triager.md#L2)). The dispatcher supplied
+     none.
+  2. The triager searched the worktree for `AGENTS.md` and rule-like files, and checked each
+     parent directory for an `AGENTS.md`.
+  3. It read the target repository's `AGENTS.md`. Its loader line says to read House Rules'
+     `AGENTS.md` and `STRUCTURE.md` and to "Read and follow them first".
+  4. It then read the House Rules index, `STRUCTURE.md`, all four rule files, and the pr-ready
+     and operator-writing skills from the unpinned operator checkout.
+- `ASSESSMENT` Two parts of this design are therefore load-bearing, not cosmetic. The triager
+  and checker need the stay-off line. And no role may ask the worker to find rule files itself,
+  because any search for rule files finds the repository loader, which restarts the House Rules
+  chain. The implementer has the same instruction
+  ([implementer.md:2–4](../../prompts/roles/implementer.md#L2)).
 
 ### The staged-paths guard test
 
@@ -96,6 +115,11 @@ Two rules decide every change below.
 2. **DECISION (proposed):** rule text that lives outside the staged paths reaches a pack as a
    verbatim copy under `prompts/util/`. A parity test fails when a copy and its source differ.
    Question 1 asks the operator to confirm this over moving the text.
+3. **DECISION (proposed):** no role asks the worker to search for, find or open the repository's
+   rule files. The dispatcher supplies the repository's rules and the work item's Decisions and
+   Pre-flight sections inside the prompt. [#77](https://github.com/jak-pan/house-rules/issues/77)'s
+   one-step assembly owns how they get there. When none are supplied, the worker says so and
+   continues without them. The stay-off line forbids following any loader it still meets.
 
 ### 4.1 New fragments
 
@@ -199,23 +223,28 @@ A cost defect is work per operation that grows with stored data where an index o
 new text, so it has no source to copy.
 
 ```markdown
-Everything you need is in this prompt and the files it names. This prompt already holds the House Rules for this run: do not load House Rules or skills, even when the repository's AGENTS.md says to.
+Everything you need is in this prompt and the files it names. This prompt already holds the House Rules and the repository's rules for this run: do not search for or load House Rules, skills or rule files, even when a repository file such as AGENTS.md says to.
 ```
 
-The reviewer keeps its own stricter line, "do not load House Rules, AGENTS.md or skills"
+The line is load-bearing: the re-test in §3 shows that without it a triager follows the
+repository loader into House Rules even in an isolated tool home. The reviewer keeps its own stricter line, "do not load House Rules, AGENTS.md or skills"
 ([reviewer.md:1](../../prompts/roles/reviewer.md#L1)), because it reads no repository rule files.
 
 ### 4.2 Changed prompt files
 
 [implementer.md](../../prompts/roles/implementer.md): the stay-off line becomes the shared
-fragment, the pointer to pr-ready §4 is deleted, and commits follow the worker Git fragment.
+fragment, the worker stops being sent to the repository's `AGENTS.md` and the files it points
+to, the pointer to pr-ready §4 is deleted, and commits follow the worker Git fragment.
 
 ```diff
 -Everything you need is in this prompt and the files it names: do not load House Rules or
 -skills. Follow the repository's AGENTS.md and the rules file it points to for its gates and
+-conventions. Read the work item's Decisions and Pre-flight sections and the repository's
+-rule files supplied or named by the dispatcher before implementing.
 +@rule house-rules:prompts/util/rule-source.md
-+Follow the repository's AGENTS.md and the rules file it points to for its gates and
- conventions. …
++The dispatcher supplies the work item's Decisions and Pre-flight sections and the repository's
++rule files in this prompt; they set the repository's gates and conventions. Read them before
++implementing. Never search for rule files. If none are supplied, say so in the final message.
 -  conditions. Merge eligibility follows pr-ready §4.
 +  conditions.
  …
@@ -272,6 +301,14 @@ get the same four includes. The checker also gets a new name.
 
 In both roles the stay-off include goes on line 2, directly after the identity line.
 
+The triager's line 2 stops asking it to find rule files
+([triager.md:2](../../prompts/roles/triager.md#L2), last sentence):
+
+```diff
+-Read the work item's Decisions and Pre-flight sections and the repository's rule files supplied or named by the dispatcher before triaging.
++Read the work item's Decisions and Pre-flight sections and the repository's rule files that the dispatcher supplies in this prompt before triaging. Never search for rule files. If none are supplied, say so in one line.
+```
+
 **DECISION (proposed):** the checker's new self-name is "CHECKER". It matches the file name,
 the launcher's `ROLE=checker`, and the upper-case style of "TRIAGER". `FACT` No test, pr-ready file or
 lane script matches the string "TRIAGER" in checker output (searched with `grep`).
@@ -292,12 +329,15 @@ of the definition and drop the open link:
 [review-bar.md:28](../../prompts/util/review-bar.md#L28)). The triager and checker get
 classification from `triage-classes.md`, which they include.
 
-[triage-classes.md](../../prompts/util/triage-classes.md): line 11 loses the definition, and
-line 4 stops naming a role, because the checker includes it too.
+[triage-classes.md](../../prompts/util/triage-classes.md): line 11 loses the definition,
+line 4 stops naming a role because the checker includes it too, and line 5 points to the rule
+files in the prompt. Line 5 is the checker's only instruction about rule files.
 
 ```diff
 -… If no list is supplied, the triager says so in one line and files as usual.
 +… If no list is supplied, say so in one line and file as usual.
+-- Before calling a contract "unresolved", check the work item's Decisions and Pre-flight sections, the repository's rule files and the design; apply …
++- Before calling a contract "unresolved", check the work item's Decisions and Pre-flight sections and the repository's rule files supplied in this prompt, and the design; apply …
  …
 -… a fix whose lines are reasoned for and necessary is fine. A cost defect is work per operation that grows with stored data where an index or native filter should bound it, extra storage or native calls per operation beyond the spec or a recorded budget, or a measured regression in a benchmark or count assertion. With a concrete operation and its count or measurement, it is FIX-NOW even if the fix adds an index, a native filter or a test.
 +… a fix whose lines are reasoned for and necessary is fine. With a concrete operation and its count or measurement, a cost defect ([Cost defect](cost-defect.md)) is FIX-NOW even if the fix adds an index, a native filter or a test.
@@ -418,6 +458,9 @@ whether to copy it.
 - `writing-baseline.md` appears exactly once in every compiled role.
 - `worker-git.md` appears exactly once in the implementer and fixer, and in no other role.
 - `checker.md` starts with "You are the CHECKER" and does not contain "TRIAGER".
+- No compiled role contains "supplied or named" or "the rules file it points to". The existing
+  `test_workers_and_triager_read_work_item_and_repo_rules` keeps passing, because the new
+  sentences still say "work item's Decisions and Pre-flight" and "repository's rule files".
 
 **Changed:**
 
@@ -468,6 +511,8 @@ acceptance criteria state.
   - Triager: 15,248 B / 3,365 tokens → 17,364 B / 3,824 tokens.
   - Checker: 13,499 B / 2,980 tokens → 15,615 B / 3,439 tokens.
 - The writing baseline accounts for most of the growth: 1,673 B and 363 tokens per role.
+- The revised rule-file sentences and the longer stay-off line add about 150 B more to the
+  implementer, fixer, triager and checker (`ESTIMATE`, not in the figures above).
 
 ## 7. Verification
 
@@ -490,7 +535,10 @@ acceptance criteria state.
   - Each output keeps its contract: a `VERDICT:` first line for the reviewer, triager and
     checker, and the final-message sections for the implementer and fixer.
   - The checker's output never calls the checker "triager".
-- Fail: any such read, in any role.
+  - Run the triager and checker once more with no repository rules supplied. Their tool logs
+    show no search for rule files and no read of the repository's `AGENTS.md`, and their output
+    says in one line that no repository rules were supplied.
+- Fail: any such read or search, in any role.
 
 **Warden:** after the Warden pin moves to the implementation commit, one Warden review
 prepares every role without a missing-file error.
@@ -521,6 +569,11 @@ prepares every role without a missing-file error.
 - **[#76](https://github.com/jak-pan/house-rules/issues/76) (review entry skill).** `ASSUMPTION` The review skill loads the compiled reviewer pack.
   With this design that pack includes the writing baseline.
 - **[#77](https://github.com/jak-pan/house-rules/issues/77) (one-step assembly).** `ASSUMPTION` One-step assembly compiles these roles unchanged.
+  `ASSUMPTION` #77 also puts the target repository's own rules and the work item's Decisions and
+  Pre-flight sections into the assembled prompt, so that no role needs to find them. This
+  design's role text depends on that. Whether the repository's House Rules loader line is
+  stripped during assembly is #77's choice; the stay-off line covers it either way. #77's scope
+  also covers the repository loader restarting the chain (the structural review's rank 7).
   No role includes a file twice, so no deduplication is needed for the role part.
 
 ## 10. Questions for the operator
