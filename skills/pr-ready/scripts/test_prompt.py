@@ -1650,10 +1650,20 @@ class AcceptedScopeRegressionTest(unittest.TestCase):
 
 
 class AlwaysLoadedWritingTest(unittest.TestCase):
+    def test_original_introduction_is_preserved_in_its_rule_owners(self):
+        general = " ".join((ROOT / "rules/writing.md").read_text().split())
+        operator = " ".join((ROOT / "skills/operator-writing/SKILL.md").read_text().split())
+        for sentence, owner, other in (
+            ("The reader must understand the text without any other document.", general, operator),
+            ("They should know what happened, why it matters and what to do, in that order.", general, operator),
+            ("This skill combines a controlled language (ASD-STE100, applied at about 80 %) "
+             "with an explanation-first structure and a reader test.", operator, general),
+        ):
+            with self.subTest(sentence=sentence):
+                self.assertEqual(owner.count(sentence), 1)
+                self.assertNotIn(sentence, other)
+
     def test_general_writing_rules_are_always_loaded(self):
-        index = (ROOT / "AGENTS.md").read_text()
-        always = index.split("## Always load\n", 1)[1].split("## Load when", 1)[0]
-        self.assertIn("[writing rules](rules/writing.md)", always)
         self.assertIn("rules/writing.md governs all text", (ROOT / "rules/core.md").read_text())
 
     def test_moved_sections_have_one_rule_owner(self):

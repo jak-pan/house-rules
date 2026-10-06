@@ -1,5 +1,8 @@
 # Writing rules
 
+The reader must understand the text without any other document. They should know what
+happened, why it matters and what to do, in that order.
+
 ## Communication rules
 
 - Support claims with evidence.
