@@ -75,13 +75,11 @@ To run from another checkout, extract that compiler with
 `git --no-replace-objects show <commit>:skills/pr-ready/scripts/prompt.py`
 into the run folder and pass `--repo <clone>`.
 
-The target part preserves either `.agents/rules.md` or a non-loader `AGENTS.md`.
-Canonical House Rules pointers are never included. Mixed and unsupported loaders
-fail with an instruction to move local requirements into `.agents/rules.md` and
-restore the canonical pointer. Two independent rule sources fail rather than
-losing one source's requirements. A missing file required by a canonical pointer
-also fails. No local rules is a complete target part when both sources are absent
-or the canonical pointer has no target-rule pointer and no separate rules exist.
+The target part includes the target's `.agents/rules.md` and then its `AGENTS.md`,
+each unchanged when present, read from the selected commit (lead decision L6 in
+`docs/design/77-one-step-pack-assembly.md`). Nothing is classified or refused, so no
+local requirement can be dropped. When both files are absent, the part says
+"Repository rules: this repository has no rules of its own."
 
 `--out` publishes `pack.txt` and `manifest.json` together by one directory rename.
 The destination must not exist. The manifest records resolved revisions, blob ids,
