@@ -41,7 +41,7 @@ fi
 
 # Validate the whole panel before creating or writing any output.
 # Resolve symlinks as well as '..'; a lexical prefix check is not containment.
-python3 - "$rules_repo" "$rules_rev" "$output_root" "$name" "$@" <<'PY' || exit 2
+python3 -I -B - "$rules_repo" "$rules_rev" "$output_root" "$name" "$@" <<'PY' || exit 2
 from pathlib import Path
 import re
 import subprocess
@@ -87,7 +87,7 @@ git --no-replace-objects -C "$rules_repo" show "$rules_rev:skills/pr-ready/scrip
 
 base_args=(base "$dir")
 [ -n "${REVIEW_BASE:-}" ] && base_args+=(--base "$REVIEW_BASE")
-resolved_base=$("$here/prepare.py" "${base_args[@]}") || {
+resolved_base=$(python3 -I -B "$here/prepare.py" "${base_args[@]}") || {
   echo "panel failed: base resolution" >> "$out/summary.txt"
   exit 1
 }
@@ -95,7 +95,7 @@ resolved_base=$("$here/prepare.py" "${base_args[@]}") || {
 run_one() {
   local r=$1
   local fam sandbox settings cfg cli model tier effort prompt=$out/$r.prompt t0 cli_status=0 verdict
-  if ! settings=$("$here/prepare.py" lens "$r" --config "$out/lenses.conf"); then
+  if ! settings=$(python3 -I -B "$here/prepare.py" lens "$r" --config "$out/lenses.conf"); then
     echo "$r failed: lens configuration" >> "$out/summary.txt"
     return 1
   fi
@@ -105,7 +105,7 @@ run_one() {
   read -r cli model tier effort <<<"$cfg"; [ "$tier" = - ] && tier=
   local prepare_args=(review "$dir" --context-only --lens "$r" --cli "$cli" --summary "$base" --base "$resolved_base" --no-fetch)
   # Keep one compilation in memory for both task budgeting and final publication.
-  if ! /usr/bin/python3 -B - "$out" "$rules_repo" "$rules_rev" "$dir" "$r" "$session_mode" "$cli" \
+  if ! /usr/bin/python3 -I -B - "$out" "$rules_repo" "$rules_rev" "$dir" "$r" "$session_mode" "$cli" \
       "$here/prepare.py" "${prepare_args[@]}" 2> "$out/$r.prepare.err" <<'PY'
 from pathlib import Path
 import subprocess
@@ -124,7 +124,7 @@ try:
         args += ["--compiled-chars", str(len(pack.decode("utf-8")) + 1)]
     task = Path(out) / (reviewer + ".task")
     with task.open("wb") as stream:
-        result = subprocess.run([preparer, *args], stdout=stream)
+        result = subprocess.run(["python3", "-I", "-B", preparer, *args], stdout=stream)
     if result.returncode:
         sys.exit(2)
     pack, manifest = append_tasks(pack, manifest, [(task, "review-panel-" + reviewer)])
@@ -138,7 +138,7 @@ PY
     echo "$r failed: context preparation or prompt compilation (see $r.prepare.err)" >> "$out/summary.txt"
     return 1
   fi
-  if ! "$here/prepare.py" check-prompt "$out/$r.pack/pack.txt" --cli "$cli" 2>> "$out/$r.prepare.err"; then
+  if ! python3 -I -B "$here/prepare.py" check-prompt "$out/$r.pack/pack.txt" --cli "$cli" 2>> "$out/$r.prepare.err"; then
     cat "$out/$r.prepare.err" >&2
     echo "$r failed: complete prompt size (see $r.prepare.err)" >> "$out/summary.txt"
     return 1
@@ -173,7 +173,7 @@ PY
            local neutral; neutral=$(mktemp -d "${TMPDIR:-/tmp}/review-grok.XXXXXX") || return 1
            if ! (cd "$neutral" && env GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_SKILLS_ENABLED=0 GROK_CLAUDE_RULES_ENABLED=0 \
                GROK_CLAUDE_MCPS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 GROK_CURSOR_AGENTS_ENABLED=0 \
-               GROK_CURSOR_SKILLS_ENABLED=0 GROK_CURSOR_RULES_ENABLED=0 grok inspect 2>&1) | python3 -c '
+               GROK_CURSOR_SKILLS_ENABLED=0 GROK_CURSOR_RULES_ENABLED=0 grok inspect 2>&1) | python3 -I -B -c '
 import re, sys
 # Fail closed: every MCP server and hook Grok would load for this run must be disabled.
 text = sys.stdin.read(); ok = True; seen = set()
@@ -193,10 +193,10 @@ sys.exit(0 if ok else 1)' 2>> "$logs.err"; then
                grok -m "$model" --reasoning-effort "${effort:-high}" --tools read_file,list_dir,grep --output-format json --always-approve --disable-web-search --prompt-file "$prompt" > "$logs.json" 2>> "$logs.err") || cli_status=$?
            rmdir "$neutral" 2>/dev/null
              if [ "$cli_status" -eq 0 ]; then
-               "$here/grok_final.py" "$logs.json" > "$logs.md" 2>> "$logs.err" || cli_status=$?
+               python3 -I -B "$here/grok_final.py" "$logs.json" > "$logs.md" 2>> "$logs.err" || cli_status=$?
              fi ;;
       kimi)  # Python preserves the pack's trailing newlines in the CLI argument.
-             /usr/bin/python3 -B -c '
+             /usr/bin/python3 -I -B -c '
 from pathlib import Path
 import subprocess, sys
 checkout, model, prompt = sys.argv[1:]
@@ -215,14 +215,14 @@ sys.exit(subprocess.run(["kimi", "-m", model, "-p", text], cwd=checkout).returnc
     echo "$r failed: reviewer CLI (exit $cli_status; see $r.attempt-$attempt.err); attempts=$attempt" >> "$out/summary.txt"
     return 1
   fi
-  if ! verdict=$("$here/verdict.py" "$logs.md" 2>> "$logs.err"); then
+  if ! verdict=$(python3 -I -B "$here/verdict.py" "$logs.md" 2>> "$logs.err"); then
     echo "$r failed: reviewer report missing valid VERDICT: APPROVE or VERDICT: REQUEST_CHANGES token (see $r.md and $r.attempt-$attempt.err); attempts=$attempt" >> "$out/summary.txt"
     return 1
   fi
   echo "$r $cli/$model wall=$(( $(date +%s) - t0 ))s attempts=$attempt verdict=$verdict" >> "$out/summary.txt"
 }
 
-"$here/review-panel-models.py" --check >&2 || true   # notice only: newer models available
+python3 -I -B "$here/review-panel-models.py" --check >&2 || true   # notice only: newer models available
 pids=()
 for r in "$@"; do
   run_one "$r" &

@@ -646,6 +646,31 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
         env.start()
         self.addCleanup(env.stop)
 
+    def test_panel_pack_preparation_never_imports_checkout_hashlib(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        env["PYTHONPATH"] = str(self.repo)
+        marker = self.root / "checkout-hashlib-executed"
+        self.write(self.repo, "hashlib.py",
+                   "from pathlib import Path\n"
+                   f"Path({str(marker)!r}).write_text('checkout module executed')\n"
+                   "raise RuntimeError('checkout hashlib imported')\n")
+        stub = self.binaries / "codex"
+        stub.write_text("#!/bin/sh\n"
+                        "while [ \"$1\" != '-o' ]; do shift; done\n"
+                        "printf 'VERDICT: APPROVE\\n' > \"$2\"\n"
+                        "cat > /dev/null\n")
+        stub.chmod(0o755)
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "isolated",
+                                 str(self.repo), str(summary), "generalist-a"],
+                                cwd=self.repo, capture_output=True, text=True, timeout=10, env=env)
+        self.assertFalse(marker.exists(), result.stderr)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        pack = output / "isolated" / "generalist-a.pack"
+        self.assertIn(summary.read_bytes(), (pack / "pack.txt").read_bytes())
+        self.assertEqual(json.loads((pack / "manifest.json").read_text())["house_rules_revision"],
+                         env["REVIEW_HOUSE_RULES_REV"])
+
     def test_panel_prompts_come_from_named_commit_and_manifest_matches_sent_bytes(self):
         summary, output, env = self.panel_fixture()
         env["REVIEW_BASE"] = "origin/trunk"

@@ -16,7 +16,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 dir=$(cd "$2" && pwd) || exit 2
 base_args=(base "$dir")
 [ -n "${REVIEW_BASE:-}" ] && base_args+=(--base "$REVIEW_BASE")
-base=$("$here/prepare.py" "${base_args[@]}") || exit 1
+base=$(python3 -I -B "$here/prepare.py" "${base_args[@]}") || exit 1
 # Pin the base to a commit so the size check and the review see the same range.
 base=$(git -C "$dir" rev-parse --verify "$base^{commit}") || exit 1
 # Match what the reviewer sees: no rename detection; a binary file ("-") cannot be measured.
