@@ -245,10 +245,12 @@ def loader(text):
     if MANAGED.search(text) or FOUNDATION.search(text):
         raise PromptError("AGENTS.md mixes the House Rules loader with local requirements; " + MIGRATE)
     # These are explicit loader instructions, not a prose mention of House Rules.
-    if ("<!-- house-rules:begin -->" in text or
+    if (re.search(r"<!--\s*(?:house-rules|forge|groundwork):(?:begin|end)\s*-->", text) or
+            (re.search(r"(?m)^#+\s+Shared operating foundation \(House Rules\)\s*$", text) and
+             re.search(r"(?i)At\s+session\s+start\s+and\s+after\s+every\s+context\s+compaction\s+or\s+reset,\s+read\s+`[^`]+`", text)) or
             re.search(r"This repository is managed by \[House Rules\]", text) or
-            re.search(r"(?im)^Base rules:\s*\[House Rules\].*Read and follow them first\.", text) or
-            re.search(r"(?i)\bRead (?:and follow )?House Rules\s+`[^`]+`", text)):
+            re.search(r"(?im)^Base\s+rules:\s*\[House Rules\]\([^)]+\)\.\s*Read\s+and\s+follow\s+them\s+first\.", text) or
+            re.search(r"(?i)\bRead\s+(?:and\s+follow\s+)?House Rules\s+`[^`]+`", text)):
         raise PromptError("AGENTS.md has an unsupported House Rules loader; " + MIGRATE)
     return None
 
@@ -282,7 +284,8 @@ def ending(data):
 def logical_source(name):
     """Task provenance is a logical name or owner/repository#issue, never a file path."""
     if not (re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", name) or
-            re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+", name)):
+            (re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+", name) and
+             not any(part in (".", "..") for part in name.split("#", 1)[0].split("/")))):
         raise PromptError("task source must be a logical identifier, never a machine path")
     return name
 
@@ -376,7 +379,7 @@ class TaskOption(argparse.Action):
 
 
 def main(argv=None):
-    parser = Parser(description=__doc__)
+    parser = Parser(description=__doc__, allow_abbrev=False)
     parser.add_argument("file", nargs="?")
     parser.add_argument("--list", action="store_true")
     parser.add_argument("--session", action="store_true")
@@ -396,35 +399,40 @@ def main(argv=None):
                 if not preceding_task:
                     raise PromptError("--task-source requires an immediately preceding --task")
         args = parser.parse_args(argv)
+        for option in ("rev", "repo", "target", "target_rev", "out", "manifest"):
+            if getattr(args, option) == "":
+                raise PromptError("--" + option.replace("_", "-") + " must not be empty")
         pack_mode = bool(args.role is not None or args.lens is not None or args.include or args.tasks or
                          args.target is not None or args.no_target or args.out is not None)
-        if (pack_mode or args.manifest or args.target_rev or args.repo) and not args.rev:
+        if (pack_mode or args.manifest is not None or args.target_rev is not None or args.repo is not None) and args.rev is None:
             raise PromptError("--rev is required for pack mode and manifest output")
-        if args.out and args.manifest:
+        if args.out is not None and args.manifest is not None:
             raise PromptError("--out and --manifest are mutually exclusive")
         if pack_mode and args.file is not None:
             raise PromptError("entry file cannot be combined with pack parts")
-        if pack_mode and (bool(args.target) + bool(args.no_target) != 1):
+        if pack_mode and ((args.target is not None) + args.no_target != 1):
             raise PromptError("pack mode requires exactly one of --target or --no-target")
-        if args.target_rev and not args.target:
+        if args.target_rev is not None and args.target is None:
             raise PromptError("--target-rev requires --target")
         if pack_mode and not sys.stdin.isatty() and sys.stdin.buffer.read(1):
             raise PromptError("standard-input text cannot be combined with pack parts")
         with ExitStack() as stack:
-            source = (stack.enter_context(Commit(args.repo or ROOT, args.rev)) if args.rev else WorkingTree(ROOT))
+            source = (stack.enter_context(Commit(args.repo if args.repo is not None else ROOT, args.rev))
+                      if args.rev is not None else WorkingTree(ROOT))
             if pack_mode:
-                target = stack.enter_context(Commit(args.target, args.target_rev or "HEAD")) if args.target else None
+                target = (stack.enter_context(Commit(args.target, args.target_rev if args.target_rev is not None else "HEAD"))
+                          if args.target is not None else None)
                 output, manifest = build_pack(source, role=args.role, lens=args.lens, includes=args.include,
                                               tasks=args.tasks or (), target=target, omit_shared_rules=args.session)
                 used = [e["path"] for e in manifest["files"]]
             else:
-                compiler = source.compiler() if args.rev else None
+                compiler = source.compiler() if args.rev is not None else None
                 text = None if args.file else sys.stdin.buffer.read().decode("utf-8")
                 expansion = Expansion(source, args.session)
                 result = expansion.expand(text, args.file)
                 output = result.encode("utf-8")
                 used = [e["path"] for e in expansion.files]
-                manifest = {"format": 1, "compiler": compiler, "house_rules_revision": args.rev and source.revision,
+                manifest = {"format": 1, "compiler": compiler, "house_rules_revision": source.revision if args.rev is not None else None,
                             "files": expansion.files, "parts": [], "target": None,
                             "omitted_shared_rules": expansion.omitted, "skipped_repeats": expansion.repeats,
                             "pack": fingerprint(output)}
@@ -432,10 +440,10 @@ def main(argv=None):
         if args.list:
             output = "".join(path + "\n" for path in used).encode()
             manifest["pack"] = fingerprint(output)
-        if args.out:
+        if args.out is not None:
             publish(args.out, output, manifest)
         else:
-            if args.manifest:
+            if args.manifest is not None:
                 Path(args.manifest).write_bytes(manifest_bytes(manifest))
             sys.stdout.buffer.write(output)
             sys.stdout.buffer.flush()

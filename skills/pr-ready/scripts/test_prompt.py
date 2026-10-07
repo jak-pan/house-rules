@@ -2074,10 +2074,29 @@ class CommitPackTest(unittest.TestCase):
     def test_task_source_must_follow_task_and_cannot_be_machine_path(self):
         task = self.root / "task.txt"
         task.write_text("Task")
-        for source in (str(task), "../task", "C:\\tasks\\item", "file:///task", "folder/task.txt"):
-            self.bad(self.run_pack("--task", task, "--task-source", source), "logical")
+        for source in (str(task), "../task", "C:\\tasks\\item", "file:///task", "folder/task.txt",
+                       "../task#77", "./task#77", "owner/..#77", "owner/.#77"):
+            with self.subTest(source=source):
+                self.bad(self.run_pack("--task", task, "--task-source", source), "logical")
         self.bad(self.run_pack("--task", task, "--include", "extra.md", "--task-source", "name"),
                  "immediately")
+
+    def test_empty_options_fail_without_substituting_defaults_or_output_modes(self):
+        for option in ("--rev", "--target-rev", "--out", "--manifest", "--repo", "--target"):
+            with self.subTest(option=option):
+                self.bad(self.run_pack(option, "", target=True), option + " must not be empty")
+        for option in ("--rev", "--manifest"):
+            with self.subTest(legacy_option=option):
+                result = subprocess.run(["/usr/bin/python3", "-B", str(self.script), option, ""],
+                                        input=b"Literal", capture_output=True, timeout=5)
+                self.bad(result, option + " must not be empty")
+
+    def test_abbreviated_task_source_is_rejected_without_traceback(self):
+        task = self.root / "task.txt"
+        task.write_text("Task")
+        for args in (("--task-so", "orphan"),
+                     ("--task", task, "--include", "extra.md", "--task-so", "name")):
+            self.bad(self.run_pack(*args), "unrecognized arguments: --task-so")
 
     def test_pack_refuses_standard_input_text_instead_of_dropping_it(self):
         result = subprocess.run(["/usr/bin/python3", str(self.script), "--rev", self.rev,
@@ -2126,11 +2145,15 @@ class CommitPackTest(unittest.TestCase):
         older = "# AGENTS.md\n\nBase rules: [House Rules](https://example.invalid/house-rules). Read and follow them first.\n"
         unsupported = self.managed().replace("INDEX.md", "AGENTS.md")
         block = (ROOT / "AGENTS.md").read_text()
-        for agents, reason in ((self.managed() + "Use the local gate.\n", "mixes"),
+        for index, (agents, reason) in enumerate(((self.managed() + "Use the local gate.\n", "mixes"),
                                (block + "Local requirement\n", "mixes"),
                                (older, "unsupported House Rules loader"),
                                (unsupported, "unsupported House Rules loader"),
-                               ("Local requirement\n", "not a canonical")):
+                               (block.replace("house-rules:", "forge:"), "unsupported House Rules loader"),
+                               (block.replace("house-rules:", "groundwork:"), "unsupported House Rules loader"),
+                               (re.sub(r"<!--.*?-->\n?", "", block), "unsupported House Rules loader"),
+                               (older.replace(" Read and follow", "\nRead and follow"), "unsupported House Rules loader"),
+                               ("Local requirement\n", "not a canonical"))):
             for has_rules in (False, True):
                 if reason == "not a canonical" and not has_rules:
                     continue
@@ -2141,7 +2164,7 @@ class CommitPackTest(unittest.TestCase):
                     if has_rules:
                         self.write(self.target, ".agents/rules.md", "Different requirement\n")
                     self.commit(self.target)
-                    dest = self.root / "failed-pack"
+                    dest = self.root / f"failed-pack-{index}-{has_rules}"
                     result = self.run_pack("--out", dest, target=True)
                     self.bad(result, reason)
                     self.assertIn(b"move local requirements to .agents/rules.md", result.stderr)

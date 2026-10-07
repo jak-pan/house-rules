@@ -39,7 +39,7 @@ if [ $# -eq 0 ]; then
 fi
 [ $# -gt 0 ] || { echo "no reviewers: configure families in $conf" >&2; exit 2; }
 
-# Validate the whole panel before creating, clearing or writing any output.
+# Validate the whole panel before creating or writing any output.
 # Resolve symlinks as well as '..'; a lexical prefix check is not containment.
 python3 - "$rules_repo" "$rules_rev" "$output_root" "$name" "$@" <<'PY' || exit 2
 from pathlib import Path
@@ -61,16 +61,8 @@ try:
     panel = (root / name).resolve()
     if panel == root or not panel.is_relative_to(root):
         sys.exit(f"refusing panel directory outside output root: {panel}")
-    paths = [panel / "summary.txt"]
-    paths.extend(panel / f"{reviewer}.{suffix}" for reviewer in reviewers
-                 for suffix in ("md", "jsonl", "json", "err", "prepare.err", "prompt", "prompt.grok", "task", "pack"))
-    paths.extend(panel / filename for filename in ("compiler.py", "lenses.conf"))
-    for path in paths:
-        resolved = path.resolve()
-        if resolved == panel or not resolved.is_relative_to(panel):
-            sys.exit(f"refusing cleanup path outside panel directory: {path}")
 except (OSError, RuntimeError) as exc:
-    sys.exit(f"cannot validate panel cleanup paths: {exc}")
+    sys.exit(f"cannot validate panel directory: {exc}")
 if not rev:
     sys.exit("review panel requires --rev COMMIT or REVIEW_HOUSE_RULES_REV")
 try:
@@ -86,18 +78,10 @@ except (OSError, subprocess.SubprocessError) as exc:
     sys.exit(f"cannot read panel pin: {exc}")
 PY
 rules_rev=$(git --no-replace-objects -C "$rules_repo" rev-parse --verify --end-of-options "$rules_rev^{commit}") || exit 2
-mkdir -p "$out" || exit 1
+mkdir -p "$output_root" || exit 1
+mkdir "$out" || { echo "review panel requires a fresh panel directory: $out" >&2; exit 1; }
 
 : > "$out/summary.txt" || exit 1
-for r in "$@"; do
-  # A reused panel directory must never supply evidence from a previous run.
-  if ! rm -f -- "$out/$r.md" "$out/$r.jsonl" "$out/$r.json" \
-      "$out/$r.err" "$out/$r.prepare.err" "$out/$r.prompt" "$out/$r.prompt.grok" "$out/$r.task" ||
-      ! rm -rf -- "$out/$r.pack"; then
-    echo "$r failed: clearing previous reviewer outputs" >> "$out/summary.txt"
-    exit 1
-  fi
-done
 git --no-replace-objects -C "$rules_repo" show "$rules_rev:skills/pr-ready/scripts/prompt.py" > "$out/compiler.py" || exit 2
 git --no-replace-objects -C "$rules_repo" show "$rules_rev:skills/pr-ready/scripts/review-panel.lenses" > "$out/lenses.conf" || exit 2
 
@@ -119,18 +103,35 @@ run_one() {
   cfg=$(family_cfg "$fam")
   [ -n "$cfg" ] || { echo "$r failed: family $fam not configured" >> "$out/summary.txt"; return 1; }
   read -r cli model tier effort <<<"$cfg"; [ "$tier" = - ] && tier=
+  local compile_args=(--repo "$rules_repo" --rev "$rules_rev" --role reviewer --lens "$r" --target "$dir")
+  [ "$session_mode" -eq 0 ] || compile_args+=(--session)
   local prepare_args=(review "$dir" --context-only --lens "$r" --cli "$cli" --summary "$base" --base "$resolved_base" --no-fetch)
+  if [ "$cli" = codex ]; then
+    local compiled_chars
+    # Measure the pinned rule parts through the compiler; reserve the task separator too.
+    if ! compiled_chars=$(set -o pipefail; /usr/bin/python3 -B "$out/compiler.py" "${compile_args[@]}" |
+        /usr/bin/python3 -B -c 'import sys; print(len(sys.stdin.buffer.read().decode("utf-8")) + 1)' \
+        ) 2> "$out/$r.prepare.err"; then
+      cat "$out/$r.prepare.err" >&2
+      echo "$r failed: compiled parts preparation (see $r.prepare.err)" >> "$out/summary.txt"
+      return 1
+    fi
+    prepare_args+=(--compiled-chars "$compiled_chars")
+  fi
   if ! "$here/prepare.py" "${prepare_args[@]}" > "$out/$r.task" 2> "$out/$r.prepare.err"; then
     cat "$out/$r.prepare.err" >&2
     echo "$r failed: context preparation (see $r.prepare.err)" >> "$out/summary.txt"
     return 1
   fi
-  local compile_args=(--repo "$rules_repo" --rev "$rules_rev" --role reviewer --lens "$r" \
-      --target "$dir" --task "$out/$r.task" --task-source "review-panel-$r" --out "$out/$r.pack")
-  [ "$session_mode" -eq 0 ] || compile_args+=(--session)
+  compile_args+=(--task "$out/$r.task" --task-source "review-panel-$r" --out "$out/$r.pack")
   if ! /usr/bin/python3 -B "$out/compiler.py" "${compile_args[@]}" 2>> "$out/$r.prepare.err"; then
     cat "$out/$r.prepare.err" >&2
     echo "$r failed: prompt compilation (see $r.prepare.err)" >> "$out/summary.txt"
+    return 1
+  fi
+  if ! "$here/prepare.py" check-prompt "$out/$r.pack/pack.txt" --cli "$cli" 2>> "$out/$r.prepare.err"; then
+    cat "$out/$r.prepare.err" >&2
+    echo "$r failed: complete prompt size (see $r.prepare.err)" >> "$out/summary.txt"
     return 1
   fi
   ln -s "$r.pack/pack.txt" "$prompt" || return 1

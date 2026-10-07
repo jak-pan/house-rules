@@ -11,8 +11,6 @@ import tempfile
 from pathlib import Path
 from urllib.parse import quote, quote_from_bytes, unquote, urlsplit
 
-from prompt import expand, PromptError
-
 HERE = Path(__file__).resolve().parent
 CODEX_LIMIT = 800_000
 SPEC_LIMIT = 2_000_000
@@ -522,6 +520,8 @@ def review(repo, args, base, remote):
     context_only = getattr(args, "context_only", False)
     common, instructions = "", ""
     if not context_only:
+        from prompt import expand, PromptError
+
         lens_settings(lens)
         prefix = "prompts/"
         try:
@@ -546,8 +546,12 @@ def review(repo, args, base, remote):
     # Normalize before trimming: escaping invalid bytes can quadruple their size.
     for entry in entries:
         entry.update((key, display(value)) for key, value in entry.items())
+    compiled_chars = getattr(args, "compiled_chars", 0)
+    if compiled_chars < 0 or (compiled_chars and not context_only):
+        raise PrepareError("--compiled-chars requires context-only mode and a nonnegative count")
+    limit = CODEX_LIMIT - compiled_chars
     overhead = len(display("\n\n".join([*notices, *parts, requirements_part(entries, mode)]))) + 3
-    budget = max(0, CODEX_LIMIT - overhead) if args.cli == "codex" else CODEX_LIMIT
+    budget = max(0, limit - overhead) if args.cli == "codex" else CODEX_LIMIT
     packed = mode == "pack"
     try:
         change = change_part(repo, rng, files, url, head, mode, budget if mode != "pack" else None)
@@ -562,7 +566,7 @@ def review(repo, args, base, remote):
         # Include the terminating newline; main writes this exact representation.
         return display("\n\n".join([*notices, *trim_notes(), *parts, requirements_part(entries, mode), change])) + "\n"
     result = render()
-    if args.cli == "codex" and len(result) > CODEX_LIMIT:
+    if args.cli == "codex" and len(result) > limit:
         if not packed:
             notices.append(f"Size guard: prompt exceeds {CODEX_LIMIT:,} characters; change part uses pack (hunk headers).")
             change = change_part(repo, rng, files, url, head, "pack")
@@ -572,18 +576,18 @@ def review(repo, args, base, remote):
                                  and e["body"] and not (mode == "diff" and category == "spec")),
                                 key=lambda n: len(entries[n]["body"]), reverse=True)
             for n in candidates:
-                if len(result) <= CODEX_LIMIT:
+                if len(result) <= limit:
                     break
                 trimmed.append(n)
                 # Include the trim notice in the budget before retaining a prefix.
                 result = render()
-                keep = max(0, len(entries[n]["body"]) - (len(result) - CODEX_LIMIT) - 64)
+                keep = max(0, len(entries[n]["body"]) - (len(result) - limit) - 64)
                 entries[n]["body"] = entries[n]["body"][:keep] + "\n[Trimmed by size guard.]"
                 result = render()
-        if len(result) > CODEX_LIMIT:
+        if len(result) > limit:
             history = "\n".join(trim_notes() or ["No requirement bodies eligible for trimming."])
             raise PrepareError(
-                f"Size guard: limit {CODEX_LIMIT:,} characters; final size {len(result):,} characters after trimming. "
+                f"Size guard: limit {CODEX_LIMIT:,} characters; final size {len(result) + compiled_chars:,} characters after trimming. "
                 "Retained indexes, rules, task and author claims require a smaller input.\n"
                 "Already trimmed: change part uses pack (hunk headers).\n" + history)
     return result
@@ -632,6 +636,7 @@ def main(argv=None):
         p.add_argument("--no-fetch", action="store_true", help="use an already resolved --base without fetching")
         if command == "review":
             p.add_argument("--context-only", action="store_true", help="emit task context for the commit-built pack compiler")
+            p.add_argument("--compiled-chars", type=int, default=0, help="characters reserved for compiled parts and task separator")
             for option in ("pr", "spec", "tests", "lens", "summary"):
                 p.add_argument("--" + option)
             p.add_argument("--issue", action="append", default=[])
@@ -645,10 +650,18 @@ def main(argv=None):
     p = sub.add_parser("lens", help="print configured lens family and sandbox")
     p.add_argument("name")
     p.add_argument("--config", type=Path)
+    p = sub.add_parser("check-prompt", help="check the complete compiled prompt before dispatch")
+    p.add_argument("file", type=Path)
+    p.add_argument("--cli", choices=("codex", "grok", "kimi"), required=True)
     args = parser.parse_args(argv)
     try:
         if args.command == "lens":
             print(" ".join(lens_settings(args.name, args.config)))
+            return 0
+        if args.command == "check-prompt":
+            size = len(args.file.read_bytes().decode("utf-8"))
+            if args.cli == "codex" and size > CODEX_LIMIT:
+                raise PrepareError(f"Size guard: limit {CODEX_LIMIT:,} characters; complete prompt size {size:,} characters; narrow the review input")
             return 0
         repo = Path(git(args.checkout, "rev-parse", "--show-toplevel").strip())
         base, remote, fresh = resolve_base(repo, args.base, args.no_fetch)
@@ -671,7 +684,7 @@ def main(argv=None):
                 update_note = f"Merged {base} (or already up to date)."
             print(display(brief(repo, args, base, status, update_note)))
         return 0
-    except (PrepareError, OSError) as exc:
+    except (PrepareError, OSError, UnicodeError) as exc:
         print(display(f"error: {exc}"), file=sys.stderr)
         return 1
 

@@ -138,6 +138,18 @@ print(json.dumps(value))
         self.assertEqual(self.review(context_only=True, format="diff", cli="grok"), baseline)
         self.assertEqual(prepare.git(self.repo, "show", "HEAD:src/core.py"), "def action():\n    return 2\n")
 
+    def test_context_preparation_does_not_execute_the_live_compiler(self):
+        scripts = self.root / "live-scripts"
+        scripts.mkdir()
+        shutil.copyfile(SCRIPT, scripts / "prepare.py")
+        (scripts / "prompt.py").write_text("print('DIRTY COMPILER CANARY')\nraise RuntimeError('live import')\n")
+        result = subprocess.run([sys.executable, "-B", str(scripts / "prepare.py"),
+                                 "review", str(self.repo), "--context-only", "--base", "origin/trunk",
+                                 "--no-fetch"], capture_output=True, text=True, timeout=5)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("DIRTY COMPILER CANARY", result.stdout)
+        self.assertIn("# 3. Pull request and issue", result.stdout)
+
     def github(self, pr=None, issues=(), pr_comments=(), review_comments=(), reviews=(), issue_comments=None):
         self.git(self.repo, "remote", "set-url", "origin", "https://github.com/example/project.git")
         data = {}
@@ -462,14 +474,10 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
         self.assertIn("duplicate reviewer", result.stderr)
         self.assertEqual((panel / "summary.txt").read_text(), "Existing summary")
 
-    def test_panel_base_failure_clears_previous_approvals(self):
+    def test_panel_base_failure_is_recorded_in_a_fresh_directory(self):
         summary, output, env = self.panel_fixture()
         env["REVIEW_BASE"] = "missing-ref"
         panel = output / "badbase"
-        panel.mkdir(parents=True)
-        (panel / "summary.txt").write_text("verdict=APPROVE")
-        for suffix in ("md", "jsonl", "json", "err", "prepare.err", "prompt"):
-            (panel / ("generalist-a." + suffix)).write_text("Old approval")
         result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "badbase",
                                  str(self.repo), str(summary), "generalist-a"], capture_output=True, text=True, env=env)
         self.assertNotEqual(result.returncode, 0)
@@ -651,10 +659,24 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
         source = Path(env["REVIEW_HOUSE_RULES_REPO"])
         role = source / "prompts/roles/reviewer.md"
         role.write_text("DIRTY PANEL CANARY")
-        for round_name in ("pinned", "branch"):
+        for round_name in ("pinned", "branch", "replacement"):
             if round_name == "branch":
                 self.commit(source, "Dirty role")
                 self.git(source, "checkout", "-b", "other")
+            if round_name == "replacement":
+                compiler = source / "skills/pr-ready/scripts/prompt.py"
+                original = self.git(source, "rev-parse", env["REVIEW_HOUSE_RULES_REV"] + ":skills/pr-ready/scripts/prompt.py")
+                compiler.write_text("print('REPLACEMENT COMPILER CANARY')\n" + compiler.read_text())
+                self.commit(source, "Replacement compiler")
+                substitute = self.git(source, "rev-parse", "HEAD:skills/pr-ready/scripts/prompt.py")
+                self.git(source, "replace", original, substitute)
+                real_git = shutil.which("git")
+                log = self.root / "extraction.log"
+                recorder = self.binaries / "git"
+                recorder.write_text("#!" + sys.executable + "\nimport json, os, sys\n"
+                                    f"with open({str(log)!r}, 'a') as log: log.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+                                    f"os.execv({real_git!r}, ['git', *sys.argv[1:]])\n")
+                recorder.chmod(0o755)
             result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), round_name,
                                      str(self.repo), str(summary), "generalist-a"],
                                     capture_output=True, text=True, timeout=10, env=env)
@@ -669,6 +691,54 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
             self.assertIn(b"Repository rules: this repository has no rules of its own.", data)
             self.assertFalse((output / round_name / "generalist-a.task").exists())
             self.assertFalse((output / round_name / "lenses.conf").exists())
+            if round_name == "replacement":
+                calls = [json.loads(line) for line in log.read_text().splitlines()]
+                extractions = [c for c in calls if "show" in c and
+                               c[-1] == env["REVIEW_HOUSE_RULES_REV"] + ":skills/pr-ready/scripts/prompt.py"]
+                self.assertEqual(len(extractions), 1, calls)
+                self.assertEqual(extractions[0][0], "--no-replace-objects")
+                self.assertEqual((output / round_name / "compiler.py").read_bytes(), SCRIPT.with_name("prompt.py").read_bytes())
+
+    def test_context_budget_reserves_compiled_parts_and_keeps_trim_notices(self):
+        self.write(self.repo, "docs/spec.md", "Spec\n" + "s" * 10_000)
+        self.commit(self.repo, "Design: docs/spec.md")
+        baseline = self.review(context_only=True, format="pack")
+        overhead = 2000
+        with mock.patch.object(prepare, "CODEX_LIMIT", len(baseline) + 1000):
+            result = self.review(context_only=True, format="pack", compiled_chars=overhead)
+            self.assertLessEqual(len(result) + overhead, prepare.CODEX_LIMIT)
+            self.assertIn("Size guard: trimmed R1 (spec)", result)
+
+    def test_panel_size_budget_includes_pinned_rules_and_target_rules(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        summary.write_text("s" * (prepare.CODEX_LIMIT - 10_000))
+        self.write(self.repo, "AGENTS.md", "Local rules\n" + "r" * 20_000)
+        self.commit(self.repo, "Local rules")
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "rules-size",
+                                 str(self.repo), str(summary), "generalist-a"],
+                                capture_output=True, text=True, timeout=10, env=env)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("context preparation", (output / "rules-size/summary.txt").read_text())
+        self.assertIn("800,000", (output / "rules-size/generalist-a.prepare.err").read_text())
+        self.assertFalse((output / "rules-size/generalist-a.err").exists())
+
+    def test_panel_checks_complete_prompt_before_dispatch(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        source = Path(env["REVIEW_HOUSE_RULES_REPO"])
+        compiler = source / "skills/pr-ready/scripts/prompt.py"
+        compiler.write_text(compiler.read_text().replace(
+            "        # Close and check every Git reader", "        if args.tasks:\n            output += b'x' * 800_001\n        # Close and check every Git reader"))
+        self.commit(source, "Inject oversized final prompt")
+        env["REVIEW_HOUSE_RULES_REV"] = self.git(source, "rev-parse", "HEAD")
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "final-size",
+                                 str(self.repo), str(summary), "generalist-a"],
+                                capture_output=True, text=True, timeout=10, env=env)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("complete prompt size", (output / "final-size/summary.txt").read_text())
+        self.assertIn("800,000", (output / "final-size/generalist-a.prepare.err").read_text())
+        self.assertFalse((output / "final-size/generalist-a.err").exists())
 
     def panel_fixture(self, summary_exists=True):
         self.panel_source()
@@ -769,8 +839,7 @@ else:
         for family, cli in (("a", "codex"), ("b", "grok"), ("c", "kimi")):
             for index, report in enumerate(reports):
                 with self.subTest(cli=cli, report=report):
-                    # Reuse the panel directory, including valid output followed by no output.
-                    name = family
+                    name = f"{family}-{index}"
                     env["TEST_REVIEW_REPORT"] = json.dumps(report)
                     result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), name,
                                              str(self.repo), str(summary), "generalist-" + family],
@@ -785,7 +854,7 @@ else:
                         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                         self.assertIn("verdict=" + ("REQUEST_CHANGES" if "REQUEST_CHANGES" in report else "APPROVE"), recorded)
 
-    def test_panel_clears_previous_outputs_before_preparation_or_skip(self):
+    def test_panel_reuse_refuses_and_preserves_previous_provenance(self):
         summary, output, env = self.panel_fixture(summary_exists=False)
         env["REVIEW_BASE"] = "origin/trunk"
         for family in ("a", "c"):
@@ -793,27 +862,28 @@ else:
                 panel = output / family
                 panel.mkdir(parents=True)
                 reviewer = "generalist-" + family
-                suffixes = ("md", "jsonl", "json", "err", "prepare.err", "prompt")
+                suffixes = ("md", "jsonl", "json", "err", "prepare.err", "prompt", "task")
                 for suffix in suffixes:
                     (panel / f"{reviewer}.{suffix}").write_text("previous run\n")
                 (panel / "summary.txt").write_text("previous run verdict=APPROVE\n")
-                # Cleanup must be confined to this reviewer's known outputs.
+                pack = panel / f"{reviewer}.pack"
+                pack.mkdir()
+                (pack / "pack.txt").write_text("pinned previous prompt\n")
+                (pack / "manifest.json").write_text('{"previous": true}\n')
                 untouched = (panel / f"{reviewer}.notes", panel / "generalist-b.md")
                 for path in untouched:
                     path.write_text("keep\n")
                 result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), family,
                                          str(self.repo), str(summary), reviewer],
                                         capture_output=True, text=True, env=env)
-                recorded = (panel / "summary.txt").read_text()
-                self.assertIn("context preparation" if family == "a" else "not configured", recorded)
                 self.assertEqual(result.returncode, 1, result.stderr)
-                self.assertNotIn("previous run", recorded)
+                self.assertIn("fresh panel directory", result.stderr)
+                self.assertEqual((panel / "summary.txt").read_text(), "previous run verdict=APPROVE\n")
                 for suffix in suffixes:
                     path = panel / f"{reviewer}.{suffix}"
-                    if family == "a" and suffix == "prepare.err":
-                        self.assertNotIn("previous run", path.read_text())
-                    else:
-                        self.assertFalse(path.exists(), path)
+                    self.assertEqual(path.read_text(), "previous run\n")
+                self.assertEqual((pack / "pack.txt").read_text(), "pinned previous prompt\n")
+                self.assertEqual((pack / "manifest.json").read_text(), '{"previous": true}\n')
                 for path in untouched:
                     self.assertEqual(path.read_text(), "keep\n")
 
@@ -938,7 +1008,7 @@ else:
                 self.assertTrue(link.is_symlink(), "escaping cleanup path was removed")
                 self.assertEqual(victim.read_text(), "keep outside panel\n")
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn("outside panel directory", result.stderr)
+                self.assertIn("fresh panel directory", result.stderr)
                 for name in filenames:
                     if name != filename:
                         self.assertEqual((panel / name).read_text(), "previous run\n")
@@ -1069,8 +1139,10 @@ else:
         self.assertNotRegex(prompt, r"(?m)^(family:|sandbox:|lens:|---$)")
 
     def test_review_preserves_whole_role_and_lens_files(self):
+        from prompt import expand
+
         prompt = self.review()
-        role, _ = prepare.expand(file="prompts/roles/reviewer.md")
+        role, _ = expand(file="prompts/roles/reviewer.md")
         lens = (SCRIPT.parents[3] / "prompts/lenses/generalist-a.md").read_text()
         self.assertIn("# 1. Review pack\n" + role, prompt)
         self.assertIn("# 2. Instructions\n" + lens, prompt)
@@ -1126,7 +1198,9 @@ else:
                 self.assertIn("section selectors", err)
 
     def test_missing_prompt_include_fails_without_emitting_review(self):
-        with mock.patch.object(prepare, "expand", side_effect=prepare.PromptError("missing rule")):
+        import prompt
+
+        with mock.patch.object(prompt, "expand", side_effect=prompt.PromptError("missing rule")):
             code, out, err = self.invoke("review", str(self.repo), "--base", "origin/trunk",
                                          "--no-fetch")
         self.assertEqual(code, 1)
