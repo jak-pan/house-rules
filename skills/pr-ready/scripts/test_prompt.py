@@ -2049,40 +2049,6 @@ class CommitPackTest(unittest.TestCase):
                                 b"Loading path: session; shared rules come from the live House Rules index.\n\nRequested entry\n")
                     self.assertEqual(result.stdout, expected)
 
-    def test_explicit_noncanonical_read_loaders_are_refused_without_publication(self):
-        for index, instruction in enumerate((
-                "Read [House Rules](/opt/house-rules/INDEX.md)",
-                "Read House Rules from /opt/house-rules/INDEX.md")):
-            for has_rules in (False, True):
-                with self.subTest(instruction=instruction, has_rules=has_rules):
-                    self.write(self.target, "AGENTS.md", instruction + "\n")
-                    rules = self.target / ".agents/rules.md"
-                    rules.unlink(missing_ok=True)
-                    if has_rules:
-                        self.write(self.target, ".agents/rules.md", "Local requirement\n")
-                    self.commit(self.target)
-                    dest = self.root / f"refused-read-pack-{index}-{has_rules}"
-                    result = self.run_pack("--out", dest, target=True)
-                    self.bad(result, "unsupported House Rules loader")
-                    self.assertIn(b"move local requirements to .agents/rules.md", result.stderr)
-                    self.assertIn(b"restore the canonical House Rules pointer in AGENTS.md", result.stderr)
-                    self.assertFalse(dest.exists())
-
-    def test_list_form_loading_instructions_are_refused_without_publication(self):
-        for index, prefix in enumerate(("- ", "* ", "+ ", "1. ", "  2) ")):
-            for has_rules in (False, True):
-                with self.subTest(prefix=prefix, has_rules=has_rules):
-                    self.write(self.target, "AGENTS.md", prefix +
-                               "Base rules: [House Rules](https://example.invalid/house-rules). Read and follow them first.\n")
-                    rules = self.target / ".agents/rules.md"
-                    rules.unlink(missing_ok=True)
-                    if has_rules:
-                        self.write(self.target, ".agents/rules.md", "Local requirement\n")
-                    self.commit(self.target)
-                    dest = self.root / f"refused-list-pack-{index}-{has_rules}"
-                    self.bad(self.run_pack("--out", dest, target=True), "unsupported House Rules loader")
-                    self.assertFalse(dest.exists())
-
     def test_every_actual_role_has_no_repeats_in_either_shared_mode(self):
         for folder in ("prompts", "rules"):
             shutil.rmtree(self.repo / folder)
@@ -2158,75 +2124,92 @@ class CommitPackTest(unittest.TestCase):
                 "Read House Rules `INDEX.md` first and follow it.\n" +
                 ("This repository's own rules are in [.agents/rules.md](.agents/rules.md).\n" if own else ""))
 
-    def test_target_selection_preserves_bytes_and_commit_provenance(self):
-        for agents, rules, selected in ((None, None, None), (None, b"Own\r\n", ".agents/rules.md"),
-                                       (b"Mention House Rules for background.\nLocal\n", None, "AGENTS.md"),
-                                       (self.managed(), b"Own", ".agents/rules.md"),
-                                       (self.managed(False), None, None)):
-            with self.subTest(agents=agents, rules=rules):
-                for path in ("AGENTS.md", ".agents/rules.md"):
-                    (self.target / path).unlink(missing_ok=True)
-                if agents is not None:
-                    self.write(self.target, "AGENTS.md", agents)
-                if rules is not None:
-                    self.write(self.target, ".agents/rules.md", rules)
+    def assert_target_files(self, expected, rev):
+        baseline, _ = self.good()
+        pack, manifest = self.good(target=True)
+        parts = []
+        records = []
+        for path, data in expected:
+            heading = f"Repository rules (<target>/{path} at {rev[:12]}):\n".encode()
+            parts.append(heading + data + (b"" if data.endswith(b"\n") else b"\n"))
+            records.append({"path": path, "commit": rev,
+                            "blob": self.git(self.target, "rev-parse", rev + ":" + path),
+                            "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()})
+        target_text = (b"\n".join(parts) if parts else
+                       b"Repository rules: this repository has no rules of its own.\n")
+        self.assertEqual(pack, baseline + b"\n" + target_text)
+        self.assertEqual(manifest["target"], {"commit": rev, "files": records})
+        self.assertEqual(manifest["parts"][-1], {"kind": "target"})
+        self.assertEqual(manifest["pack"], prompt.fingerprint(pack))
+        self.assertNotIn(str(self.target), json.dumps(manifest))
+        return pack, manifest
+
+    def test_target_includes_both_rule_files_unchanged_in_order(self):
+        expected = [(".agents/rules.md", b"Own\r\n@rule house-rules:missing.md"),
+                    ("AGENTS.md", (self.managed() + "Local requirement\n").encode())]
+        for path, data in expected:
+            self.write(self.target, path, data)
+        rev = self.commit(self.target)
+        self.assert_target_files(expected, rev)
+
+    def test_target_includes_either_rule_file_without_classifying_loaders(self):
+        for path, data in ((".agents/rules.md", b"Own\r\n"),
+                           ("AGENTS.md", self.managed().encode()),
+                           ("AGENTS.md", b"Read [House Rules](/opt/house-rules/INDEX.md)\n"),
+                           ("AGENTS.md", b"Do not read [House Rules](/opt/house-rules/INDEX.md)\n"),
+                           ("AGENTS.md", b"Local requirement")):
+            with self.subTest(path=path, data=data):
+                for name in (".agents/rules.md", "AGENTS.md"):
+                    (self.target / name).unlink(missing_ok=True)
+                self.write(self.target, path, data)
                 rev = self.commit(self.target)
-                pack, manifest = self.good(target=True)
-                if selected:
-                    data = (self.target / selected).read_bytes()
-                    self.assertTrue(pack.endswith(data + (b"" if data.endswith(b"\n") else b"\n")))
-                    record = manifest["target"]
-                    self.assertEqual(record["commit"], rev)
-                    self.assertEqual(record["path"], selected)
-                    self.assertEqual(record["bytes"], len(data))
-                    self.assertEqual(record["blob"], self.git(self.target, "rev-parse", rev + ":" + selected))
-                    self.assertEqual(record["sha256"], hashlib.sha256(data).hexdigest())
-                    self.write(self.target, selected, "Uncommitted target canary")
-                    self.assertEqual(self.good(target=True), (pack, manifest))
-                else:
-                    self.assertIn(b"Repository rules: this repository has no rules of its own.\n", pack)
-                    self.assertEqual(manifest["target"], {"commit": rev, "source": "none"})
-                self.assertNotIn(str(self.target), json.dumps(manifest))
+                self.assert_target_files([(path, data)], rev)
 
-    def test_mixed_noncanonical_and_older_loaders_are_refused_before_selection(self):
-        # Reproduction in issue #74 comment 6021138417: Warden's AGENTS.md
-        # reopened House Rules through this explicit Base rules instruction.
-        older = "# AGENTS.md\n\nBase rules: [House Rules](https://example.invalid/house-rules). Read and follow them first.\n"
-        reference = ("Base rules: [House Rules][foundation]. Read and follow them first.\n\n"
-                     "[foundation]: https://example.invalid/house-rules\n")
-        unsupported = self.managed().replace("INDEX.md", "AGENTS.md")
-        block = (ROOT / "AGENTS.md").read_text()
-        for index, (agents, reason) in enumerate(((self.managed() + "Use the local gate.\n", "mixes"),
-                               (block + "Local requirement\n", "mixes"),
-                               (older, "unsupported House Rules loader"),
-                               (reference, "unsupported House Rules loader"),
-                               (unsupported, "unsupported House Rules loader"),
-                               (block.replace("house-rules:", "forge:"), "unsupported House Rules loader"),
-                               (block.replace("house-rules:", "groundwork:"), "unsupported House Rules loader"),
-                               (re.sub(r"<!--.*?-->\n?", "", block), "unsupported House Rules loader"),
-                               (older.replace(" Read and follow", "\nRead and follow"), "unsupported House Rules loader"),
-                               ("Local requirement\n", "not a canonical"))):
-            for has_rules in (False, True):
-                if reason == "not a canonical" and not has_rules:
-                    continue
-                with self.subTest(agents=agents, has_rules=has_rules):
-                    self.write(self.target, "AGENTS.md", agents)
-                    rules = self.target / ".agents/rules.md"
-                    rules.unlink(missing_ok=True)
-                    if has_rules:
-                        self.write(self.target, ".agents/rules.md", "Different requirement\n")
-                    self.commit(self.target)
-                    dest = self.root / f"failed-pack-{index}-{has_rules}"
-                    result = self.run_pack("--out", dest, target=True)
-                    self.bad(result, reason)
-                    self.assertIn(b"move local requirements to .agents/rules.md", result.stderr)
-                    self.assertIn(b"restore the canonical House Rules pointer in AGENTS.md", result.stderr)
-                    self.assertFalse(dest.exists())
+    def test_target_reports_no_rules_only_when_both_files_are_absent(self):
+        self.assert_target_files([], self.git(self.target, "rev-parse", "HEAD"))
 
-    def test_required_target_rules_missing_and_invalid_sources_fail(self):
-        self.write(self.target, "AGENTS.md", self.managed())
+    def test_target_rule_files_ignore_uncommitted_edits_at_selected_revision(self):
+        expected = [(".agents/rules.md", b"Own\n"), ("AGENTS.md", self.managed().encode())]
+        for path, data in expected:
+            self.write(self.target, path, data)
+        rev = self.commit(self.target)
+        before = self.assert_target_files(expected, rev)
+        for path, _ in expected:
+            self.write(self.target, path, b"Uncommitted target canary\n")
+        self.assertEqual(self.good(target=True), before)
         self.commit(self.target)
-        self.bad(self.run_pack(target=True), "restore .agents/rules.md or remove the target-rule pointer")
+        self.assertEqual(self.good("--target-rev", rev, target=True), before)
+
+    def test_task_assembly_does_not_recopy_the_accumulated_prefix(self):
+        class Prefix(bytes):
+            def __add__(self, other):
+                raise AssertionError("task assembly recopied the accumulated prefix")
+        tasks = []
+        for index, data in enumerate((b"Task\r\n", b"", b"Resume")):
+            file = self.root / f"task-{index}.txt"
+            file.write_bytes(data)
+            tasks.append((file, f"task-{index}"))
+        pack, manifest = prompt.append_tasks(Prefix(b"Pinned rules\n"), {"parts": []}, tasks)
+        self.assertEqual(pack, b"Pinned rules\n\nTask\r\n\nResume\n")
+        self.assertEqual(manifest["parts"], [
+            {"kind": "task", "source": f"task-{index}", **prompt.fingerprint(prompt.ending(data))}
+            for index, data in enumerate((b"Task\r\n", b"", b"Resume"))])
+        self.assertEqual(manifest["pack"], prompt.fingerprint(pack))
+
+    def test_retry_instructions_distinguish_read_only_reviews_from_workers(self):
+        design = (ROOT / "docs/design/77-one-step-pack-assembly.md").read_text()
+        task_text = design.split("### Task text is data\n", 1)[1].split("### Target repository rules", 1)[0]
+        step = design.split("### Changes in the lane runner\n", 1)[1].split("8. ", 1)[1].split("\n\n", 1)[0]
+        for section in (task_text, step):
+            with self.subTest(section=section):
+                self.assertIn("read-only reviewer", section)
+                self.assertIn("unchanged pack and manifest", section)
+                self.assertIn("checking both hashes", section)
+                self.assertIn("workers that change files", section)
+                self.assertIn("resume note", section)
+                self.assertIn("fresh pack and manifest", section)
+
+    def test_invalid_target_sources_fail_even_when_the_other_file_exists(self):
         for invalid, other in (("AGENTS.md", ".agents/rules.md"), (".agents/rules.md", "AGENTS.md")):
             for path in ("AGENTS.md", ".agents/rules.md"):
                 (self.target / path).unlink(missing_ok=True)
@@ -2245,7 +2228,9 @@ class CommitPackTest(unittest.TestCase):
         self.write(self.target, "INDEX.md", "Universal index must not be included\n")
         self.commit(self.target)
         pack, manifest = self.good(target=True)
-        self.assertEqual(manifest["target"]["path"], ".agents/rules.md")
+        self.assertEqual([entry["path"] for entry in manifest["target"]["files"]],
+                         [".agents/rules.md", "AGENTS.md"])
+        self.assertIn((ROOT / "AGENTS.md").read_bytes(), pack)
         self.assertNotIn(b"Universal index", pack)
 
     def test_legacy_commit_file_and_stdin_do_not_gain_revision_header(self):
@@ -2352,6 +2337,7 @@ class CommitPackTest(unittest.TestCase):
 
     def test_replacement_commits_trees_and_blobs_never_change_bytes_or_provenance(self):
         self.write(self.target, ".agents/rules.md", "Own\n")
+        self.write(self.target, "AGENTS.md", "Local instructions\n")
         target_rev = self.commit(self.target)
         extract = self.root / "extracted.py"
         # Extraction is the dispatcher's native Git read, protected like compiler reads.
@@ -2360,7 +2346,7 @@ class CommitPackTest(unittest.TestCase):
                             check=True, capture_output=True, timeout=5).stdout)
         baseline = self.good(target=True, script=extract)
         for repo, rev, paths in ((self.repo, self.rev, ["skills/pr-ready/scripts/prompt.py", "common.md"]),
-                                 (self.target, target_rev, [".agents/rules.md"])):
+                                 (self.target, target_rev, [".agents/rules.md", "AGENTS.md"])):
             tree = self.git(repo, "rev-parse", rev + "^{tree}")
             for path in paths:
                 self.write(repo, path, "Replacement canary\n")

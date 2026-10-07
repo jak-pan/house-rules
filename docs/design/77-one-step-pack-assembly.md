@@ -28,7 +28,7 @@ House Rules file paths in this document are complete repository-relative paths. 
 
 The dispatcher supplies the work item's Decisions and Pre-flight sections in the task file. Implementation reads those sections before changing code. Implementation also reads the target repository rules supplied in the pack.
 
-The [role-pack design, issue #74](https://github.com/symbiotic-sh/house-rules/issues/74), owns shared-rule placement and worker instructions. The smaller-core design owns the loader template and index rename. Implementation must use the loader template selected by those designs. This design must not freeze the old loader text from [STRUCTURE.md](../../STRUCTURE.md).
+The [role-pack design, issue #74](https://github.com/symbiotic-sh/house-rules/issues/74), owns shared-rule placement and worker instructions. The smaller-core design owns the loader template and index rename. Those designs own pointer text. This compiler includes target rule files unchanged and does not classify their pointer text (lead decision L6).
 
 ## Current behavior and evidence
 
@@ -112,7 +112,7 @@ The pack order is:
 
 Only pack mode writes the revision header. Legacy single-file and standard-input expansion remains plain text. The review preparer's existing use of `expand()` remains supported.
 
-Each nonempty part ends with a newline. The compiler adds a newline when the source lacks one. The compiler joins parts with one empty line. An empty part adds no separator. Stable rule text precedes run-specific task text.
+Each nonempty part ends with a newline. The compiler adds a newline when the source lacks one. The compiler joins parts with one empty line. Task assembly collects the compiled prefix and nonempty task parts, then joins them once (lead decision L7). An empty part adds no separator. Stable rule text precedes run-specific task text.
 
 A repository path expands only at its first include in one compilation. Later includes of the same path produce no text. The manifest records the skipped repeats. The first occurrence determines the file's position. Cycle detection occurs before repeat suppression, so include-once cannot hide a cycle.
 
@@ -122,31 +122,29 @@ A role that repeats an include remains a source error caught by the role test. E
 
 Task text is inserted literally without expansion or editing, apart from the part-ending newline rule. Standalone include lines are allowed and remain literal text; the compiler does not scan tasks to reject them (lead decision L4). The dispatcher supplies lenses and extra rules through compiler options. Task text copied from a work item cannot pull in rule files.
 
-The dispatcher writes the work item's Decisions and Pre-flight sections into the task file. The compiler adds no separate work-item part. A capacity retry supplies the resume note as a second task file. Each attempt gets its own pack and manifest.
+The dispatcher writes the work item's Decisions and Pre-flight sections into the task file. The compiler adds no separate work-item part. A capacity retry for a read-only reviewer restarts the whole review with the unchanged pack and manifest, after checking both hashes. A capacity retry for workers that change files (implementer, fixer) supplies the resume note as a second task file and builds a fresh pack and manifest. Each attempt keeps its own logs and output (lead decision L5).
 
 ### Target repository rules
 
-The compiler reads the target's rules from its selected commit through Git with replacement refs disabled, using the requested-path reader described above. Before selecting either rules source, it reads `<target>/AGENTS.md` if present and classifies it. Only an absent file counts as missing; an invalid file entry or a read error fails compilation. The compiler applies these checks and then picks exactly one source:
+The compiler reads both target rule files from the selected commit through Git with replacement refs disabled, using the requested-path reader described above. Native Git supplies two exact path lookups and at most two blob requests through the target's batch process. The compiler adds ordered headings and per-file provenance; it does not classify House Rules loaders (lead decision L6).
 
-1. If `<target>/AGENTS.md` mixes the House Rules loader with local requirements, refuse compilation with exit 2 and no output, whether or not `<target>/.agents/rules.md` exists. The error line is `prompt: AGENTS.md mixes the House Rules loader with local requirements; move local requirements to .agents/rules.md and restore the canonical House Rules pointer in AGENTS.md`.
-2. If `<target>/.agents/rules.md` exists and `<target>/AGENTS.md` exists but is not a loader, refuse compilation with exit 2 and no output. The error line is `prompt: AGENTS.md is not a canonical House Rules pointer while .agents/rules.md exists; move local requirements to .agents/rules.md and restore the canonical House Rules pointer in AGENTS.md`. Selecting only one file could drop local requirements in the other.
-3. Otherwise, if `<target>/.agents/rules.md` exists, include that file unchanged.
-4. Otherwise, if `<target>/AGENTS.md` exists and is not a loader, include that file unchanged.
-5. Otherwise, if the canonical loader declares a target-rule pointer, refuse compilation with exit 2 and no output because its required target rules file is missing. The error line is `prompt: AGENTS.md points to missing target rules; restore .agents/rules.md or remove the target-rule pointer if this repository has no local requirements`.
-6. Otherwise, emit `Repository rules: this repository has no rules of its own.` This result is valid only when both files are absent or a canonical loader has no target-rule pointer and no separate rules file exists.
+1. Include `<target>/.agents/rules.md` unchanged when present.
+2. Include `<target>/AGENTS.md` unchanged when present, after `.agents/rules.md`.
+3. When neither file exists, emit `Repository rules: this repository has no rules of its own.`
 
-The compiler recognizes a loader by the pointer template owned by the smaller-core design. The pointer's install paths may vary. The compiler must not classify a file as a loader merely because the file mentions House Rules. A canonical loader with added local requirements is a mixed loader; it must not fall through to unchanged inclusion or the no-rules result. The compiler never includes a loader as target rules. A change to the canonical pointer template must update the detection test in the same change.
+Only an absent file counts as missing. An invalid file entry, invalid UTF-8 or a read error fails compilation even when the other file exists. No loader wording causes a refusal. A loader with local requirements or a pointer to an absent rules file is included unchanged. This preserves every local requirement without guessing which instructions load House Rules.
 
-The smaller-core design renames the House Rules index to `house-rules/INDEX.md`. The House Rules pointer at `house-rules/AGENTS.md` points to that index and `house-rules/.agents/rules.md`. Global and managed-repository pointer files use the same shape with installation paths adjusted. This design must test the renamed-index shape rather than preserve the former index in `house-rules/AGENTS.md`.
-
-The target rules part has a heading and the unchanged file content. This example uses a placeholder target commit:
+Each included target file has its own heading and unchanged content, apart from the part-ending newline rule. This example uses a placeholder target commit and shows both files in order:
 
 ```text
 Repository rules (<target>/.agents/rules.md at 3f1c2a9b7d04):
-<file content>
+<rules file content>
+
+Repository rules (<target>/AGENTS.md at 3f1c2a9b7d04):
+<instruction file content>
 ```
 
-The compiler includes one target file only. The compiler does not follow links inside that file. The compiler does not read `<target>/CLAUDE.md`, `<target>/CONTEXT.md` or files under `<target>/.claude/rules/` to assemble this part.
+The compiler does not expand includes or follow links inside either file. It does not read `<target>/CLAUDE.md`, `<target>/CONTEXT.md`, `<target>/INDEX.md` or files under `<target>/.claude/rules/` to assemble this part. The smaller-core design owns pointer templates and the index rename; this compiler does not detect those templates.
 
 The [role-pack design, issue #74](https://github.com/symbiotic-sh/house-rules/issues/74), owns instructions for consuming the supplied target rules. Normal lane sessions keep their House Rules loading behavior. Warden reviewers use the supplied prompt and read-only target copy. The earlier instruction forbidding every lane worker from loading House Rules is rejected.
 
@@ -182,14 +180,17 @@ The manifest is one JSON object with sorted keys and a trailing newline. Object 
 
 Task files are local inputs rather than Git blobs. Each task entry records its logical source identifier, byte count and SHA-256 hash, in the existing requested part order. The source is an issue reference, `inline` or a caller-chosen name, never a machine path (lead decision L1). `pack.sha256` hashes the exact output bytes. The pack header contains only the revision because the pack cannot contain its own hash.
 
-The target record uses a file-source shape or a no-rules shape. Values are placeholders. The file-source path is relative to the target commit; the source identifies either the target rules file or the target instruction file:
+The target record contains the selected commit and an ordered `files` list. Each entry records an included file's path, commit, blob id, byte count and SHA-256 hash. Values are placeholders:
 
 ```json
-{"blob": "<blob id>", "bytes": 1840, "commit": "<target commit id>", "path": "<target-relative rule path>", "source": "<rules-file or agents-file>"}
-{"commit": "<target commit id>", "source": "none"}
+{"commit": "<target commit id>", "files": [
+  {"blob": "<rules blob id>", "bytes": 1840, "commit": "<target commit id>", "path": ".agents/rules.md", "sha256": "<rules hash>"},
+  {"blob": "<instruction blob id>", "bytes": 280, "commit": "<target commit id>", "path": "AGENTS.md", "sha256": "<instruction hash>"}
+]}
+{"commit": "<target commit id>", "files": []}
 ```
 
-A `rules-file` source names `<target>/.agents/rules.md`. An `agents-file` source names `<target>/AGENTS.md`. The target record's `path` is relative to the target repository. With `--no-target`, `target` is `null`. The manifest excludes the target's machine directory. The manifest records compiled inputs only; the manifest does not record or pin the live session foundation.
+The list contains only present files, with `.agents/rules.md` before `AGENTS.md`. An empty list records that neither exists. Each `path` is relative to the target repository. The requested repository-rules part is recorded as `{"kind": "target"}`; its file paths are in `target.files`. With `--no-target`, `target` is `null`. The manifest excludes the target's machine directory. It records compiled inputs only and does not record or pin the live session foundation.
 
 ### Python interface
 
@@ -229,7 +230,7 @@ The lane runner changes are outside this House Rules change:
 5. Replace clean-checkout or checked-out-branch requirements with commit availability and the compiler self-check. Retire the separate pinned checkout requirement.
 6. Build lane review panels from the same named commit. Replace the live-checkout execution of `<lanes>/main/finalize.sh`'s review-panel entry point with the matching `skills/pr-ready/scripts/review-panel.sh` from the pin. Compile every panel prompt with `--rev`.
 7. Replace the legacy canon switch with explicit extra-file includes. Include-once removes overlap with the role. Remove the obsolete comment advertising section references.
-8. Supply Decisions and Pre-flight in the task file. Supply a resume note as an additional task file on a capacity retry. Preserve a manifest for each attempt.
+8. Supply Decisions and Pre-flight in the task file. A capacity retry for a read-only reviewer restarts the whole review with the unchanged pack and manifest, after checking both hashes. For workers that change files (implementer, fixer), supply a resume note as an additional task file and build a fresh pack and manifest on a capacity retry. Keep each attempt's logs and output.
 
 Lane sessions still load session rules from the live House Rules checkout through the installed block. Only the role prompt is commit-built. Pinning a role prompt does not isolate a normal session from the live foundation.
 
@@ -251,8 +252,7 @@ Warden reviewers remain read-only. Warden supplies a read-only PR copy. Reviewer
 - **Read Git objects but reject dirty checkouts too.** Rejected because harmless working-tree edits cannot affect commit-built prompts.
 - **Use a second pack compiler.** Rejected because the existing compiler already owns include expansion.
 - **Isolate lane workers and forbid House Rules loading.** Rejected by the operator's choice of normal sessions with the live foundation.
-- **Always include `<target>/AGENTS.md`.** Rejected because a managed target pointer is not the target's rules.
-- **Rewrite `<target>/AGENTS.md` or detect loaders by mentions of House Rules.** Rejected because supplied rules must remain unchanged and a mention alone does not identify a pointer.
+- **Classify or rewrite `<target>/AGENTS.md`.** Rejected by lead decision L6 because repeated classification repairs still missed loading instructions or refused prohibitions. Supplied rules remain unchanged; normal lane sessions load House Rules, and Warden cannot reach a live checkout from its jail.
 - **Draft the Warden change immediately or never draft it.** Rejected because the operator chose drafting after the lane runner's successful test run, with approval.
 
 ## Size
@@ -270,8 +270,8 @@ Implementation tests belong in [skills/pr-ready/scripts/test_prompt.py](../../sk
 3. Include-once preserves first-include order across role, lens and extra-file parts. The manifest records repeats. Include cycles still fail.
 4. Every role compiles with no repeated includes in both shared-rule modes. Normal-session mode omits `rules/` includes and records the omissions. Default mode includes the shared rules once. An invalid omitted-rule path still fails.
 5. A symlink entry, a mismatched compiler, a missing commit, a manifest without `--rev`, or pack mode without `--rev` returns exit 2 with one error line and no outputs.
-6. Pack parts and separators match the declared order. Legacy single-file and standard-input output has no revision header. Task bytes and manifest hashes agree with the part-ending newline rule. A standalone include line in a task remains literal and does not read the named rule. Task sources cover an issue reference, a caller-chosen name and the `inline` default; no machine input path reaches the manifest.
-7. Target fixtures cover `<target>/.agents/rules.md`, a non-loader `<target>/AGENTS.md`, a canonical renamed-index loader with and without a target-rule pointer, no target instruction file, and an uncommitted target-rule edit. A mixed loader with local requirements returns exit 2 with one error line and no outputs both with and without a separate rules file; the existing separate file deliberately omits a requirement present in the mixed loader. A non-loader instruction file alongside a separate rules file also fails rather than selecting one and dropping the other's requirements. A canonical loader with a target-rule pointer and a missing rules file fails rather than claiming no local rules. Assert each remediation message specified above. Invalid file entries and read errors fail even when the other rules source exists. The no-rules result occurs only with both files absent or a canonical loader without a target-rule pointer and without a separate rules file. Successful target selections preserve the selected file unchanged. The target manifest records the selected commit and blob. House Rules' own pointer selects `house-rules/.agents/rules.md`, not `house-rules/INDEX.md`.
+6. Pack parts and separators match the declared order. Legacy single-file and standard-input output has no revision header. Task bytes and manifest hashes agree with the part-ending newline rule. A standalone include line in a task remains literal and does not read the named rule. Task sources cover an issue reference, a caller-chosen name and the `inline` default; no machine input path reaches the manifest. A bounded regression with nonempty and empty tasks rejects repeated concatenation of the accumulated prefix while preserving bytes and hashes (lead decision L7). Task-file and lane-runner retry instructions distinguish unchanged read-only reviewer inputs from fresh packs for workers that change files (lead decision L5).
+7. Target fixtures cover both `.agents/rules.md` and `AGENTS.md` present (included unchanged, in that order), either file alone, neither file, and uncommitted edits to both files. Loader wording, local requirements beside a loader, and a pointer to an absent rules file do not cause refusals or dropped content. Invalid file entries, invalid UTF-8 and read errors fail even when the other file exists. The no-rules result occurs only when both files are absent. The target manifest records the selected commit and each included file's blob, byte count and hash in order. House Rules' own pointer is included alongside its bible without reading `house-rules/INDEX.md`.
 8. Pack mode without exactly one target choice fails with exit 2. The compiler tests run under `/usr/bin/python3` with Python 3.9.
 9. One bounded replacement-ref case uses small House Rules and target fixtures. Install replacement commits, trees and blobs in turn, including the compiler blob and one selected rule blob in each repository. Extract the compiler with replacements disabled. Compile before and after each replacement; pack bytes, resolved revisions, blob ids and manifest hashes must stay identical. Record Git invocations and check that every revision, tree and blob read, including compiler extraction, uses native replacement protection. Each subprocess has a fixed short timeout.
 10. Requested-path reads use one long-lived batch process per source repository and no whole-tree enumeration. A fixture with an unrelated file records Git requests and confirms that only requested paths are read.
@@ -280,14 +280,14 @@ Implementation tests belong in [skills/pr-ready/scripts/test_prompt.py](../../sk
 The lane runner's canary test runs after switching assembly:
 
 - **Dirty edit and branch independence:** edit [prompts/roles/reviewer.md](../../prompts/roles/reviewer.md) without committing in the clone used by the runner. Run a lane review round from the named commit. Every reviewer manifest must name the pinned role blob. The canary text must appear in no pack or worker log. Repeat from another checked-out branch with a matching extracted compiler.
-- **Normal session and supplied target rules:** run a worker with the operator's normal Codex home. Confirm that shared-rule paths are omitted from the role prompt. Confirm that the target rules part and target blob are recorded. Confirm that the worker retains the live foundation, skills and guardian path. A read of the live House Rules index is expected session behavior rather than a failure.
+- **Normal session and supplied target rules:** run a worker with the operator's normal Codex home. Confirm that shared-rule paths are omitted from the role prompt. Confirm that the target rules part and every included target blob are recorded. Confirm that the worker retains the live foundation, skills and guardian path. A read of the live House Rules index is expected session behavior rather than a failure.
 - **Hash identity and panels:** record the exact bytes sent to each implementer, reviewer, triager, fixer and checker. Compare each hash with its manifest. Every role prompt, including panels launched by `<lanes>/main/finalize.sh`, must name the lane pin. No role prompt may come from the live working tree.
 
 The smaller-core design's separate canary remains separate. This design's canary tests pack assembly and its interface with normal lane sessions. The role-pack design owns shared-rule placement checks.
 
 ## Rollout and pins
 
-1. Coordinate the canonical pointer and `house-rules/.agents/rules.md` with the smaller-core design. The House Rules target must supply its own rules rather than its universal index. Update loader detection and its tests with the selected template.
+1. Coordinate the canonical pointer and `house-rules/.agents/rules.md` with the smaller-core design. The House Rules target supplies `.agents/rules.md` and `AGENTS.md` unchanged, without reading its universal index. No loader detection is required (lead decision L6).
 2. Land the role-pack shared-rule changes before switching lane prompt assembly. Default compilation must support the canonical files under `rules/`.
 3. Land this compiler change and switch the lane runner to one-call assembly at the matching pin. Include target rules and shared-rule omission in that switch. An old compiler rejecting the new options must stop the runner before a worker starts.
 4. Run this design's lane canary tests. Retire the separate pinned checkout requirement after the runner uses Git objects and matching compiler code.
@@ -297,7 +297,7 @@ Legacy single-file expansion remains available to existing callers. Normal sessi
 
 ## Interfaces with the other designs
 
-- [Smaller core, issue #73](https://github.com/symbiotic-sh/house-rules/issues/73): owns `house-rules/INDEX.md`, global and repository pointers, and its separate canary. This compiler detects that design's canonical pointer shape.
+- [Smaller core, issue #73](https://github.com/symbiotic-sh/house-rules/issues/73): owns `house-rules/INDEX.md`, global and repository pointers, and its separate canary. This compiler includes target pointer text unchanged and does not detect its shape (lead decision L6).
 - [Role packs, issue #74](https://github.com/symbiotic-sh/house-rules/issues/74): owns shared rules under `rules/`, role instructions for normal sessions and Warden, and the Warden staging guard. This design provides shared-rule omission and a manifest of compiled inputs. The dispatcher puts Decisions and Pre-flight in task text.
 - [Specialists, issue #75](https://github.com/symbiotic-sh/house-rules/issues/75): owns specialist selection, separate Claude safe-mode processes, supplied skill text and the Model Context Protocol (MCP) test and fallback. Specialist packs use the named commit and include shared rules when the specialist does not load the foundation.
 - [Review skill, issue #76](https://github.com/symbiotic-sh/house-rules/issues/76): owns `change-review`, the shared review format, and one reviewer for a plain chat request unless a panel is requested. Dispatched reviewer prompts use the named-commit compiler interface.
@@ -308,7 +308,7 @@ Legacy single-file expansion remains available to existing callers. Normal sessi
 - **2026-10-07 — Warden timing:** `DECISION` The operator chose drafting the matching Warden change after the lane runner's test run passes on the new assembly. The draft requires operator approval before external writes.
 - **2026-10-07 — Lane sessions:** `DECISION` The operator chose normal lane sessions in the operator's Codex home, with House Rules, skills and guardian escalation. The live session foundation remains distinct from the commit-built role prompt. The role-pack design owns session setup.
 - **2026-10-07 — Shared-rule delivery:** `DECISION` The operator chose one canonical home under `rules/` for writing, Git and priority-label instructions. One role file must serve normal sessions without repeating their shared rules and Warden reviewers with shared-rule includes. The role-pack design owns file placement; this design supplies the compiler option.
-- **2026-10-07 — Index and pointers:** `DECISION` The operator chose renaming the House Rules index to `house-rules/INDEX.md`. Global, managed-repository and House Rules pointer files use the same shape with installation paths adjusted. The smaller-core design owns the rename and pointer text; this design updates loader detection.
+- **2026-10-07 — Index and pointers:** `DECISION` The operator chose renaming the House Rules index to `house-rules/INDEX.md`. Global, managed-repository and House Rules pointer files use the same shape with installation paths adjusted. The smaller-core design owns the rename and pointer text; loader detection is superseded by lead decision L6.
 
 - **2026-10-07 — Warden review boundary:** `DECISION` The operator kept Warden reviewers read-only, with no builds or tests and no network except the model provider. Continuous integration owns builds and tests. Warden posts reviews; Mac lane scripts start local fixers. The role-pack design owns the reviewer setup.
 - **2026-10-07 — Lead decision L1, task provenance:** `DECISION` The lead chose a logical task-source identifier, such as `symbiotic-sh/house-rules#77`, `inline` or a caller-chosen name, never a machine path. Keep the existing task order, byte count and hash.
@@ -317,10 +317,12 @@ Legacy single-file expansion remains available to existing callers. Normal sessi
 - **2026-10-07 — Lead decision L4, literal task includes:** `DECISION` The lead allowed literal include lines in tasks. Task text is inserted literally and never expanded. Remove the task scan that rejects standalone include lines and its rejection acceptance case.
 - **2026-10-07 — Lead decision L5, capacity retries:** `DECISION` A read-only reviewer's run that fails with a provider-capacity error leaves no work to resume: the review panel's retry restarts the whole review with the unchanged pack and manifest, after checking both hashes. Each attempt keeps its own logs and output, and the summary records the attempt count. The resume note as an additional task file, with a fresh pack and manifest per attempt, applies to dispatched workers that change files (implementer, fixer). This narrows the capacity-retry text in the task-file section and implementation step 8.
 
+- **2026-10-07 — Lead decision L6, no loader classification:** `DECISION` The lead replaced the mixed-loader and older-loader refusal requirements recorded on [issue #77](https://github.com/symbiotic-sh/house-rules/issues/77). Three review rounds each found another loading instruction that escaped detection or a prohibition wrongly refused. Under no-fortification, the classification mechanism should not exist. A House Rules loading line is harmless because lane workers are normal sessions that already load House Rules and Warden reviewers cannot reach a live House Rules checkout from their jail. Include the target's `.agents/rules.md` and `AGENTS.md`, each unchanged when present, from the selected commit and in that order. No loader wording is refused and no local rule is dropped.
+- **2026-10-07 — Lead decision L7, task assembly:** `DECISION` The lead chose collecting task parts and joining them once, as recorded on [issue #77](https://github.com/symbiotic-sh/house-rules/issues/77). Re-copying the accumulated pack inside the loop adds copying without additional behavior. Keep task order, literal bytes, separators and manifest hashes.
+
 ## Open points
 
 No operator choice remains open for this design.
 
-- **Loader integration:** close when the smaller-core design's canonical pointer template is available and this compiler's loader tests use that template.
 - **Runtime verification:** close when the compiler implementation and the declared compiler and lane tests pass. Pack assembly remains undeployed until that evidence exists.
 - **Warden adoption:** close when the lane runner's successful test evidence is available, the operator approves the matching Warden change, and Warden adopts that change.

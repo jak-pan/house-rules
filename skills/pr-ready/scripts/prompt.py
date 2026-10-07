@@ -211,70 +211,21 @@ def expand(text=None, *, file=None, root=ROOT, source=None, session=False):
         raise PromptError(str(exc)) from exc
 
 
-# Template shapes belong to STRUCTURE.md and INSTALL-AGENTS.md, not loader history.
-OWN_RULES = "This repository's own rules are in [.agents/rules.md](.agents/rules.md)."
-MANAGED = re.compile(
-    r"# AGENTS\.md\nThis repository is managed by \[House Rules\]\([^\n)]+\)\. "
-    r"Read House Rules `INDEX\.md` first and follow it\."
-    r"(?:\n" + re.escape(OWN_RULES) + r")?")
-FOUNDATION = re.compile(
-    r"<!-- house-rules:begin -->\n# Shared operating foundation \(House Rules\)\n\n"
-    r"At session start and after every context compaction or reset, read `(?P<root>[^`\n]*?)INDEX\.md`\.\n"
-    r"(?:`INDEX\.md` sits in the same folder as this file\.\n)?"
-    r"It is the index for collaboration, verification, autonomy, and durable\n"
-    r"execution rules\. Load the rule files and Skills that its conditions select\.\n"
-    r"Repository-local rules supply project details and win over shared preferences; all work remains subject to the host's instruction hierarchy\n"
-    r"and access controls\.\n\n"
-    r"Load only the House Rules Skills relevant to the task\. Use\n"
-    r"`(?P=root)STRUCTURE\.md` when deciding artifact paths and naming\. Keep\n"
-    r"model, permission, MCP, plugin, and hook configuration in the native tool\n"
-    r"settings\.\n<!-- house-rules:end -->")
-MIGRATE = "move local requirements to .agents/rules.md and restore the canonical House Rules pointer in AGENTS.md"
-
-
-def loader(text):
-    """Recognize canonical templates; refuse explicit unsupported loading instructions."""
-    text = text.strip()
-    managed = MANAGED.fullmatch(text)
-    foundation = FOUNDATION.fullmatch(text)
-    if managed:
-        return OWN_RULES in text
-    if foundation:
-        # House Rules' portable pointer supplies its own bible when present.
-        return False
-    if MANAGED.search(text) or FOUNDATION.search(text):
-        raise PromptError("AGENTS.md mixes the House Rules loader with local requirements; " + MIGRATE)
-    # These are explicit loader instructions, not a prose mention of House Rules.
-    if (re.search(r"<!--\s*(?:house-rules|forge|groundwork):(?:begin|end)\s*-->", text) or
-            (re.search(r"(?m)^#+\s+Shared operating foundation \(House Rules\)\s*$", text) and
-             re.search(r"(?i)At\s+session\s+start\s+and\s+after\s+every\s+context\s+compaction\s+or\s+reset,\s+read\s+`[^`]+`", text)) or
-            re.search(r"This repository is managed by \[House Rules\]", text) or
-            re.search(r"(?ims)^[ \t]*(?:(?:[-+*]|[0-9]+[.)])[ \t]+)?Base\s+rules:\s*\[House Rules\].*Read\s+and\s+follow\s+them\s+first\.", text) or
-            re.search(r"(?i)\bRead\s+(?:and\s+follow\s+)?(?:\[House\s+Rules\]\([^)]+\)|"
-                      r"House\s+Rules\s+(?:`[^`]+`|from\s+\S+))", text)):
-        raise PromptError("AGENTS.md has an unsupported House Rules loader; " + MIGRATE)
-    return None
-
-
 def target_rules(source):
-    """Validate both sources, then select one without dropping local requirements."""
-    agents = source.read("AGENTS.md", optional=True)
-    classification = loader(agents[0].decode("utf-8")) if agents is not None else False
-    rules = source.read(".agents/rules.md", optional=True)
-    if rules is not None and agents is not None and classification is None:
-        raise PromptError("AGENTS.md is not a canonical House Rules pointer while .agents/rules.md exists; " + MIGRATE)
-    if rules is not None:
-        selected, kind = rules, "rules-file"
-    elif agents is not None and classification is None:
-        selected, kind = agents, "agents-file"
-    elif classification:
-        raise PromptError("AGENTS.md points to missing target rules; restore .agents/rules.md or remove the target-rule pointer if this repository has no local requirements")
-    else:
-        return b"Repository rules: this repository has no rules of its own.\n", {"commit": source.revision, "source": "none"}
-    data, entry = selected
-    data.decode("utf-8")  # Invalid target text is a compilation error, never a lossy conversion.
-    heading = f"Repository rules (<target>/{entry['path']} at {source.revision[:12]}):\n"
-    return heading.encode() + data, {**entry, "commit": source.revision, "source": kind}
+    """Include both target rule files unchanged, with the bible before AGENTS.md."""
+    parts = []
+    files = []
+    for path in (".agents/rules.md", "AGENTS.md"):
+        selected = source.read(path, optional=True)
+        if selected is not None:
+            data, entry = selected
+            data.decode("utf-8")  # Invalid target text fails without a lossy conversion.
+            heading = f"Repository rules (<target>/{path} at {source.revision[:12]}):\n"
+            parts.append(ending(heading.encode() + data))
+            files.append(entry)
+    text = (b"\n".join(parts) if parts else
+            b"Repository rules: this repository has no rules of its own.\n")
+    return text, {"commit": source.revision, "files": files}
 
 
 def ending(data):
@@ -324,7 +275,7 @@ def build_pack(source, *, role=None, lens=None, includes=(), tasks=(), target=No
     if target is not None:
         data, manifest["target"] = target_rules(target)
         parts.append(data)
-        manifest["parts"].append({"kind": "target", "path": manifest["target"].get("path")})
+        manifest["parts"].append({"kind": "target"})
     pack = b"\n".join(ending(p) for p in parts if p)
     manifest.update(files=expansion.files, skipped_repeats=expansion.repeats,
                     omitted_shared_rules=expansion.omitted)
@@ -333,12 +284,14 @@ def build_pack(source, *, role=None, lens=None, includes=(), tasks=(), target=No
 
 def append_tasks(pack, manifest, tasks):
     """Finish a compiled pack with literal tasks, without rereading pinned inputs."""
+    parts = [pack]
     for file, name in tasks:
         data = ending(Path(file).read_bytes())
         data.decode("utf-8")
         manifest["parts"].append({"kind": "task", "source": logical_source(name), **fingerprint(data)})
         if data:
-            pack += b"\n" + data
+            parts.append(data)
+    pack = b"\n".join(parts)
     manifest["pack"] = fingerprint(pack)
     return pack, manifest
 
