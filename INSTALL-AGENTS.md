@@ -416,3 +416,129 @@ To remove House Rules:
 For an external capability listed in `custom/INDEX.md`, use its owner's update
 or uninstall workflow. Removing its index entry does not uninstall it, and
 deleting its files manually is not a substitute for its lifecycle command.
+
+## Specialist homes
+
+Specialists receive one compiled pack as their only task rule source. General
+workers, including lane implementers, fixers and reviewers, continue to use normal
+homes and the installation above. Every Claude specialist runs as a separate
+`claude -p --safe-mode` process and needs no specialist home. Include required
+skill text in the pack rather than installing it or using `--plugin-dir`.
+
+Create a separate Codex or Kimi home only when this machine needs that tool's
+specialists. Keep it outside House Rules and all project checkouts. Establish login
+state with the tool's normal login command using `CODEX_HOME` or `KIMI_CODE_HOME`
+for that login. Never copy credentials from a normal home. Login-state presence is
+installation preflight; the tool still validates credentials at runtime.
+
+Register the home only under the specialist keys in machine-local `custom/sync.env`:
+
+```sh
+SPECIALIST_CODEX_HOME="<SPECIALIST_CODEX_HOME>"
+SPECIALIST_KIMI_CODE_HOME="<SPECIALIST_KIMI_CODE_HOME>"
+```
+
+Do not register the same resolved home under a normal-home key. The sync checker
+rejects aliases that register a home as both specialist and normal. The launcher
+requires exactly one registered home for the selected tool. The normal instruction
+block and skill-link installation in §3 excludes specialist homes. The sync script
+checks them separately and makes no installation writes.
+
+Specialist homes must contain no additional global task instructions or installed
+skills, regardless of source or branding. Leave instruction files absent or empty.
+Check both Codex `AGENTS.md` and `AGENTS.override.md`; check Kimi `AGENTS.md` and
+`SYSTEM.md`. Do not remove host permission controls or built-in tool instructions.
+Codex-managed `.system` skill files remain in place but require disable entries.
+Remove additional Codex instruction settings from native config. Kimi homes with
+additional `agents` or `plugins` sources are refused; an earlier clean canary does
+not qualify a newly installed instruction or skill source.
+
+Set the Codex specialist home's native `config.toml` to disable project instruction
+loading and every discoverable skill, including third-party and built-in skills:
+
+```toml
+project_doc_max_bytes = 0
+
+[[skills.config]]
+path = '<ABSOLUTE_DISCOVERABLE_SKILL_DIRECTORY>'
+enabled = false
+```
+
+Repeat `[[skills.config]]` for every skill directory. Include `change-review` when
+installed. A newly discoverable skill needs a new disable entry in every Codex
+specialist home. Sync checks the shared user skill directory, the specialist home's
+skill directory, the administrative skill directory and explicitly enabled config
+entries. Launcher checks also cover ancestor project skill directories and the
+tool's effective prompt capture. Both checks name missing disable entries. The
+Python 3.9 checker accepts the simple native TOML spelling above, with absolute
+basic or literal string paths and boolean `enabled` values. Unsupported spellings
+of isolation settings fail visibly; native settings outside those checks remain
+owned by the tool.
+
+Before use, run `CODEX_HOME=<specialist-home> codex debug prompt-input -c
+project_doc_max_bytes=0` in the intended launch context. Its output must contain
+no additional global or project task instructions and no discovered skills from
+any source. Preserve host permission and built-in tool instructions. The launcher
+compares every native prompt item against the qualified clean capture, except the
+tool-generated environment-context item. It refuses unknown formats or differences.
+
+### Qualification evidence for the launcher
+
+Run the canaries in [the specialist design §7.1](docs/design/75-subagent-profiles.md#71-qualification-canaries)
+before claiming runtime isolation or enabling a capability. They make real model
+calls and require the operator's resource authorization. Local launcher tests use
+fake tools and cannot qualify installed tools. Keep canary artifacts with the
+owning work item's run evidence. Do not install a separate qualification cache.
+
+Pass the canary's JSON record directly to
+[the launcher](skills/agent-lanes/scripts/specialist.py) with `--qualification FILE`.
+Use `--root DIR` only to select the House Rules clone containing `custom/sync.env`.
+The record contains these fields:
+
+- `tool`, `version`, `mode`, `workdir`, `home`, `isolation`: the selected tool, exact
+  `--version` output with surrounding whitespace removed, `ro` or `rw`, resolved
+  absolute checkout, registered home (null for Claude), and a boolean canary result.
+- `config_sha256`: SHA-256 of the selected specialist home's native `config.toml`
+  (null for Claude). `evidence` contains `path` and `sha256` for the complete canary
+  log, with an absolute path. The log includes prompt captures, instruction-source
+  read traces, baseline write permission and write denial when applicable, and
+  the explicit MCP tool result when applicable. It must support the record's claims.
+- `codex_prompt_input`: the clean native JSON prompt-input list, with its
+  tool-generated environment-context item omitted. This field applies to Codex.
+  The canary must establish that retained items contain only permitted host and
+  built-in instructions, with no task instructions or discovered skills.
+- `write_prevention`: `tool` for qualified Codex read-only sandbox enforcement,
+  `host` for a qualified host read-only filesystem, or null for a write-mode run.
+  For read-only mode, `write_test` is an object whose `baseline_allowed`, `denied`
+  and `write_absent` fields are all true. An approval denial alone is insufficient.
+- `mcp_sha256`, `mcp_isolated`, `mcp_tool_succeeded`: for explicit Claude MCP use,
+  the configuration hash and two true canary results. Otherwise use null, false,
+  false. `kimi_start` is `empty` for qualified Kimi empty-directory startup.
+
+The operator conducting qualification owns this evidence. The launcher validates
+its log hash, installed tool version, home, native config hash, checkout and mode.
+It does not infer qualification from the child's answer. A changed input requires
+new matching evidence. Keep configuration under native tool ownership; the record
+is a canary input, not a settings registry or permission grant.
+
+For Codex read-only mode, the launcher always selects the tool's `read-only`
+sandbox. Claude and Kimi read-only launches require a currently read-only
+filesystem at the checkout, checked through native filesystem status, as well as
+the matching write-denial canary. Host configurations that cannot expose this
+enforcement check are refused. Directory permission bits and prompt restrictions
+do not qualify. Qualification must cover a shell write that the baseline already
+permits and show that it is denied without creating the file.
+
+Claude's initial stream event must expose empty `skills` and `memory` lists. The
+launcher stops the process on discovered skills, loaded instruction memory, absent
+metadata or an unknown event format. If the installed version cannot expose these
+checks, isolation is refused. Explicit `--mcp-config` is forwarded only with a
+matching safe-mode canary showing one successful tool call and preserved isolation.
+Never drop a required server or disable safe mode when this capability fails.
+
+Kimi starts in a fresh empty directory under its specialist home, with an empty
+`--skills-dir`. The compiled task must already name the checkout's absolute path;
+the launcher never rewrites verified pack bytes. The canary must prove that this
+startup loads no additional global or project instructions or discovered skills.
+Refuse Kimi if that cannot be demonstrated. Select a different authorized tool
+only when that tool's isolation and required capabilities are qualified.

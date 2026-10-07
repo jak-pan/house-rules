@@ -1,6 +1,6 @@
 ---
 name: agent-lanes
-description: Parallel multi-agent orchestration — lane ownership, non-colliding file sets, worktrees, build output inside worktrees, lane cleanup, GPU serialization, subagent git limits, cross-repo etiquette. Use when fanning out subagents, workflows, teammates, or background jobs.
+description: Parallel multi-agent orchestration — lane ownership, non-colliding file sets, worktrees, build output inside worktrees, lane cleanup, GPU serialization, subagent git limits, cross-repo etiquette. Also covers subagent profiles. Use when fanning out subagents, workflows, teammates, or background jobs.
 license: MIT
 ---
 
@@ -41,6 +41,81 @@ explicit goals.
   isolation: rules/delivery.md §Parallel work).
 - Builds and targeted tests follow `rust-canon` §Code rules and use the lane's own target
   directory, never a shared tree where a paused run may depend on the existing binary.
+
+## Subagent profiles
+
+Choose the profile before dispatch. Lane implementers, fixers and reviewers are
+**general workers** in normal sessions. In-process children are also general workers.
+A role prompt alone does not make a specialist. Use a **specialist** when a role
+requires isolated task rules: a separate process receives one compiled pack as its
+only task rule source. Host permission controls and built-in tool instructions still
+apply. Every Claude specialist uses `claude -p --safe-mode`.
+
+Identify applicable skills from descriptions before opening skill bodies. If the
+dispatcher already holds the descriptions, answer a skill-identification question
+directly. For a specialist, include required skill text from the pack's named commit;
+never use discovered skills or Claude's `--plugin-dir` to supply it.
+
+General-worker dispatch text:
+
+```text
+Profile: general worker. Follow normal session loading of House Rules.
+Skills this task needs: <names, or "none">. Load others only if the task requires them.
+Role prompt: <compiled role prompt, or "none">.
+Task: <objective and acceptance>.
+Scope: <repositories, file set, worktree>.
+Authority: <read-only | commit on branch | explicitly authorized push>; never push or merge main.
+Output: <required final-message contents>.
+```
+
+Lane workers use the normal Codex home, House Rules block, skills and guardian
+escalation. Compile their role prompts with `--session`. Their session rules come
+from the live House Rules index; only the role prompt comes from the named commit.
+Do not describe the whole lane session as pinned.
+
+For a specialist, first write a task file containing objective, acceptance, scope,
+authority, output, Decisions and Pre-flight. Compile once with the existing
+[pack compiler](../pr-ready/scripts/prompt.py), without `--session`:
+
+```sh
+python3 "<HOUSE_RULES_ROOT>/skills/pr-ready/scripts/prompt.py" \
+  --repo "<HOUSE_RULES_ROOT>" --rev "<COMMIT>" --role "<ROLE>" \
+  --include "skills/<SKILL>/SKILL.md" --target "<CHECKOUT>" --target-rev "<TARGET_COMMIT>" \
+  --task "<TASK_FILE>" --task-source "<TASK_SOURCE>" --out "<NEW_PACK_DIRECTORY>"
+python3 "<HOUSE_RULES_ROOT>/skills/agent-lanes/scripts/specialist.py" \
+  --tool claude --pack "<NEW_PACK_DIRECTORY>/pack.txt" \
+  --manifest "<NEW_PACK_DIRECTORY>/manifest.json" --workdir "<CHECKOUT>" \
+  --mode rw --out "<NEW_RESULT_FILE>" --qualification "<CANARY_RECORD>"
+```
+
+Use `--lens` when required, omit `--include` when no skill is required, and use
+`--no-target` instead of target options when there is no target repository. Name
+the current House Rules commit explicitly unless the task supplies a pin. The
+compiler reads Git objects; a separate pinned checkout is unnecessary. Repository
+rules come through the compiler, never a manual copy. The specialist receives the
+verified bytes unchanged and must not compile or follow live House Rules links.
+
+Run the launcher as an attached background job under rules/core.md prime rule 15.
+It refuses detached execution, invalid packs, contaminated homes and unqualified
+capabilities. Exit 0 means success with an output file; exit 1 reports child failure
+and its log; exit 2 names the refused check. Codex and Kimi require registered
+[specialist homes and qualification evidence](../../INSTALL-AGENTS.md#specialist-homes).
+Claude requires safe-mode isolation evidence but no specialist home. Codex supports
+`--model` and `--effort`; Claude and Kimi support `--model` and refuse `--effort`.
+
+Read-only roles require qualified write prevention. Codex uses its read-only
+sandbox. Claude and Kimi require a host read-only filesystem for the checkout;
+approval denial, chmod and prompt restrictions do not qualify. Explicit Claude
+`--mcp-config` requires a matching safe-mode MCP canary. If it fails, select another
+authorized tool only when its isolation and required capability are qualified.
+Report a blocked task when none qualifies. Never drop required MCP functionality
+or weaken safe mode.
+
+The launcher never retries. For an authorized read-only reviewer capacity retry,
+reuse the unchanged pack and manifest after their checks pass. Recompile only when
+an input changed. Workers that changed files receive a resume note as an additional
+task and a fresh compilation, per [prompt-building decision L5](../../docs/design/77-one-step-pack-assembly.md#decisions).
+Keep a distinct output and log for every attempt; the caller records the attempt count.
 
 ## Lane cleanup
 
