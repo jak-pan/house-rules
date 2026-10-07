@@ -447,7 +447,8 @@ checks them separately and makes no installation writes.
 Specialist homes must contain no additional global task instructions or installed
 skills, regardless of source or branding. Leave instruction files absent or empty.
 Check both Codex `AGENTS.md` and `AGENTS.override.md`; check Kimi `AGENTS.md` and
-`SYSTEM.md`. Do not remove host permission controls or built-in tool instructions.
+`SYSTEM.md` and the native shared user source `~/.agents/AGENTS.md`, which does
+not move with `KIMI_CODE_HOME`. Do not remove host permission controls or built-in tool instructions.
 Codex-managed `.system` skill files remain in place but require disable entries.
 Remove additional Codex instruction settings from native config. Kimi homes with
 additional `agents` or `plugins` sources are refused; an earlier clean canary does
@@ -460,11 +461,12 @@ loading and every discoverable skill, including third-party and built-in skills:
 project_doc_max_bytes = 0
 
 [[skills.config]]
-path = '<ABSOLUTE_DISCOVERABLE_SKILL_DIRECTORY>'
+path = '<ABSOLUTE_DISCOVERABLE_SKILL_DIRECTORY>/SKILL.md'
 enabled = false
 ```
 
-Repeat `[[skills.config]]` for every skill directory. Include `change-review` when
+Repeat `[[skills.config]]` for every canonical `SKILL.md` path. Directory selectors
+do not disable native skill documents. Include `change-review` when
 installed. A newly discoverable skill needs a new disable entry in every Codex
 specialist home. Sync checks the shared user skill directory, the specialist home's
 skill directory, the administrative skill directory and explicitly enabled config
@@ -507,13 +509,18 @@ The record contains these fields:
   tool-generated environment-context item omitted. This field applies to Codex.
   The canary must establish that retained items contain only permitted host and
   built-in instructions, with no task instructions or discovered skills.
+- `claude_init_contract`: for Claude, `{"skills":"required-empty", "memory_paths":"optional-empty"}`.
+  The evidence must qualify the installed version's native initialization event
+  and establish safe-mode instruction-memory isolation even when `memory_paths`
+  is absent. The native event has no `memory` field.
 - `write_prevention`: `tool` for qualified Codex read-only sandbox enforcement,
-  `host` for a qualified host read-only filesystem, or null for a write-mode run.
+  or null for a write-mode run. Host-only read-only launches are refused.
   For read-only mode, `write_test` is an object whose `baseline_allowed`, `denied`
   and `write_absent` fields are all true. An approval denial alone is insufficient.
 - `mcp_sha256`, `mcp_isolated`, `mcp_tool_succeeded`: for explicit Claude MCP use,
   the configuration hash and two true canary results. Otherwise use null, false,
-  false. `kimi_start` is `empty` for qualified Kimi empty-directory startup.
+  false. Kimi specialization is currently refused; empty-directory startup alone
+  does not disable runtime instruction discovery.
 
 The operator conducting qualification owns this evidence. The launcher validates
 its log hash, installed tool version, home, native config hash, checkout and mode.
@@ -522,23 +529,38 @@ new matching evidence. Keep configuration under native tool ownership; the recor
 is a canary input, not a settings registry or permission grant.
 
 For Codex read-only mode, the launcher always selects the tool's `read-only`
-sandbox. Claude and Kimi read-only launches require a currently read-only
-filesystem at the checkout, checked through native filesystem status, as well as
-the matching write-denial canary. Host configurations that cannot expose this
-enforcement check are refused. Directory permission bits and prompt restrictions
-do not qualify. Qualification must cover a shell write that the baseline already
-permits and show that it is denied without creating the file.
+sandbox and requires its matching write-denial canary. Host-only read-only launches
+are refused because checkout mount status does not protect writable Git directories
+or symlink resources. Claude read-only roles require a future qualified boundary
+covering reachable repository resources. Directory permission bits, approval denial
+and prompt restrictions do not qualify.
 
-Claude's initial stream event must expose empty `skills` and `memory` lists. The
-launcher stops the process on discovered skills, loaded instruction memory, absent
-metadata or an unknown event format. If the installed version cannot expose these
-checks, isolation is refused. Explicit `--mcp-config` is forwarded only with a
-matching safe-mode canary showing one successful tool call and preserved isolation.
-Never drop a required server or disable safe mode when this capability fails.
+Claude's native initial stream event must expose an empty `skills` list.
+When the optional `memory_paths` field is present, it must also be an empty list.
+The launcher requires qualification evidence for this native contract; an absent
+optional field alone does not prove instruction-memory isolation. It stops the
+process on discovered skills, instruction memory paths, missing skills metadata or
+an unknown event format. Explicit `--mcp-config` uses the private verified copy
+only with a matching safe-mode canary showing one successful tool call and preserved
+isolation. Never drop a required server or disable safe mode when this capability fails.
 
-Kimi starts in a fresh empty directory under its specialist home, with an empty
-`--skills-dir`. The compiled task must already name the checkout's absolute path;
-the launcher never rewrites verified pack bytes. The canary must prove that this
-startup loads no additional global or project instructions or discovered skills.
-Refuse Kimi if that cannot be demonstrated. Select a different authorized tool
-only when that tool's isolation and required capabilities are qualified.
+Kimi specialization is refused until native runtime instruction discovery is disabled
+or isolated. Sync checks its home and native shared user instruction source even
+when a previous canary was clean. A fresh empty startup directory and `--skills-dir`
+do not prevent instruction probes during repository access. Select a different
+authorized tool only when its isolation and required capabilities are qualified.
+
+The launcher creates one owner-only temporary directory per launch. It copies the
+Codex home (dereferencing symlinks) and any explicit Claude MCP configuration there,
+verifies the copies and uses the same copied paths for preflight and execution.
+Native disable overrides include relocated Codex skill-document paths. Configuration
+hashes refer to the copied bytes; the record's `home` still identifies the registered
+source home. The launcher never reopens original input paths after qualification.
+The temporary copies are removed after owned child groups stop; no qualification
+cache or persistent home is added.
+
+The harness must pass `--parent-fd` as an inherited read end of a lifetime pipe.
+Only the tracked parent retains the write end; it closes that end on cancellation.
+The launcher refuses missing, closed or non-pipe handles. Each child has its own
+owned process group. Launcher termination forwards the signal and kills the group;
+parent EOF kills it too. An open parent shell or process-ID check is insufficient.

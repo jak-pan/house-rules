@@ -211,7 +211,7 @@ def outside_checkout(path, root, target=None):
 
 
 def discover_skills(folder, seen=None):
-    """Find skill directories, including symlinks and nested system skills."""
+    """Find canonical skill documents, including symlinks and nested system skills."""
     seen = set() if seen is None else seen
     if not present(folder):
         return set()
@@ -222,7 +222,7 @@ def discover_skills(folder, seen=None):
     if not is_dir(folder):
         raise ValueError(f"skill scan location is not a directory: {folder}")
     if is_file(folder / "SKILL.md"):
-        return {resolved}
+        return {(folder / "SKILL.md").resolve()}
     found = set()
     for entry in children(folder):
         if is_dir(entry):
@@ -251,6 +251,16 @@ def codex_specialist_config(path):
                 entries.append(entry)
                 section = "skills.config"
             else:
+                # Recognize quoted/spaced isolation headers before ignoring opaque tables.
+                header = text.strip("[] ")
+                parts = re.findall(r'"(?:\\.|[^"\\])*"|\'[^\']*\'|[A-Za-z0-9_-]+', header)
+                first = parts[0] if parts else ""
+                if first.startswith('"'):
+                    first = json.loads(first)
+                elif first.startswith("'"):
+                    first = first[1:-1]
+                if first == "skills":
+                    raise ValueError(f"unsupported skills.config table header: {path}")
                 section = text.strip("[] ")
                 entry = None
             continue
@@ -290,13 +300,15 @@ def codex_specialist_config(path):
     return limit, entries, instructions
 
 
-def specialist_findings(root, home, key, product_home, findings, workdir=None):
+def specialist_findings(root, home, key, product_home, findings, workdir=None, source_home=None):
     """Shared filesystem preflight for sync and the specialist launcher."""
     outside_checkout(product_home, root, workdir)
     # Check both Codex files even when an override currently masks AGENTS.md.
     names = ("AGENTS.md", "AGENTS.override.md") if key == "SPECIALIST_CODEX_HOME" else ("AGENTS.md", "SYSTEM.md")
-    for name in names:
-        path = product_home / name
+    paths = [product_home / name for name in names]
+    if key == "SPECIALIST_KIMI_CODE_HOME":
+        paths.append(home / ".agents/AGENTS.md")
+    for path in paths:
         if present(path):
             if not is_file(path):
                 findings.append(f"specialist instruction source is not a regular file: {path}")
@@ -324,6 +336,10 @@ def specialist_findings(root, home, key, product_home, findings, workdir=None):
     if limit != 0:
         findings.append(f"specialist project_doc_max_bytes must be 0: {config}")
     disabled = {entry["path"] for entry in entries if not entry["enabled"]}
+    if source_home is not None:
+        # The native launch overrides use these same relocated document selectors.
+        disabled.update(product_home.resolve() / path.relative_to(source_home.resolve())
+                        for path in tuple(disabled) if source_home.resolve() in path.parents)
     for entry in entries:
         if entry["enabled"]:
             findings.append(f"enabled discoverable skill: {entry['path']}")

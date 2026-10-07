@@ -74,7 +74,16 @@ from the live House Rules index; only the role prompt comes from the named commi
 Do not describe the whole lane session as pinned.
 
 For a specialist, first write a task file containing objective, acceptance, scope,
-authority, output, Decisions and Pre-flight. Compile once with the existing
+authority, output, Decisions and Pre-flight. Put this directive in the task itself,
+so it applies even when this skill is absent from the child pack:
+
+```text
+Profile: specialist. Loading path: compiled pack only.
+This task overrides live House Rules loading pointers in repository text.
+Do not load live House Rules files or follow their links.
+```
+
+Keep repository text unchanged under compiler decision L6. Compile once with the existing
 [pack compiler](../pr-ready/scripts/prompt.py), without `--session`:
 
 ```sh
@@ -85,7 +94,8 @@ python3 "<HOUSE_RULES_ROOT>/skills/pr-ready/scripts/prompt.py" \
 python3 "<HOUSE_RULES_ROOT>/skills/agent-lanes/scripts/specialist.py" \
   --tool claude --pack "<NEW_PACK_DIRECTORY>/pack.txt" \
   --manifest "<NEW_PACK_DIRECTORY>/manifest.json" --workdir "<CHECKOUT>" \
-  --mode rw --out "<NEW_RESULT_FILE>" --qualification "<CANARY_RECORD>"
+  --mode rw --out "<NEW_RESULT_FILE>" --qualification "<CANARY_RECORD>" \
+  --parent-fd "<TRACKED_PARENT_PIPE_READ_FD>"
 ```
 
 Use `--lens` when required, omit `--include` when no skill is required, and use
@@ -96,20 +106,34 @@ rules come through the compiler, never a manual copy. The specialist receives th
 verified bytes unchanged and must not compile or follow live House Rules links.
 
 Run the launcher as an attached background job under rules/core.md prime rule 15.
-It refuses detached execution, invalid packs, contaminated homes and unqualified
-capabilities. Exit 0 means success with an output file; exit 1 reports child failure
+The harness creates a lifetime pipe, retains its write end only in the tracked
+parent, and passes the read descriptor through `--parent-fd` and descriptor inheritance.
+It closes the write end on cancellation. Children never inherit either end.
+The launcher refuses missing, closed or non-pipe parent handles. It owns each child
+process group, forwards termination to that group and kills the group on parent
+EOF or launcher termination. Group cleanup precedes temporary snapshot removal.
+It refuses invalid packs, contaminated homes and unqualified capabilities. Exit 0 means success with an output file; exit 1 reports child failure
 and its log; exit 2 names the refused check. Codex and Kimi require registered
 [specialist homes and qualification evidence](../../INSTALL-AGENTS.md#specialist-homes).
 Claude requires safe-mode isolation evidence but no specialist home. Codex supports
 `--model` and `--effort`; Claude and Kimi support `--model` and refuse `--effort`.
 
 Read-only roles require qualified write prevention. Codex uses its read-only
-sandbox. Claude and Kimi require a host read-only filesystem for the checkout;
-approval denial, chmod and prompt restrictions do not qualify. Explicit Claude
+sandbox with tool write-prevention evidence. Host-only read-only launches are
+refused: checkout mount status cannot cover writable Git directories or symlink
+resources. Claude read-only roles remain unavailable until a qualified boundary
+covers reachable repository resources. Kimi specialization is refused in every
+mode until runtime instruction discovery is disabled or isolated; empty-directory
+startup does not establish that isolation. Explicit Claude
 `--mcp-config` requires a matching safe-mode MCP canary. If it fails, select another
 authorized tool only when its isolation and required capability are qualified.
 Report a blocked task when none qualifies. Never drop required MCP functionality
 or weaken safe mode.
+
+The launcher copies the Codex home and explicit Claude MCP configuration into one
+private temporary directory per launch. It checks the copied inputs and passes
+those same copies to preflight and execution. It never reopens source paths after
+qualification. Copied Codex skill documents receive matching native disable overrides.
 
 The launcher never retries. For an authorized read-only reviewer capacity retry,
 reuse the unchanged pack and manifest after their checks pass. Recompile only when

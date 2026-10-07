@@ -67,6 +67,11 @@ class SyncTests(unittest.TestCase):
         patch = mock.patch.object(Path, "home", return_value=self.home)
         patch.start()
         self.addCleanup(patch.stop)
+        original_discovery = sync.discover_skills
+        admin = mock.patch.object(sync, "discover_skills", side_effect=lambda folder, seen=None:
+                                  set() if folder == Path("/etc/codex/skills") else original_discovery(folder, seen))
+        admin.start()
+        self.addCleanup(admin.stop)
 
     def git(self, root, *args):
         return subprocess.run(["git", "-C", str(root), *args], check=True,
@@ -661,7 +666,7 @@ class SyncTests(unittest.TestCase):
             config.write(f'SPECIALIST_KIMI_CODE_HOME="{kimi}"\n')
         # Normal user skills must be explicitly disabled even outside the tool home.
         with (codex / "config.toml").open("a") as config:
-            config.write(f'[[skills.config]]\npath = "{self.home / ".agents/skills/sample"}"\nenabled = false\n')
+            config.write(f'[[skills.config]]\npath = "{self.home / ".agents/skills/sample/SKILL.md"}"\nenabled = false\n')
         selected = sync.homes(self.root, self.home)
         self.assertIn(("SPECIALIST_CODEX_HOME", codex), selected)
         self.assertIn(("SPECIALIST_KIMI_CODE_HOME", kimi), selected)
@@ -724,10 +729,49 @@ class SyncTests(unittest.TestCase):
         self.write(skill / "SKILL.md", "third party")
         alias = self.base / "skill-alias"
         alias.symlink_to(skill, target_is_directory=True)
-        self.write(path / "config.toml", f'project_doc_max_bytes = 0\n[[skills.config]]\npath = \'{alias}\'\nenabled = false\n')
+        self.write(path / "config.toml", f"project_doc_max_bytes = 0\n[[skills.config]]\npath = '{alias / 'SKILL.md'}'\nenabled = false\n")
         self.write(path / "AGENTS.md", " \n")
         findings = []
         sync.specialist_findings(self.root, self.home, "SPECIALIST_CODEX_HOME", path, findings)
+        self.assertEqual(findings, [])
+
+    def test_specialist_directory_selector_does_not_disable_native_document(self):
+        path = self.specialist()
+        skill = self.home / ".agents/skills/extra"
+        self.write(skill / "SKILL.md", "third party")
+        self.write(path / "config.toml", f'project_doc_max_bytes = 0\n[[skills.config]]\npath = "{skill}"\nenabled = false\n')
+        findings = []
+        sync.specialist_findings(self.root, self.home, "SPECIALIST_CODEX_HOME", path, findings)
+        self.assertTrue(any(str(skill / "SKILL.md") in finding for finding in findings), findings)
+
+    def test_alternate_isolation_table_headers_refuse_visibly(self):
+        path = self.specialist()
+        for header in ('[[ skills.config ]]', '[["skills"."config"]]', "[['skills'.'config']]", '[skills]', '[ "skills" ]', r'[["ski\u006cls"."config"]]'):
+            with self.subTest(header=header):
+                self.write(path / "config.toml", f'project_doc_max_bytes = 0\n{header}\npath = "/synthetic/SKILL.md"\nenabled = true\n')
+                with self.assertRaisesRegex(ValueError, "unsupported skills.config table header"):
+                    sync.codex_specialist_config(path / "config.toml")
+
+    def test_kimi_shared_user_instructions_are_checked_outside_tool_home(self):
+        path = self.specialist("SPECIALIST_KIMI_CODE_HOME")
+        shared = self.home / ".agents/AGENTS.md"
+        self.write(shared, "shared synthetic instructions")
+        findings = []
+        sync.specialist_findings(self.root, self.home, "SPECIALIST_KIMI_CODE_HOME", path, findings)
+        self.assertTrue(any(str(shared) in finding for finding in findings), findings)
+
+    def test_synthetic_specialist_fixture_does_not_scan_administrative_skills(self):
+        path = self.specialist()
+        original = sync.status
+
+        def deny_admin(candidate, **kwargs):
+            if candidate == Path("/etc/codex/skills"):
+                raise PermissionError("synthetic administrative skills must not be read")
+            return original(candidate, **kwargs)
+
+        findings = []
+        with mock.patch.object(sync, "status", side_effect=deny_admin):
+            sync.specialist_findings(self.root, self.home, "SPECIALIST_CODEX_HOME", path, findings)
         self.assertEqual(findings, [])
 
     def test_specialist_malformed_disable_entries_fail_visibly(self):

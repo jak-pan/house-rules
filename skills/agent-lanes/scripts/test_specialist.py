@@ -6,12 +6,12 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import signal
+import time
 import sys
 import tempfile
 import unittest
 from unittest import mock
-import contextlib
-import io
 
 ROOT = Path(__file__).resolve().parents[3]
 LAUNCHER = Path(__file__).with_name("specialist.py")
@@ -53,17 +53,37 @@ import json, os, pathlib, sys
 tool = pathlib.Path(sys.argv[0]).name
 args = sys.argv[1:]
 if args == ["--version"]:
+    if os.environ.get("FAKE_MUTATE_MCP"):
+        pathlib.Path(os.environ["FAKE_MUTATE_MCP"]).write_text("changed original mcp")
     print(tool + " fixture-1")
     sys.exit(0)
 if args[:2] == ["debug", "prompt-input"]:
+    if any(flag in args for flag in ("-s", "-C", "-m")):
+        print("unsupported debugger execution flag", file=sys.stderr)
+        sys.exit(2)
+    with open(os.environ["FAKE_CALLS"] + ".debug", "a") as f:
+        f.write(json.dumps({{"args":args,"home":os.environ["CODEX_HOME"],"cwd":os.getcwd()}}) + "\\n")
+    if os.environ.get("FAKE_MUTATE_HOME"):
+        pathlib.Path(os.environ["FAKE_MUTATE_HOME"]).write_text("changed original config")
     print(os.environ["FAKE_DEBUG"])
     sys.exit(int(os.environ.get("FAKE_DEBUG_EXIT", "0")))
 data = sys.stdin.buffer.read() if tool != "kimi" else args[args.index("-p") + 1].encode()
 with open(os.environ["FAKE_CALLS"], "a") as f:
     f.write(json.dumps({{"tool":tool, "args":args, "pack":data.hex(), "cwd":os.getcwd(),
+                        "mcp":pathlib.Path(args[args.index("--mcp-config") + 1]).read_text() if "--mcp-config" in args else None,
+                        "config":pathlib.Path(os.environ["CODEX_HOME"], "config.toml").read_text() if tool == "codex" else None,
                         "home":os.environ.get("CODEX_HOME" if tool == "codex" else "KIMI_CODE_HOME")}}) + "\\n")
+if os.environ.get("FAKE_TREE"):
+    import subprocess, time
+    handle = os.open(os.environ["FAKE_HEARTBEAT"], os.O_WRONLY)
+    grandchild = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(4)"], pass_fds=(handle,))
+    pathlib.Path(os.environ["FAKE_TREE"]).write_text(json.dumps([os.getpid(), grandchild.pid]))
+    time.sleep(4)
 if tool == "claude":
-    print(os.environ.get("FAKE_INIT", '{{"type":"system","subtype":"init","skills":[],"memory":[]}}'), flush=True)
+    print(os.environ.get("FAKE_INIT", json.dumps({{"type":"system", "subtype":"init",
+          "cwd":os.getcwd(), "session_id":"synthetic-session", "tools":[], "mcp_servers":[],
+          "model":"fixture", "permissionMode":"acceptEdits", "claude_code_version":"fixture-1",
+          "agents":[], "skills":[], "plugins":[]}})), flush=True)
     if os.environ.get("FAKE_BLOCK"):
         import time
         time.sleep(10)
@@ -102,30 +122,72 @@ sys.exit(int(os.environ.get("FAKE_EXIT", "0")))
                   "config_sha256": hashlib.sha256(config.read_bytes()).hexdigest() if tool != "claude" else None,
                   "evidence": {"path": str(log), "sha256": hashlib.sha256(log.read_bytes()).hexdigest()},
                   "write_prevention": prevention, "codex_prompt_input": [],
+                  "claude_init_contract": {"skills": "required-empty", "memory_paths": "optional-empty"},
                   "write_test": {"baseline_allowed": True, "denied": True, "write_absent": True},
                   "mcp_sha256": hashlib.sha256(mcp.read_bytes()).hexdigest() if mcp else None,
                   "mcp_isolated": bool(mcp), "mcp_tool_succeeded": bool(mcp), "kimi_start": "empty"}
         self.qualification.write_text(json.dumps(record))
         return record
 
-    def invoke(self, tool="claude", mode="rw", qualify=False, extra=(), readonly_mount=False):
+    def invoke(self, tool="claude", mode="rw", qualify=False, extra=(), readonly_mount=False,
+               start=False, tracked=True, parent_exit=False):
         args = [sys.executable, "-B", str(LAUNCHER), "--root", str(self.root), "--tool", tool,
                 "--pack", str(self.pack), "--manifest", str(self.manifest), "--workdir", str(self.workdir),
                 "--mode", mode, "--out", str(self.out), *extra]
         if qualify:
             args += ["--qualification", str(self.qualification)]
+        read_fd, write_fd = os.pipe()
+        self.addCleanup(os.close, write_fd)
+        self.addCleanup(os.close, read_fd)
+        if tracked:
+            args += ["--parent-fd", str(read_fd)]
         if readonly_mount:
-            spec = importlib.util.spec_from_file_location("specialist_tested", LAUNCHER)
-            launcher = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(launcher)
-            out, err = io.StringIO(), io.StringIO()
-            with mock.patch.dict(os.environ, self.env, clear=True), \
-                    mock.patch.object(launcher.os, "statvfs", return_value=mock.Mock(f_flag=os.ST_RDONLY)), \
-                    mock.patch.object(launcher.os, "getsid", return_value=-1), \
-                    contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-                code = launcher.main(args[3:])
-            return subprocess.CompletedProcess(args, code, out.getvalue().encode(), err.getvalue().encode())
-        return subprocess.run(args, env=self.env, capture_output=True, timeout=5)
+            self.env["FAKE_READONLY_MOUNT"] = "1"
+        driver = """
+import importlib.util, sys, os
+from pathlib import Path
+from unittest import mock
+spec = importlib.util.spec_from_file_location("tested_specialist", sys.argv[1])
+launcher = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(launcher)
+if os.environ.get("FAKE_READONLY_MOUNT"):
+    launcher.os.statvfs = lambda path: mock.Mock(f_flag=os.ST_RDONLY)
+original = launcher.sync.discover_skills
+with mock.patch.object(launcher.sync, "discover_skills", side_effect=lambda folder, seen=None:
+                       set() if folder == Path("/etc/codex/skills") else original(folder, seen)):
+    sys.exit(launcher.main(sys.argv[2:]))
+"""
+        command = [sys.executable, "-B", "-c", driver, str(LAUNCHER), *args[3:]]
+        if parent_exit:
+            parent_driver = """
+import json, os, subprocess, sys, time
+command = json.loads(sys.argv[1])
+read_fd, write_fd = os.pipe()
+command[command.index("--parent-fd") + 1] = str(read_fd)
+child = subprocess.Popen(command, pass_fds=(read_fd,))
+os.close(read_fd)
+deadline = time.monotonic() + 2
+while not os.path.exists(os.environ["FAKE_TREE"]) and time.monotonic() < deadline:
+    time.sleep(0.01)
+if not os.path.exists(os.environ["FAKE_TREE"]):
+    child.terminate()
+    child.wait(timeout=2)
+    sys.exit(1)
+os._exit(0)  # The tracked parent exits with its lifetime pipe still open.
+"""
+            command = [sys.executable, "-B", "-c", parent_driver, json.dumps(command)]
+        if start:
+            child = subprocess.Popen(command, env=self.env, pass_fds=(read_fd,),
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            self.addCleanup(self.stop_child, child)
+            return child, write_fd
+        return subprocess.run(command, env=self.env, pass_fds=(read_fd,), capture_output=True, timeout=5)
+
+    @staticmethod
+    def stop_child(child):
+        if child.poll() is None:
+            child.terminate()
+        child.communicate(timeout=2)
 
     def called(self):
         return [json.loads(line) for line in self.calls.read_text().splitlines()] if self.calls.exists() else []
@@ -213,11 +275,12 @@ sys.exit(int(os.environ.get("FAKE_EXIT", "0")))
 
     def test_unqualified_isolation_and_stale_versions_refuse(self):
         self.register("kimi")
-        self.refused(self.invoke("kimi"), "qualification")
-        record = self.qualify("kimi")
+        self.refused(self.invoke("kimi"), "runtime instruction discovery")
+        self.register("codex")
+        record = self.qualify("codex")
         record["version"] = "old version"
         self.qualification.write_text(json.dumps(record))
-        self.refused(self.invoke("kimi", qualify=True), "version")
+        self.refused(self.invoke("codex", qualify=True), "version")
 
     def test_codex_arguments_each_mode_and_pack_bytes_unchanged(self):
         self.register("codex")
@@ -228,7 +291,8 @@ sys.exit(int(os.environ.get("FAKE_EXIT", "0")))
                 self.assertEqual(result.returncode, 0, result.stderr.decode())
                 call = self.called()[-1]
                 self.assertEqual(bytes.fromhex(call["pack"]), self.data)
-                self.assertEqual(call["home"], str(self.home))
+                self.assertNotEqual(call["home"], str(self.home))
+                self.assertFalse(Path(call["home"]).exists())
                 self.assertIn(sandbox, call["args"])
                 self.assertIn("model_reasoning_effort=\"high\"", call["args"])
                 for arg in ("--skip-git-repo-check", "project_doc_max_bytes=0", "-C", str(self.workdir), "-o", "-", "model"):
@@ -236,23 +300,24 @@ sys.exit(int(os.environ.get("FAKE_EXIT", "0")))
                 self.assertEqual(self.out.read_text(), "answer\n")
                 self.out.unlink()
 
-    def test_claude_safe_mode_and_output_extraction_each_mode(self):
-        for mode in ("ro", "rw"):
-            self.qualify("claude", mode, "host")
-            result = self.invoke("claude", mode, True, ["--model", "model"], readonly_mount=mode == "ro")
+    def test_claude_native_safe_mode_event_and_output_extraction(self):
+        self.qualify("claude")
+        for event in ({"type":"system", "subtype":"init", "skills":[]},
+                      {"type":"system", "subtype":"init", "skills":[], "memory_paths":[]}):
+            self.env["FAKE_INIT"] = json.dumps(event)
+            result = self.invoke(qualify=True, extra=["--model", "model"])
             self.assertEqual(result.returncode, 0, result.stderr.decode())
             call = self.called()[-1]
             self.assertEqual(bytes.fromhex(call["pack"]), self.data)
-            for arg in ("-p", "--safe-mode", "--output-format", "stream-json", "--verbose", "--permission-prompts", "none", "model"):
+            for arg in ("-p", "--safe-mode", "--output-format", "stream-json", "--verbose", "--permission-prompts", "none", "model", "--permission-mode"):
                 self.assertIn(arg, call["args"])
-            self.assertIn("--disallowedTools" if mode == "ro" else "--permission-mode", call["args"])
             self.assertEqual(self.out.read_text(), "answer\n")
             self.out.unlink()
 
     def test_claude_discovery_stops_child_at_initial_event(self):
         self.qualify("claude")
-        for field in ("skills", "memory"):
-            self.env["FAKE_INIT"] = json.dumps({"type":"system", "subtype":"init", "skills":[], "memory":[], field:["third party instructions"]})
+        for field in ("skills", "memory_paths"):
+            self.env["FAKE_INIT"] = json.dumps({"type":"system", "subtype":"init", "skills":[], "memory_paths":[], field:["third party instructions"]})
             self.env["FAKE_BLOCK"] = "1"
             result = self.invoke(qualify=True)
             self.assertEqual(result.returncode, 2, result.stderr.decode())
@@ -271,35 +336,25 @@ sys.exit(int(os.environ.get("FAKE_EXIT", "0")))
         self.qualify("claude", mcp=mcp)
         result = self.invoke(qualify=True, extra=["--mcp-config", str(mcp)])
         self.assertEqual(result.returncode, 0, result.stderr.decode())
-        self.assertIn(str(mcp), self.called()[-1]["args"])
+        call = self.called()[-1]
+        snapshot = Path(call["args"][call["args"].index("--mcp-config") + 1])
+        self.assertNotEqual(snapshot, mcp)
+        self.assertFalse(snapshot.exists())
+        self.assertEqual(call["mcp"], mcp.read_text())
         self.assertIn("--safe-mode", self.called()[-1]["args"])
         self.out.unlink()
         self.calls.unlink()
         mcp.write_text("changed")
         self.refused(self.invoke(qualify=True, extra=["--mcp-config", str(mcp)]), "MCP")
 
-    def test_kimi_empty_start_and_unchanged_pack_with_absolute_checkout(self):
-        self.register("kimi")
-        self.data += str(self.workdir).encode() + b"\n"
-        self.pack.write_bytes(self.data)
-        self.set_manifest()
-        for mode in ("rw", "ro"):
-            self.qualify("kimi", mode, "host")
-            result = self.invoke("kimi", mode, True, ["--model", "model"], readonly_mount=mode == "ro")
-            self.assertEqual(result.returncode, 0, result.stderr.decode())
-            call = self.called()[-1]
-            self.assertNotEqual(call["cwd"], str(self.workdir))
-            self.assertEqual(call["home"], str(self.home))
-            self.assertEqual(bytes.fromhex(call["pack"]), self.data)
-            self.assertIn("--skills-dir", call["args"])
-            self.assertIn("model", call["args"])
-            self.assertEqual(self.out.read_text(), "answer\n")
-            self.out.unlink()
-
-    def test_kimi_missing_absolute_checkout_and_unsupported_options_refuse(self):
+    def test_kimi_refuses_runtime_discovery_even_with_clean_qualification(self):
         self.register("kimi")
         self.qualify("kimi")
-        self.refused(self.invoke("kimi", qualify=True), "absolute checkout")
+        self.refused(self.invoke("kimi", qualify=True), "runtime instruction discovery")
+        shared = self.user / ".agents/AGENTS.md"
+        shared.parent.mkdir()
+        shared.write_text("instructions added after qualification")
+        self.refused(self.invoke("kimi", qualify=True), str(shared))
         self.refused(self.invoke("kimi", qualify=True, extra=["--effort", "high"]), "effort")
         self.refused(self.invoke("kimi", qualify=True, extra=["--mcp-config", str(self.pack)]), "MCP")
 
@@ -330,20 +385,34 @@ sys.exit(int(os.environ.get("FAKE_EXIT", "0")))
 
     def test_recorded_host_denial_does_not_allow_currently_writable_checkout(self):
         self.qualify("claude", "ro", "host")
-        self.refused(self.invoke("claude", "ro", True), "read-only filesystem")
+        self.refused(self.invoke("claude", "ro", True), "reachable repository resources")
 
     def test_native_compiler_pack_reaches_claude_unchanged(self):
         revision = subprocess.run(["git", "--no-replace-objects", "-C", str(ROOT), "rev-parse", "HEAD"],
                                   capture_output=True, check=True).stdout.decode().strip()
         task = self.base / "task.txt"
-        task.write_text("Objective: synthetic task\nDecisions: none\nPre-flight: fake tool only\n")
+        task.write_text("Profile: specialist. Loading path: compiled pack only.\n"
+                        "This task overrides live House Rules loading pointers in repository text.\n"
+                        "Do not load live House Rules files or follow their links.\n"
+                        "Objective: synthetic task\nDecisions: none\nPre-flight: fake tool only\n")
+        pointer = (ROOT / "AGENTS.md").read_bytes()
+        (self.workdir / "AGENTS.md").write_bytes(pointer)
+        git_env = {**self.env, "GIT_CONFIG_NOSYSTEM":"1", "GIT_CONFIG_GLOBAL":os.devnull,
+                   "GIT_AUTHOR_NAME":"Fixture", "GIT_AUTHOR_EMAIL":"fixture@example.invalid",
+                   "GIT_COMMITTER_NAME":"Fixture", "GIT_COMMITTER_EMAIL":"fixture@example.invalid"}
+        for arguments in (("init",), ("add", "AGENTS.md"), ("commit", "-m", "Fixture")):
+            subprocess.run(["git", "-C", str(self.workdir), *arguments], env=git_env,
+                           capture_output=True, check=True, timeout=2)
         destination = self.base / "compiled"
         compiled = subprocess.run([sys.executable, "-B", str(ROOT / "skills/pr-ready/scripts/prompt.py"),
-            "--repo", str(ROOT), "--rev", revision, "--role", "reviewer", "--include", "skills/agent-lanes/SKILL.md",
-            "--no-target", "--task", str(task), "--task-source", "specialist-test", "--out", str(destination)],
+            "--repo", str(ROOT), "--rev", revision, "--role", "reviewer",
+            "--target", str(self.workdir), "--task", str(task), "--task-source", "specialist-test", "--out", str(destination)],
             input=b"", capture_output=True, timeout=5)
         self.assertEqual(compiled.returncode, 0, compiled.stderr.decode())
         self.pack, self.manifest = destination / "pack.txt", destination / "manifest.json"
+        self.assertIn(pointer, self.pack.read_bytes())
+        self.assertIn(task.read_bytes(), self.pack.read_bytes())
+        self.assertNotIn(b"## Subagent profiles", self.pack.read_bytes())
         self.qualify("claude")
         result = self.invoke(qualify=True)
         self.assertEqual(result.returncode, 0, result.stderr.decode())
@@ -359,8 +428,8 @@ sys.exit(int(os.environ.get("FAKE_EXIT", "0")))
             config.write("# changed native configuration\n")
         self.refused(self.invoke("codex", qualify=True), "config_sha256")
 
-    def test_all_tool_child_failures_retain_logs_without_retry(self):
-        for tool in ("codex", "kimi"):
+    def test_codex_child_failure_retains_log_without_retry(self):
+        for tool in ("codex",):
             with self.subTest(tool=tool):
                 self.register(tool)
                 self.data += str(self.workdir).encode() + b"\n"
@@ -373,9 +442,156 @@ sys.exit(int(os.environ.get("FAKE_EXIT", "0")))
                 self.assertIn("8", result.stderr.decode())
                 self.assertEqual(len(self.called()), 1)
                 self.assertFalse(self.out.exists())
-                if tool == "kimi":
-                    self.assertTrue(any(b"answer" in log.read_bytes() for log in self.base.glob("answer.txt-*.log")))
                 self.calls.unlink()
+
+    def test_numeric_manifest_revision_refuses_without_traceback(self):
+        record = json.loads(self.manifest.read_text())
+        record["house_rules_revision"] = int("1" * 40)
+        self.manifest.write_text(json.dumps(record))
+        self.pack.write_bytes(b"House Rules revision: " + b"1" * 40 + b"\n")
+        spec = importlib.util.spec_from_file_location("numeric_revision_test", LAUNCHER)
+        launcher = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(launcher)
+        with self.assertRaisesRegex(launcher.Refusal, "manifest"):
+            launcher.verified_pack(self.pack, self.manifest)
+        result = self.invoke()
+        self.refused(result, "manifest")
+        self.assertNotIn("Traceback", result.stderr.decode())
+
+    def test_codex_snapshot_is_shared_by_debug_and_execution_after_source_changes(self):
+        self.register("codex")
+        config = self.home / "config.toml"
+        # Built-in document selectors must follow the copied home through native overrides.
+        skill = self.home / "skills/.system/example/SKILL.md"
+        skill.parent.mkdir(parents=True)
+        skill.write_text("synthetic builtin")
+        with config.open("a") as output:
+            output.write(f'[[skills.config]]\npath = "{skill}"\nenabled = false\n')
+        self.qualify("codex")
+        original = config.read_text()
+        self.env["FAKE_MUTATE_HOME"] = str(config)
+        result = self.invoke("codex", qualify=True)
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        debug = json.loads(Path(str(self.calls) + ".debug").read_text())
+        call = self.called()[0]
+        self.assertEqual(debug["home"], call["home"])
+        self.assertEqual(call["config"], original)
+        self.assertEqual(config.read_text(), "changed original config")
+        self.assertIn(str(Path(call["home"]) / "skills/.system/example/SKILL.md"), " ".join(call["args"]))
+        self.assertFalse(Path(call["home"]).exists())
+
+    def test_codex_snapshot_dereferences_config_alias_before_preflight(self):
+        self.register("codex")
+        config = self.home / "config.toml"
+        canonical = self.base / "native-config.toml"
+        canonical.write_bytes(config.read_bytes())
+        config.unlink()
+        config.symlink_to(canonical)
+        self.qualify("codex")
+        original = canonical.read_text()
+        self.env["FAKE_MUTATE_HOME"] = str(canonical)
+        result = self.invoke("codex", qualify=True)
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertNotEqual(self.called()[0]["home"], str(self.home))
+        self.assertEqual(self.called()[0]["config"], original)
+        self.assertEqual(canonical.read_text(), "changed original config")
+
+    def test_claude_mcp_snapshot_survives_source_replacement_before_qualification(self):
+        source = self.base / "mcp.json"
+        source.write_text('{"mcpServers": {}}')
+        self.qualify("claude", mcp=source)
+        original = source.read_text()
+        self.env["FAKE_MUTATE_MCP"] = str(source)
+        result = self.invoke(qualify=True, extra=["--mcp-config", str(source)])
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertEqual(self.called()[0]["mcp"], original)
+        self.assertEqual(source.read_text(), "changed original mcp")
+
+    def test_claude_native_contract_needs_qualification_evidence(self):
+        record = self.qualify("claude")
+        record.pop("claude_init_contract")
+        self.qualification.write_text(json.dumps(record))
+        self.refused(self.invoke(qualify=True), "native initialization contract")
+
+    def test_read_only_mount_with_writable_git_and_symlink_resources_is_refused(self):
+        writable = self.base / "writable-repository-data"
+        writable.mkdir()
+        (self.workdir / ".git").write_text(f"gitdir: {writable}\n")
+        (self.workdir / "linked-task").symlink_to(writable, target_is_directory=True)
+        for tool in ("claude", "kimi"):
+            if tool == "kimi":
+                self.register(tool)
+            self.qualify(tool, "ro", "host")
+            self.refused(self.invoke(tool, "ro", True, readonly_mount=True), "reachable repository resources")
+
+    def test_untracked_and_invalid_parent_handles_refuse(self):
+        self.qualify("claude")
+        self.refused(self.invoke(qualify=True, tracked=False), "tracked parent pipe")
+        self.refused(self.invoke(qualify=True, tracked=False, extra=["--parent-fd", "1"]), "read end")
+
+    @staticmethod
+    def kill_owned_fixture(pid):
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+    def wait_for_tree(self, path):
+        deadline = time.monotonic() + 2
+        while not path.exists() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        self.assertTrue(path.exists(), "synthetic child never started within 2s")
+        return json.loads(path.read_text())
+
+    def assert_tree_stopped(self, heartbeat):
+        # Both generations hold the FIFO write end. EOF proves both exited,
+        # including a grandchild reparented to the OS (without requiring ps).
+        deadline = time.monotonic() + 2
+        while time.monotonic() < deadline:
+            try:
+                self.assertEqual(os.read(heartbeat, 1), b"")
+                return
+            except BlockingIOError:
+                time.sleep(0.01)
+        self.fail("owned child or grandchild still holds its lifetime handle")
+
+    def test_launcher_termination_and_parent_eof_stop_child_and_grandchild(self):
+        self.qualify("claude")
+        for cancellation in ("signal", "parent-eof", "parent-exit"):
+            with self.subTest(cancellation=cancellation):
+                tree = self.base / (cancellation + ".json")
+                self.env["FAKE_TREE"] = str(tree)
+                fifo = self.base / (cancellation + ".fifo")
+                os.mkfifo(fifo)
+                heartbeat = os.open(fifo, os.O_RDONLY | os.O_NONBLOCK)
+                self.addCleanup(os.close, heartbeat)
+                self.env["FAKE_HEARTBEAT"] = str(fifo)
+                child, writer = self.invoke(qualify=True, start=True, parent_exit=cancellation == "parent-exit")
+                pids = self.wait_for_tree(tree)
+                for pid in pids:
+                    self.addCleanup(self.kill_owned_fixture, pid)
+                if cancellation != "parent-exit":
+                    self.assertEqual(os.getpgid(pids[0]), pids[0])
+                    self.assertEqual(os.getpgid(pids[1]), pids[0])
+                if cancellation == "signal":
+                    child.send_signal(signal.SIGTERM)
+                elif cancellation == "parent-eof":
+                    os.close(writer)
+                    # Remove this descriptor's cleanup after intentionally closing it.
+                    self._cleanups = [entry for entry in self._cleanups
+                                      if not (entry[0] == os.close and entry[1] == (writer,))]
+                _, err = child.communicate(timeout=2)
+                if cancellation == "parent-exit":
+                    self.assertEqual(child.returncode, 0, err.decode())
+                else:
+                    self.assertNotEqual(child.returncode, 0, err.decode())
+                self.assert_tree_stopped(heartbeat)
+                self.assertFalse(self.out.exists())
+
+    def test_rollout_requires_lead_qualification_before_acceptance(self):
+        text = (ROOT / "docs/design/75-subagent-profiles.md").read_text()
+        self.assertIn("The lead completes the section 7.1 runs before acceptance", text)
+        self.assertIn("Workers never run model CLIs or touch credential files or real tool homes", text)
 
     def test_dispatch_guidance_identifies_skills_before_opening_bodies(self):
         text = (ROOT / "skills/agent-lanes/SKILL.md").read_text()
@@ -383,6 +599,8 @@ sys.exit(int(os.environ.get("FAKE_EXIT", "0")))
         self.assertIn("descriptions before opening skill bodies", text)
         self.assertIn("--session", text)
         self.assertIn("unchanged pack and manifest", text)
+        self.assertIn("Profile: specialist. Loading path: compiled pack only.", text)
+        self.assertIn("This task overrides live House Rules loading pointers in repository text.", text)
 
 
 if __name__ == "__main__":

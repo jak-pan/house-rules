@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """Launch one verified specialist pack; no compilation, scheduling or retries."""
 import argparse
+import contextlib
+import fcntl
 import hashlib
 import importlib.util
 import json
 import os
 from pathlib import Path
 import re
+import select
+import shutil
+import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -36,7 +42,8 @@ def verified_pack(pack, manifest):
     data = pack.read_bytes()
     record = json.loads(manifest.read_bytes())
     if (not isinstance(record, dict) or not isinstance(record.get("files"), list) or
-            not re.fullmatch(r"[0-9a-f]{40}", str(record.get("house_rules_revision", ""))) or
+            not isinstance(record.get("house_rules_revision"), str) or
+            not re.fullmatch(r"[0-9a-f]{40}", record["house_rules_revision"]) or
             not isinstance(record.get("pack"), dict)):
         raise Refusal("manifest requires house_rules_revision, files and pack.sha256")
     header = b"House Rules revision: " + record["house_rules_revision"].encode() + b"\n"
@@ -50,29 +57,140 @@ def verified_pack(pack, manifest):
     return data
 
 
+class ChildOwner:
+    """Own child groups while a tracked parent holds the pipe's write end.
+
+    The harness passes only the read descriptor. EOF means the tracked parent
+    exited or cancelled. Children never inherit the descriptor. Group cleanup
+    precedes snapshot removal and output publication.
+    """
+
+    def __init__(self, descriptor):
+        if descriptor is None:
+            raise Refusal("tracked parent pipe is required: --parent-fd")
+        if (not stat.S_ISFIFO(os.fstat(descriptor).st_mode) or
+                fcntl.fcntl(descriptor, fcntl.F_GETFL) & os.O_ACCMODE != os.O_RDONLY):
+            raise Refusal("--parent-fd must be the read end of a tracked parent pipe")
+        os.set_inheritable(descriptor, False)
+        self.descriptor = descriptor
+        self.stopped = threading.Event()
+        self.done = threading.Event()
+        self.lock = threading.Lock()
+        self.groups = set()
+        self.handlers = {}
+
+    def check(self):
+        if self.stopped.is_set():
+            raise ChildFailure("tracked parent exited or launch was terminated")
+
+    @staticmethod
+    def kill_group(pid, signum):
+        try:
+            os.killpg(pid, signum)
+        except ProcessLookupError:
+            pass  # This owned group has already exited.
+
+    def cancel(self, signum=signal.SIGTERM):
+        self.stopped.set()
+        # Signal handlers must not acquire a lock interrupted on this thread.
+        for pid in tuple(self.groups):
+            self.kill_group(pid, signum)
+            self.kill_group(pid, signal.SIGKILL)
+
+    def watch(self):
+        while not self.done.is_set():
+            ready, _, _ = select.select([self.descriptor], [], [], 0.1)
+            if ready:
+                # The pipe is a lifetime handle, never a command channel.
+                os.read(self.descriptor, 1)
+                self.cancel()
+                return
+
+    def __enter__(self):
+        if select.select([self.descriptor], [], [], 0)[0]:
+            raise Refusal("tracked parent pipe is closed or contains unexpected data")
+        for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+            self.handlers[signum] = signal.getsignal(signum)
+            signal.signal(signum, lambda number, frame: self.cancel(number))
+        self.watcher = threading.Thread(target=self.watch, daemon=True)
+        self.watcher.start()
+        return self
+
+    @contextlib.contextmanager
+    def child(self, command, **kwargs):
+        with self.lock:
+            self.check()
+            child = subprocess.Popen(command, start_new_session=True, close_fds=True, **kwargs)
+            self.groups.add(child.pid)
+        try:
+            self.check()
+            yield child
+            self.check()
+        finally:
+            with self.lock:
+                self.kill_group(child.pid, signal.SIGKILL)
+                self.groups.remove(child.pid)
+            child.wait()
+
+    def run(self, command, *, input=None, timeout=None, **kwargs):
+        if input is not None:
+            kwargs["stdin"] = subprocess.PIPE
+        with self.child(command, **kwargs) as child:
+            stdout, stderr = child.communicate(input, timeout=timeout)
+            return subprocess.CompletedProcess(command, child.returncode, stdout, stderr)
+
+    def __exit__(self, *exc):
+        self.done.set()
+        self.watcher.join()
+        for signum, handler in self.handlers.items():
+            signal.signal(signum, handler)
+
+
 def specialist_home(args):
-    """Use registered homes and the sync owner's checks, never a normal home."""
+    """Select a registered source home; only the private snapshot is inspected."""
     if args.tool == "claude":
         return None
     key = "SPECIALIST_CODEX_HOME" if args.tool == "codex" else "SPECIALIST_KIMI_CODE_HOME"
     matches = [path for kind, path in sync.homes(args.root, Path.home()) if kind == key]
     if len(matches) != 1:
         raise Refusal(f"{key} requires exactly one registered specialist home")
-    home = matches[0]
-    findings = []
-    sync.specialist_findings(args.root, Path.home(), key, home, findings, args.workdir)
-    if findings:
-        raise Refusal("; ".join(findings))
-    # Presence is only installation preflight; the tool validates credentials.
-    logged_in = (sync.is_file(home / "auth.json") if args.tool == "codex" else
-                 sync.is_dir(home / "credentials") and
-                 any(sync.is_file(path) for path in sync.children(home / "credentials")))
-    if not logged_in:
-        raise Refusal(f"missing {args.tool} login state in registered specialist home: {home}")
+    return matches[0]
+
+
+def snapshot_inputs(args, source_home, staging, env):
+    """Copy once, then verify and execute against the same private inputs."""
+    home = None
+    args.skill_options = []
+    if source_home is not None:
+        home = (staging / "codex-home").resolve()
+        # Dereference aliases: no snapshot file may reopen an original input.
+        shutil.copytree(source_home, home, symlinks=False)
+        home.chmod(0o700)
+        findings = []
+        sync.specialist_findings(args.root, Path.home(), "SPECIALIST_CODEX_HOME",
+                                 home, findings, args.workdir, source_home=source_home)
+        if findings:
+            raise Refusal("; ".join(finding.replace(str(home), str(source_home)) for finding in findings))
+        if not sync.is_file(home / "auth.json"):
+            raise Refusal("missing codex login state in registered specialist home")
+        _, entries, _ = sync.codex_specialist_config(home / "config.toml")
+        relocated = [dict(entry, path=home / entry["path"].relative_to(source_home.resolve()))
+                     for entry in entries if source_home.resolve() in entry["path"].parents]
+        if relocated:
+            entries += relocated
+            value = "[" + ",".join("{path=" + json.dumps(str(entry["path"])) +
+                                    ",enabled=false}" for entry in entries) + "]"
+            args.skill_options = ["-c", "skills.config=" + value]
+        env["CODEX_HOME"] = str(home)
+    if args.mcp_config:
+        snapshot = staging / "mcp.json"
+        snapshot.write_bytes(args.mcp_config.read_bytes())
+        snapshot.chmod(0o600)
+        args.mcp_config = snapshot
     return home
 
 
-def qualification(args, home, env):
+def qualification(args, home, env, owner, source_home):
     """Consume caller-owned section 7.1 evidence; never create a qualification cache.
 
     The operator performing the canary attests its result. The launcher verifies
@@ -85,11 +203,11 @@ def qualification(args, home, env):
     record = json.loads(args.qualification.read_bytes())
     if not isinstance(record, dict):
         raise Refusal("qualification must be an object")
-    version = subprocess.run([args.tool, "--version"], env=env, cwd=args.workdir,
-                             capture_output=True, timeout=10)
+    version = owner.run([args.tool, "--version"], env=env, cwd=args.workdir,
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
     if version.returncode or record.get("version") != version.stdout.decode("utf-8").strip():
         raise Refusal("qualification tool version does not match installed version")
-    expected = {"tool": args.tool, "home": str(home) if home else None,
+    expected = {"tool": args.tool, "home": str(source_home) if source_home else None,
                 "workdir": str(args.workdir), "mode": args.mode, "isolation": True,
                 "config_sha256": digest((home / "config.toml").read_bytes()) if home else None}
     for field, value in expected.items():
@@ -101,17 +219,12 @@ def qualification(args, home, env):
             digest(Path(evidence["path"]).read_bytes()) != evidence.get("sha256")):
         raise Refusal("qualification evidence log is missing or changed")
     if args.mode == "ro":
-        supported = {"host", "tool"} if args.tool == "codex" else {"host"}
-        if record.get("write_prevention") not in supported or record.get("write_test") != {
+        if record.get("write_prevention") != "tool" or record.get("write_test") != {
                 "baseline_allowed": True, "denied": True, "write_absent": True}:
             raise Refusal("read-only write prevention is not qualified; a prompt restriction is insufficient")
-        if record["write_prevention"] == "host":
-            # Permission bits on an owned directory can be changed by a shell.
-            # Support the native read-only filesystem boundary, not chmod or
-            # an assertion that some unrelated host wrapper is still present.
-            if (not hasattr(os, "statvfs") or not hasattr(os, "ST_RDONLY") or
-                    not os.statvfs(args.workdir).f_flag & os.ST_RDONLY):
-                raise Refusal("host write prevention requires a currently read-only filesystem at the checkout")
+    if args.tool == "claude" and record.get("claude_init_contract") != {
+            "skills": "required-empty", "memory_paths": "optional-empty"}:
+        raise Refusal("Claude native initialization contract is not qualified")
     if args.mcp_config and (record.get("mcp_sha256") != digest(args.mcp_config.read_bytes()) or
                             record.get("mcp_isolated") is not True or
                             record.get("mcp_tool_succeeded") is not True):
@@ -143,11 +256,12 @@ def prompt_context(data):
     return result
 
 
-def codex_preflight(args, env, record, log):
+def codex_preflight(args, env, record, log, owner):
     command = ["codex", "debug", "prompt-input", "-c", "project_doc_max_bytes=0",
-               "-s", "read-only" if args.mode == "ro" else "workspace-write", "-C", str(args.workdir)]
-    command.extend(codex_options(args))
-    capture = subprocess.run(command, env=env, cwd=args.workdir, capture_output=True, timeout=30)
+               "-c", "sandbox_mode=" + json.dumps("read-only" if args.mode == "ro" else "workspace-write")]
+    command.extend(codex_options(args, debugger=True))
+    capture = owner.run(command, env=env, cwd=args.workdir, stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE, timeout=30)
     log.write(capture.stdout)
     log.write(capture.stderr)
     log.flush()
@@ -161,17 +275,24 @@ def codex_preflight(args, env, record, log):
         raise Refusal("Codex prompt-input capture is missing or invalid") from error
 
 
-def codex_options(args):
-    options = ["-m", args.model] if args.model else []
+def codex_options(args, debugger=False):
+    options = list(args.skill_options)
+    if args.model:
+        options += ["-c", "model=" + json.dumps(args.model)] if debugger else ["-m", args.model]
     if args.effort:
         options += ["-c", "model_reasoning_effort=" + json.dumps(args.effort)]
     return options
 
 
-def claude_result(command, data, args, env, log):
+def claude_result(command, data, args, env, log, owner):
     """Inspect the initial event while the child runs and stop contaminated launches."""
-    child = subprocess.Popen(command, cwd=args.workdir, env=env, stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE, stderr=log)
+    with owner.child(command, cwd=args.workdir, env=env, stdin=subprocess.PIPE,
+                     stdout=subprocess.PIPE, stderr=log) as child:
+        return claude_stream(child, data, log)
+
+
+def claude_stream(child, data, log):
+    """Validate the qualified native init contract and extract one final result."""
     initialized, result = False, None
     try:
         # Feed stdin concurrently: a large pack must not deadlock stream output.
@@ -198,9 +319,10 @@ def claude_result(command, data, args, env, log):
             if not initialized:
                 if event.get("type") != "system" or event.get("subtype") != "init":
                     raise Refusal("Claude initial isolation event is missing")
-                for field in ("skills", "memory"):
-                    if field not in event or event[field] != []:
-                        raise Refusal(f"Claude initial event has discovered {field} or missing {field} metadata")
+                if event.get("skills") != []:
+                    raise Refusal("Claude initial event has discovered skills or missing skills metadata")
+                if "memory_paths" in event and event["memory_paths"] != []:
+                    raise Refusal("Claude initial event has discovered memory_paths or invalid memory_paths metadata")
                 initialized = True
             elif event.get("type") == "result":
                 if result is not None:
@@ -220,52 +342,35 @@ def claude_result(command, data, args, env, log):
             raise ChildFailure("Claude final text result is missing")
         return result.encode("utf-8")
     finally:
-        if child.poll() is None:
-            child.kill()
+        ChildOwner.kill_group(child.pid, signal.SIGKILL)
         child.wait()
         if "writer" in locals():
             writer.join()
         child.stdout.close()
 
 
-def launch(args, data, home, env, record, log, staging):
+def launch(args, data, env, record, log, staging, owner):
     if args.tool == "codex":
-        codex_preflight(args, env, record, log)
+        codex_preflight(args, env, record, log, owner)
         command = ["codex", "exec", "--skip-git-repo-check", "-c", "project_doc_max_bytes=0",
                    "-s", "read-only" if args.mode == "ro" else "workspace-write", "-C", str(args.workdir),
                    "-o", str(staging / "answer"), *codex_options(args), "-"]
-        child = subprocess.run(command, cwd=args.workdir, env=env, input=data, stdout=log, stderr=log)
+        child = owner.run(command, cwd=args.workdir, env=env, input=data, stdout=log, stderr=log)
         answer = staging / "answer"
     elif args.tool == "claude":
         command = ["claude", "-p", "--safe-mode", "--output-format", "stream-json", "--verbose",
                    "--permission-prompts", "none"]
-        command += (["--disallowedTools", "Edit", "Write", "NotebookEdit"] if args.mode == "ro" else
-                    ["--permission-mode", "acceptEdits"])
+        command += ["--permission-mode", "acceptEdits"]
         if args.model:
             command += ["--model", args.model]
         if args.mcp_config:
             command += ["--mcp-config", str(args.mcp_config)]
         answer = staging / "answer"
-        answer.write_bytes(claude_result(command, data, args, env, log))
+        answer.write_bytes(claude_result(command, data, args, env, log, owner))
         return answer
     else:
-        if record.get("kimi_start") != "empty":
-            raise Refusal("Kimi empty-directory isolation is not qualified")
-        if str(args.workdir) not in data.decode("utf-8"):
-            raise Refusal("Kimi pack must name the absolute checkout for an empty-directory start")
-        # Put startup and the empty skill scan under the registered, neutral home.
-        with tempfile.TemporaryDirectory(prefix="specialist-", dir=home) as empty:
-            skills = Path(empty) / "skills"
-            skills.mkdir()
-            command = ["kimi", "-p", data.decode("utf-8"), "--skills-dir", str(skills)]
-            if args.model:
-                command += ["-m", args.model]
-            answer = staging / "answer"
-            with answer.open("wb") as output:
-                child = subprocess.run(command, cwd=empty, env=env, stdout=output, stderr=log)
+        raise Refusal("Kimi runtime instruction discovery is not disabled or isolated")
     if child.returncode:
-        if args.tool == "kimi":
-            log.write(answer.read_bytes())
         raise ChildFailure(f"child exit status {child.returncode}")
     if not sync.is_file(answer):
         raise ChildFailure("child exited 0 without writing --out")
@@ -280,6 +385,7 @@ def main(argv=None):
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--qualification", type=Path)
+    parser.add_argument("--parent-fd", type=int)
     parser.add_argument("--model")
     parser.add_argument("--effort")
     parser.add_argument("--mcp-config", type=Path)
@@ -299,21 +405,31 @@ def main(argv=None):
             raise Refusal(f"explicit MCP configuration is unsupported for {args.tool}")
         if args.mcp_config:
             args.mcp_config = args.mcp_config.resolve(strict=True)
-        if os.getppid() == 1 or (hasattr(os, "getsid") and os.getsid(0) == os.getpid()):
-            raise Refusal("detached execution refused; use an attached background job")
         data = verified_pack(args.pack, args.manifest)
-        home = specialist_home(args)
+        if args.mode == "ro" and args.tool != "codex":
+            raise Refusal("host-only read-only write prevention cannot cover reachable repository resources")
+        source_home = specialist_home(args)
+        if args.tool == "kimi":
+            findings = []
+            sync.specialist_findings(args.root, Path.home(), "SPECIALIST_KIMI_CODE_HOME",
+                                     source_home, findings, args.workdir)
+            raise Refusal("; ".join([*findings, "Kimi runtime instruction discovery is not disabled or isolated"]))
         env = os.environ.copy()
-        if home:
-            env["CODEX_HOME" if args.tool == "codex" else "KIMI_CODE_HOME"] = str(home)
-        record = qualification(args, home, env)
-        with tempfile.NamedTemporaryFile(prefix=args.out.name + "-", suffix=".log", dir=args.out.parent,
-                                         delete=False) as log:
-            log_path = Path(log.name)
-            with tempfile.TemporaryDirectory(prefix="." + args.out.name + "-", dir=args.out.parent) as temporary:
-                answer = launch(args, data, home, env, record, log, Path(temporary))
-                # Native no-clobber publication: never overwrite an earlier result.
-                os.link(answer, args.out)
+        with ChildOwner(args.parent_fd) as owner:
+            with tempfile.NamedTemporaryFile(prefix=args.out.name + "-", suffix=".log", dir=args.out.parent,
+                                             delete=False) as log:
+                log_path = Path(log.name)
+                with tempfile.TemporaryDirectory(prefix="." + args.out.name + "-", dir=args.out.parent) as temporary:
+                    staging = Path(temporary)
+                    # Native tool homes must be outside project checkouts, even
+                    # when the caller stores its answer inside the checkout.
+                    with tempfile.TemporaryDirectory(prefix="specialist-inputs-") as inputs:
+                        home = snapshot_inputs(args, source_home, Path(inputs), env)
+                        record = qualification(args, home, env, owner, source_home)
+                        answer = launch(args, data, env, record, log, staging, owner)
+                        owner.check()
+                        # Native no-clobber publication: never overwrite an earlier result.
+                        os.link(answer, args.out)
         print(f"specialist: succeeded; pack {digest(data)}; log {log_path}; {time.monotonic() - started:.3f}s", file=sys.stderr)
         return 0
     except ChildFailure as error:
