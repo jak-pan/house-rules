@@ -709,6 +709,47 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
             self.assertLessEqual(len(result) + overhead, prepare.CODEX_LIMIT)
             self.assertIn("Size guard: trimmed R1 (spec)", result)
 
+    def test_codex_panel_compiles_each_requested_path_once_before_publication(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        summary.write_text("Review literal @rule house-rules:missing.md\nUnicode: café\n")
+        stub = self.binaries / "codex"
+        stub.write_text("#!/usr/bin/env python3\nimport pathlib, sys\n"
+                        "args = sys.argv[1:]\n"
+                        "pathlib.Path(args[args.index('-o') + 1]).with_suffix('.sent').write_bytes(sys.stdin.buffer.read())\n"
+                        "pathlib.Path(args[args.index('-o') + 1]).write_text('VERDICT: APPROVE')\n")
+        stub.chmod(0o755)
+        real_git = shutil.which("git")
+        log = self.root / "compilation.log"
+        wrapper = self.binaries / "git"
+        wrapper.write_text("#!" + sys.executable + "\nimport json, os, sys\n"
+                           f"with open({str(log)!r}, 'a') as log: log.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+                           f"os.execv({real_git!r}, ['git', *sys.argv[1:]])\n")
+        wrapper.chmod(0o755)
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "single-compile",
+                                 str(self.repo), str(summary), "generalist-a"],
+                                capture_output=True, text=True, timeout=10, env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        panel = output / "single-compile"
+        data = (panel / "generalist-a.pack/pack.txt").read_bytes()
+        manifest = json.loads((panel / "generalist-a.pack/manifest.json").read_text())
+        self.assertEqual(data, (panel / "generalist-a.sent").read_bytes())
+        self.assertIn(summary.read_bytes(), data)
+        self.assertEqual(manifest["pack"], {"bytes": len(data), "sha256": __import__('hashlib').sha256(data).hexdigest()})
+        task = manifest["parts"][-1]
+        task_bytes = data[-task["bytes"]:]
+        self.assertEqual(task["source"], "review-panel-generalist-a")
+        self.assertEqual(task["sha256"], __import__('hashlib').sha256(task_bytes).hexdigest())
+        calls = [json.loads(line) for line in log.read_text().splitlines()]
+        lookups = [(c[c.index("-C") + 1], c[-1]) for c in calls
+                   if "ls-tree" in c and c[-1].startswith(":(literal)")]
+        expected = {(env["REVIEW_HOUSE_RULES_REPO"], ":(literal)" + p)
+                    for p in ["skills/pr-ready/scripts/prompt.py", *[e["path"] for e in manifest["files"]]]}
+        expected |= {(str(self.repo), ":(literal)" + p) for p in ("AGENTS.md", ".agents/rules.md")}
+        self.assertEqual(len(lookups), len(expected), lookups)
+        self.assertEqual(set(lookups), expected)
+        self.assertEqual(sum("--batch" in c for c in calls), 1, calls)
+
     def test_panel_size_budget_includes_pinned_rules_and_target_rules(self):
         summary, output, env = self.panel_fixture()
         env["REVIEW_BASE"] = "origin/trunk"
@@ -729,7 +770,8 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
         source = Path(env["REVIEW_HOUSE_RULES_REPO"])
         compiler = source / "skills/pr-ready/scripts/prompt.py"
         compiler.write_text(compiler.read_text().replace(
-            "        # Close and check every Git reader", "        if args.tasks:\n            output += b'x' * 800_001\n        # Close and check every Git reader"))
+            '    manifest["pack"] = fingerprint(pack)',
+            '    if tasks:\n        pack += b"x" * 800_001\n    manifest["pack"] = fingerprint(pack)'))
         self.commit(source, "Inject oversized final prompt")
         env["REVIEW_HOUSE_RULES_REV"] = self.git(source, "rev-parse", "HEAD")
         result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "final-size",

@@ -2034,6 +2034,36 @@ class CommitPackTest(unittest.TestCase):
         rev = self.commit(self.repo)
         self.bad(self.run_pack("--session", rev=rev), "missing")
 
+    def test_legacy_session_preserves_explicit_rule_entry_and_lists_it(self):
+        self.write(self.repo, "rules/entry.md", "Requested entry\n@rule house-rules:rules/writing.md\n")
+        rev = self.commit(self.repo)
+        for pin in ([], ["--rev", rev]):
+            for listing in ([], ["--list"]):
+                with self.subTest(pin=pin, listing=listing):
+                    result = subprocess.run([
+                        "/usr/bin/python3", "-B", str(self.script), *pin,
+                        "--session", *listing, "rules/entry.md",
+                    ], capture_output=True, timeout=5)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    expected = (b"rules/entry.md\n" if listing else
+                                b"Loading path: session; shared rules come from the live House Rules index.\n\nRequested entry\n")
+                    self.assertEqual(result.stdout, expected)
+
+    def test_list_form_loading_instructions_are_refused_without_publication(self):
+        for index, prefix in enumerate(("- ", "* ", "+ ", "1. ", "  2) ")):
+            for has_rules in (False, True):
+                with self.subTest(prefix=prefix, has_rules=has_rules):
+                    self.write(self.target, "AGENTS.md", prefix +
+                               "Base rules: [House Rules](https://example.invalid/house-rules). Read and follow them first.\n")
+                    rules = self.target / ".agents/rules.md"
+                    rules.unlink(missing_ok=True)
+                    if has_rules:
+                        self.write(self.target, ".agents/rules.md", "Local requirement\n")
+                    self.commit(self.target)
+                    dest = self.root / f"refused-list-pack-{index}-{has_rules}"
+                    self.bad(self.run_pack("--out", dest, target=True), "unsupported House Rules loader")
+                    self.assertFalse(dest.exists())
+
     def test_every_actual_role_has_no_repeats_in_either_shared_mode(self):
         for folder in ("prompts", "rules"):
             shutil.rmtree(self.repo / folder)

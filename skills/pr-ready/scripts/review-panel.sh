@@ -103,30 +103,39 @@ run_one() {
   cfg=$(family_cfg "$fam")
   [ -n "$cfg" ] || { echo "$r failed: family $fam not configured" >> "$out/summary.txt"; return 1; }
   read -r cli model tier effort <<<"$cfg"; [ "$tier" = - ] && tier=
-  local compile_args=(--repo "$rules_repo" --rev "$rules_rev" --role reviewer --lens "$r" --target "$dir")
-  [ "$session_mode" -eq 0 ] || compile_args+=(--session)
   local prepare_args=(review "$dir" --context-only --lens "$r" --cli "$cli" --summary "$base" --base "$resolved_base" --no-fetch)
-  if [ "$cli" = codex ]; then
-    local compiled_chars
-    # Measure the pinned rule parts through the compiler; reserve the task separator too.
-    if ! compiled_chars=$(set -o pipefail; /usr/bin/python3 -B "$out/compiler.py" "${compile_args[@]}" |
-        /usr/bin/python3 -B -c 'import sys; print(len(sys.stdin.buffer.read().decode("utf-8")) + 1)' \
-        ) 2> "$out/$r.prepare.err"; then
-      cat "$out/$r.prepare.err" >&2
-      echo "$r failed: compiled parts preparation (see $r.prepare.err)" >> "$out/summary.txt"
-      return 1
-    fi
-    prepare_args+=(--compiled-chars "$compiled_chars")
-  fi
-  if ! "$here/prepare.py" "${prepare_args[@]}" > "$out/$r.task" 2> "$out/$r.prepare.err"; then
+  # Keep one compilation in memory for both task budgeting and final publication.
+  if ! /usr/bin/python3 -B - "$out" "$rules_repo" "$rules_rev" "$dir" "$r" "$session_mode" "$cli" \
+      "$here/prepare.py" "${prepare_args[@]}" 2> "$out/$r.prepare.err" <<'PY'
+from pathlib import Path
+import subprocess
+import sys
+
+out, repo, rev, checkout, reviewer, session, cli, preparer, *args = sys.argv[1:]
+sys.path.insert(0, out)
+from compiler import Commit, PromptError, append_tasks, build_pack, publish
+
+try:
+    with Commit(repo, rev) as source, Commit(checkout, "HEAD") as target:
+        pack, manifest = build_pack(source, role="reviewer", lens=reviewer, target=target,
+                                    omit_shared_rules=session == "1")
+    # Check Git readers before preparing context or publishing any artifacts.
+    if cli == "codex":
+        args += ["--compiled-chars", str(len(pack.decode("utf-8")) + 1)]
+    task = Path(out) / (reviewer + ".task")
+    with task.open("wb") as stream:
+        result = subprocess.run([preparer, *args], stdout=stream)
+    if result.returncode:
+        sys.exit(2)
+    pack, manifest = append_tasks(pack, manifest, [(task, "review-panel-" + reviewer)])
+    publish(Path(out) / (reviewer + ".pack"), pack, manifest)
+except (PromptError, OSError, UnicodeError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
+    print("prompt: " + " ".join(str(exc).splitlines()), file=sys.stderr)
+    sys.exit(2)
+PY
+  then
     cat "$out/$r.prepare.err" >&2
-    echo "$r failed: context preparation (see $r.prepare.err)" >> "$out/summary.txt"
-    return 1
-  fi
-  compile_args+=(--task "$out/$r.task" --task-source "review-panel-$r" --out "$out/$r.pack")
-  if ! /usr/bin/python3 -B "$out/compiler.py" "${compile_args[@]}" 2>> "$out/$r.prepare.err"; then
-    cat "$out/$r.prepare.err" >&2
-    echo "$r failed: prompt compilation (see $r.prepare.err)" >> "$out/summary.txt"
+    echo "$r failed: context preparation or prompt compilation (see $r.prepare.err)" >> "$out/summary.txt"
     return 1
   fi
   if ! "$here/prepare.py" check-prompt "$out/$r.pack/pack.txt" --cli "$cli" 2>> "$out/$r.prepare.err"; then

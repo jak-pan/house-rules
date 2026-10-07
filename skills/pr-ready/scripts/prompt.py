@@ -163,14 +163,14 @@ class Expansion:
         self.shared_declared = False
         self.part = 1
 
-    def visit(self, name, stack=()):
+    def visit(self, name, stack=(), *, entry_file=False):
         name = relative_path(name)
         if name in stack:
             raise PromptError("include cycle: " + name)
         data, entry = self.source.read(name)
         if name.startswith("rules/"):
             self.shared_declared = True
-            if self.session:
+            if self.session and not entry_file:
                 if name not in self.omitted:
                     self.omitted.append(name)
                 return ""
@@ -195,7 +195,7 @@ class Expansion:
 
     def expand(self, text=None, file=None):
         """Render legacy input and its loading metadata through the shared owner."""
-        result = self.visit(file) if file is not None else self.render(text)
+        result = self.visit(file, entry_file=True) if file is not None else self.render(text)
         if self.shared_declared or any(e["path"].startswith("prompts/roles/") for e in self.files):
             result = self.loading() + result
         return result
@@ -249,7 +249,7 @@ def loader(text):
             (re.search(r"(?m)^#+\s+Shared operating foundation \(House Rules\)\s*$", text) and
              re.search(r"(?i)At\s+session\s+start\s+and\s+after\s+every\s+context\s+compaction\s+or\s+reset,\s+read\s+`[^`]+`", text)) or
             re.search(r"This repository is managed by \[House Rules\]", text) or
-            re.search(r"(?ims)^Base\s+rules:\s*\[House Rules\].*Read\s+and\s+follow\s+them\s+first\.", text) or
+            re.search(r"(?ims)^[ \t]*(?:(?:[-+*]|[0-9]+[.)])[ \t]+)?Base\s+rules:\s*\[House Rules\].*Read\s+and\s+follow\s+them\s+first\.", text) or
             re.search(r"(?i)\bRead\s+(?:and\s+follow\s+)?House Rules\s+`[^`]+`", text)):
         raise PromptError("AGENTS.md has an unsupported House Rules loader; " + MIGRATE)
     return None
@@ -324,15 +324,21 @@ def build_pack(source, *, role=None, lens=None, includes=(), tasks=(), target=No
         data, manifest["target"] = target_rules(target)
         parts.append(data)
         manifest["parts"].append({"kind": "target", "path": manifest["target"].get("path")})
+    pack = b"\n".join(ending(p) for p in parts if p)
+    manifest.update(files=expansion.files, skipped_repeats=expansion.repeats,
+                    omitted_shared_rules=expansion.omitted)
+    return append_tasks(pack, manifest, tasks)
+
+
+def append_tasks(pack, manifest, tasks):
+    """Finish a compiled pack with literal tasks, without rereading pinned inputs."""
     for file, name in tasks:
         data = ending(Path(file).read_bytes())
         data.decode("utf-8")
         manifest["parts"].append({"kind": "task", "source": logical_source(name), **fingerprint(data)})
         if data:
-            parts.append(data)
-    pack = b"\n".join(ending(p) for p in parts if p)
-    manifest.update(files=expansion.files, skipped_repeats=expansion.repeats,
-                    omitted_shared_rules=expansion.omitted, pack=fingerprint(pack))
+            pack += b"\n" + data
+    manifest["pack"] = fingerprint(pack)
     return pack, manifest
 
 
