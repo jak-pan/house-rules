@@ -250,7 +250,8 @@ def loader(text):
              re.search(r"(?i)At\s+session\s+start\s+and\s+after\s+every\s+context\s+compaction\s+or\s+reset,\s+read\s+`[^`]+`", text)) or
             re.search(r"This repository is managed by \[House Rules\]", text) or
             re.search(r"(?ims)^[ \t]*(?:(?:[-+*]|[0-9]+[.)])[ \t]+)?Base\s+rules:\s*\[House Rules\].*Read\s+and\s+follow\s+them\s+first\.", text) or
-            re.search(r"(?i)\bRead\s+(?:and\s+follow\s+)?House Rules\s+`[^`]+`", text)):
+            re.search(r"(?i)\bRead\s+(?:and\s+follow\s+)?(?:\[House\s+Rules\]\([^)]+\)|"
+                      r"House\s+Rules\s+(?:`[^`]+`|from\s+\S+))", text)):
         raise PromptError("AGENTS.md has an unsupported House Rules loader; " + MIGRATE)
     return None
 

@@ -150,13 +150,20 @@ PY
   t0=$(date +%s)
   # Transient provider errors (capacity, overload, rate limits) are retried twice, 60 s apart;
   # any other failure fails the reviewer at once.
-  local attempt
+  local attempt logs input_hashes current_hashes
+  input_hashes=$(shasum -a 256 "$out/$r.pack/pack.txt" "$out/$r.pack/manifest.json") || return 1
   for attempt in 1 2 3; do
+    current_hashes=$(shasum -a 256 "$out/$r.pack/pack.txt" "$out/$r.pack/manifest.json") || return 1
+    if [ "$current_hashes" != "$input_hashes" ]; then
+      echo "$r failed: pack or manifest changed before attempt $attempt; attempts=$((attempt - 1))" >> "$out/summary.txt"
+      return 1
+    fi
+    logs=$out/$r.attempt-$attempt
     cli_status=0
     case $cli in
       codex) codex exec --json --skip-git-repo-check -m "$model" -c model_reasoning_effort="${effort:-high}" \
-               ${tier:+-c service_tier="\"$tier\""} -s "$sandbox" -C "$dir" -o "$out/$r.md" - < "$prompt" \
-               > "$out/$r.jsonl" 2> "$out/$r.err" || cli_status=$? ;;
+               ${tier:+-c service_tier="\"$tier\""} -s "$sandbox" -C "$dir" -o "$logs.md" - < "$prompt" \
+               > "$logs.jsonl" 2> "$logs.err" || cli_status=$? ;;
       # Grok has no read-only sandbox that starts on every host, so the reviewer gets only read tools:
     # no shell (which could reach authenticated gh/git), no file writes, no MCP. Names are Grok's runtime
     # tool names (checked in the session's tool_definitions.json), not the older documented ones.
@@ -177,16 +184,16 @@ for section in ("MCP Servers", "Hooks"):
     for line in m.group(2).splitlines():
         if "(none)" not in line and "[disabled]" not in line:
             print(f"enabled {section}: {line.strip()}", file=sys.stderr); ok = False
-sys.exit(0 if ok else 1)' 2>> "$out/$r.err"; then
-             echo "$r failed: Grok would load an enabled hook or MCP server (see $r.err)" >> "$out/summary.txt"; return 1
+sys.exit(0 if ok else 1)' 2>> "$logs.err"; then
+             echo "$r failed: Grok would load an enabled hook or MCP server (see $r.attempt-$attempt.err); attempts=$attempt" >> "$out/summary.txt"; return 1
            fi
            (cd "$neutral" && env GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_SKILLS_ENABLED=0 GROK_CLAUDE_RULES_ENABLED=0 \
                GROK_CLAUDE_MCPS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 GROK_CURSOR_AGENTS_ENABLED=0 \
                GROK_CURSOR_SKILLS_ENABLED=0 GROK_CURSOR_RULES_ENABLED=0 \
-               grok -m "$model" --reasoning-effort "${effort:-high}" --tools read_file,list_dir,grep --output-format json --always-approve --disable-web-search --prompt-file "$prompt" > "$out/$r.json" 2> "$out/$r.err") || cli_status=$?
+               grok -m "$model" --reasoning-effort "${effort:-high}" --tools read_file,list_dir,grep --output-format json --always-approve --disable-web-search --prompt-file "$prompt" > "$logs.json" 2>> "$logs.err") || cli_status=$?
            rmdir "$neutral" 2>/dev/null
              if [ "$cli_status" -eq 0 ]; then
-               "$here/grok_final.py" "$out/$r.json" > "$out/$r.md" 2>> "$out/$r.err" || cli_status=$?
+               "$here/grok_final.py" "$logs.json" > "$logs.md" 2>> "$logs.err" || cli_status=$?
              fi ;;
       kimi)  # Python preserves the pack's trailing newlines in the CLI argument.
              /usr/bin/python3 -B -c '
@@ -195,23 +202,24 @@ import subprocess, sys
 checkout, model, prompt = sys.argv[1:]
 text = Path(prompt).read_bytes().decode("utf-8")
 sys.exit(subprocess.run(["kimi", "-m", model, "-p", text], cwd=checkout).returncode)
-' "$dir" "$model" "$prompt" > "$out/$r.md" 2> "$out/$r.err" || cli_status=$? ;;
+' "$dir" "$model" "$prompt" > "$logs.md" 2> "$logs.err" || cli_status=$? ;;
       *)     echo "$r failed: unknown cli $cli" >> "$out/summary.txt"; return 1 ;;
     esac
-    [ "$cli_status" -ne 0 ] && [ $attempt -lt 3 ] && cat "$out/$r.err" "$out/$r.jsonl" "$out/$r.json" 2>/dev/null |
+    [ "$cli_status" -ne 0 ] && [ $attempt -lt 3 ] && cat "$logs.err" "$logs.jsonl" "$logs.json" 2>/dev/null |
       grep -q -i -E 'at capacity|overloaded|rate.?limit|too many requests|\b429\b|\b503\b' || break
     echo "$r: transient provider error on attempt $attempt; retrying in 60 s" >> "$out/summary.txt"
     sleep 60
   done
+  ln -s "$r.attempt-$attempt.md" "$out/$r.md" || return 1
   if [ "$cli_status" -ne 0 ]; then
-    echo "$r failed: reviewer CLI (exit $cli_status; see $r.err)" >> "$out/summary.txt"
+    echo "$r failed: reviewer CLI (exit $cli_status; see $r.attempt-$attempt.err); attempts=$attempt" >> "$out/summary.txt"
     return 1
   fi
-  if ! verdict=$("$here/verdict.py" "$out/$r.md" 2>> "$out/$r.err"); then
-    echo "$r failed: reviewer report missing valid VERDICT: APPROVE or VERDICT: REQUEST_CHANGES token (see $r.md and $r.err)" >> "$out/summary.txt"
+  if ! verdict=$("$here/verdict.py" "$logs.md" 2>> "$logs.err"); then
+    echo "$r failed: reviewer report missing valid VERDICT: APPROVE or VERDICT: REQUEST_CHANGES token (see $r.md and $r.attempt-$attempt.err); attempts=$attempt" >> "$out/summary.txt"
     return 1
   fi
-  echo "$r $cli/$model wall=$(( $(date +%s) - t0 ))s verdict=$verdict" >> "$out/summary.txt"
+  echo "$r $cli/$model wall=$(( $(date +%s) - t0 ))s attempts=$attempt verdict=$verdict" >> "$out/summary.txt"
 }
 
 "$here/review-panel-models.py" --check >&2 || true   # notice only: newer models available

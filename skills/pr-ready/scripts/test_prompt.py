@@ -2049,6 +2049,25 @@ class CommitPackTest(unittest.TestCase):
                                 b"Loading path: session; shared rules come from the live House Rules index.\n\nRequested entry\n")
                     self.assertEqual(result.stdout, expected)
 
+    def test_explicit_noncanonical_read_loaders_are_refused_without_publication(self):
+        for index, instruction in enumerate((
+                "Read [House Rules](/opt/house-rules/INDEX.md)",
+                "Read House Rules from /opt/house-rules/INDEX.md")):
+            for has_rules in (False, True):
+                with self.subTest(instruction=instruction, has_rules=has_rules):
+                    self.write(self.target, "AGENTS.md", instruction + "\n")
+                    rules = self.target / ".agents/rules.md"
+                    rules.unlink(missing_ok=True)
+                    if has_rules:
+                        self.write(self.target, ".agents/rules.md", "Local requirement\n")
+                    self.commit(self.target)
+                    dest = self.root / f"refused-read-pack-{index}-{has_rules}"
+                    result = self.run_pack("--out", dest, target=True)
+                    self.bad(result, "unsupported House Rules loader")
+                    self.assertIn(b"move local requirements to .agents/rules.md", result.stderr)
+                    self.assertIn(b"restore the canonical House Rules pointer in AGENTS.md", result.stderr)
+                    self.assertFalse(dest.exists())
+
     def test_list_form_loading_instructions_are_refused_without_publication(self):
         for index, prefix in enumerate(("- ", "* ", "+ ", "1. ", "  2) ")):
             for has_rules in (False, True):

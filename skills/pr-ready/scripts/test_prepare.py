@@ -685,7 +685,7 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
             data = (pack / "pack.txt").read_bytes()
             manifest = json.loads((pack / "manifest.json").read_text())
             self.assertEqual(manifest["house_rules_revision"], env["REVIEW_HOUSE_RULES_REV"])
-            self.assertEqual(data, (output / round_name / "generalist-a.sent").read_bytes())
+            self.assertEqual(data, (output / round_name / "generalist-a.attempt-1.sent").read_bytes())
             self.assertEqual(manifest["pack"]["sha256"], __import__('hashlib').sha256(data).hexdigest())
             self.assertNotIn(b"DIRTY PANEL CANARY", data)
             self.assertIn(b"Repository rules: this repository has no rules of its own.", data)
@@ -733,7 +733,7 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
         panel = output / "single-compile"
         data = (panel / "generalist-a.pack/pack.txt").read_bytes()
         manifest = json.loads((panel / "generalist-a.pack/manifest.json").read_text())
-        self.assertEqual(data, (panel / "generalist-a.sent").read_bytes())
+        self.assertEqual(data, (panel / "generalist-a.attempt-1.sent").read_bytes())
         self.assertIn(summary.read_bytes(), data)
         self.assertEqual(manifest["pack"], {"bytes": len(data), "sha256": __import__('hashlib').sha256(data).hexdigest()})
         task = manifest["parts"][-1]
@@ -762,7 +762,7 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("context preparation", (output / "rules-size/summary.txt").read_text())
         self.assertIn("800,000", (output / "rules-size/generalist-a.prepare.err").read_text())
-        self.assertFalse((output / "rules-size/generalist-a.err").exists())
+        self.assertFalse((output / "rules-size/generalist-a.attempt-1.err").exists())
 
     def test_panel_checks_complete_prompt_before_dispatch(self):
         summary, output, env = self.panel_fixture()
@@ -780,7 +780,7 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("complete prompt size", (output / "final-size/summary.txt").read_text())
         self.assertIn("800,000", (output / "final-size/generalist-a.prepare.err").read_text())
-        self.assertFalse((output / "final-size/generalist-a.err").exists())
+        self.assertFalse((output / "final-size/generalist-a.attempt-1.err").exists())
 
     def panel_fixture(self, summary_exists=True):
         self.panel_source()
@@ -818,6 +818,99 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
         self.assertIn("not found: PT999", prompt)
         notice = next(line for line in prompt.splitlines() if line.startswith("Size guard:"))
         self.assertIn("generalist-a: " + notice, (output / "round" / "summary.txt").read_text())
+
+    def test_panel_provider_retry_preserves_each_attempt_and_unchanged_inputs(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        env["TMPDIR"] = str(self.root)
+        env["TEST_RETRY_ROOT"] = str(self.root)
+        Path(env["REVIEW_PANEL_CONF"]).write_text(
+            "a = codex test-model - high\nb = grok test-model - high\nc = kimi test-model\n")
+        sleep = self.binaries / "sleep"
+        sleep.write_text("#!/bin/sh\nexit 0\n")
+        sleep.chmod(0o755)
+        stub = "#!" + sys.executable + "\n" + r'''import hashlib, json, os, pathlib, sys
+cli = pathlib.Path(sys.argv[0]).name
+args = sys.argv[1:]
+if cli == 'grok' and args[:1] == ['inspect']:
+    print('  MCP Servers (0)\n  └ (none)\n\n  Hooks (0)\n  └ (none)\n')
+    sys.exit(0)
+root = pathlib.Path(os.environ['TEST_RETRY_ROOT'])
+counter = root / (cli + '.count')
+attempt = int(counter.read_text()) + 1 if counter.exists() else 1
+counter.write_text(str(attempt))
+family = {'codex': 'a', 'grok': 'b', 'kimi': 'c'}[cli]
+pack = root / 'output' / family / ('generalist-' + family + '.pack')
+data = (sys.stdin.buffer.read() if cli == 'codex' else
+        pathlib.Path(args[args.index('--prompt-file') + 1]).read_bytes() if cli == 'grok' else
+        args[args.index('-p') + 1].encode())
+record = {'sent': hashlib.sha256(data).hexdigest(),
+          'pack': hashlib.sha256((pack / 'pack.txt').read_bytes()).hexdigest(),
+          'manifest': hashlib.sha256((pack / 'manifest.json').read_bytes()).hexdigest()}
+(root / (cli + f'.attempt-{attempt}.inputs')).write_text(json.dumps(record))
+report = f'Attempt {attempt}\n' + ('partial\n' if attempt == 1 else 'VERDICT: APPROVE\n')
+if cli == 'codex':
+    pathlib.Path(args[args.index('-o') + 1]).write_text(report)
+    print(json.dumps({'attempt': attempt}))
+elif cli == 'grok':
+    print(json.dumps({'text': report}))
+else:
+    print(report, end='')
+print(f'Attempt {attempt}: ' + ('at capacity' if attempt == 1 else 'complete'), file=sys.stderr)
+sys.exit(99 if attempt == 1 else 0)
+'''
+        for cli in ("codex", "grok", "kimi"):
+            (self.binaries / cli).write_text(stub)
+        for family, cli in (("a", "codex"), ("b", "grok"), ("c", "kimi")):
+            with self.subTest(cli=cli):
+                result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), family,
+                                         str(self.repo), str(summary), "generalist-" + family],
+                                        capture_output=True, text=True, timeout=10, env=env)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                panel = output / family
+                reviewer = "generalist-" + family
+                for attempt in (1, 2):
+                    prefix = panel / f"{reviewer}.attempt-{attempt}"
+                    self.assertTrue(Path(str(prefix) + ".err").exists(), f"missing attempt {attempt} log")
+                    self.assertIn(f"Attempt {attempt}:", Path(str(prefix) + ".err").read_text())
+                    suffix = {"codex": ".jsonl", "grok": ".json", "kimi": ".md"}[cli]
+                    self.assertIn(str(attempt), Path(str(prefix) + suffix).read_text())
+                    if cli == "codex":
+                        self.assertIn(f"Attempt {attempt}", Path(str(prefix) + ".md").read_text())
+                inputs = [json.loads((self.root / f"{cli}.attempt-{n}.inputs").read_text()) for n in (1, 2)]
+                self.assertEqual(inputs[0], inputs[1])
+                self.assertEqual(inputs[0]["sent"], inputs[0]["pack"])
+                self.assertIn("attempts=2", (panel / "summary.txt").read_text())
+                self.assertIn("VERDICT: APPROVE", (panel / (reviewer + ".md")).read_text())
+
+    def test_panel_provider_retry_refuses_changed_pack_or_manifest(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        sleep = self.binaries / "sleep"
+        sleep.write_text("#!/bin/sh\nexit 0\n")
+        sleep.chmod(0o755)
+        stub = self.binaries / "codex"
+        stub.write_text("#!" + sys.executable + "\n" + r'''import os, pathlib, sys
+marker = pathlib.Path(os.environ['TEST_RETRY_MARKER'])
+if marker.exists():
+    pathlib.Path(sys.argv[sys.argv.index('-o') + 1]).write_text('VERDICT: APPROVE')
+    sys.exit(0)
+marker.write_text('first attempt')
+pathlib.Path(os.environ['TEST_RETRY_MUTATE']).write_text('changed input')
+print('at capacity', file=sys.stderr)
+sys.exit(99)
+''')
+        for name in ("pack.txt", "manifest.json"):
+            with self.subTest(input=name):
+                panel = output / name
+                env["TEST_RETRY_MARKER"] = str(self.root / (name + ".marker"))
+                env["TEST_RETRY_MUTATE"] = str(panel / "generalist-a.pack" / name)
+                result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), name,
+                                         str(self.repo), str(summary), "generalist-a"],
+                                        capture_output=True, text=True, timeout=10, env=env)
+                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn("pack or manifest changed", (panel / "summary.txt").read_text())
+                self.assertFalse((panel / "generalist-a.attempt-2.md").exists())
 
     def test_panel_reviewer_cli_failure_returns_nonzero(self):
         summary, output, env = self.panel_fixture()
@@ -1075,7 +1168,7 @@ else:
         self.assertIn("800,000", (output / "round" / "generalist-a.prepare.err").read_text())
         self.assertFalse((output / "round" / "generalist-a.prompt").exists())
         self.assertFalse((output / "round" / "generalist-a.pack").exists())
-        self.assertFalse((output / "round" / "generalist-a.err").exists())
+        self.assertFalse((output / "round" / "generalist-a.attempt-1.err").exists())
 
     def test_panel_resolves_and_fetches_once(self):
         summary, output, env = self.panel_fixture(summary_exists=False)
