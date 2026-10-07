@@ -558,7 +558,8 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
             with self.subTest(command=command), mock.patch.object(prepare, "update") as update:
                 code, out, err = self.invoke(command, str(self.repo))
                 self.assertEqual(code, 0, err)
-                self.assertIn("origin/trunk...HEAD", out)
+                head = self.git(self.repo, "rev-parse", "HEAD") if command == "review" else "HEAD"
+                self.assertIn(f"origin/trunk...{head}", out)
                 self.assertIn("cached", err)
                 update.assert_not_called()
 
@@ -572,7 +573,8 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
             with self.subTest(command=command), mock.patch.object(prepare, "run", side_effect=fail_fetch), mock.patch.object(prepare, "update") as update:
                 code, out, err = self.invoke(command, str(self.repo), "--base", "origin/trunk")
                 self.assertEqual(code, 0, err)
-                self.assertIn("origin/trunk...HEAD", out)
+                head = self.git(self.repo, "rev-parse", "HEAD") if command == "review" else "HEAD"
+                self.assertIn(f"origin/trunk...{head}", out)
                 self.assertIn("cached", err)
                 update.assert_not_called()
 
@@ -670,6 +672,61 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
         self.assertIn(summary.read_bytes(), (pack / "pack.txt").read_bytes())
         self.assertEqual(json.loads((pack / "manifest.json").read_text())["house_rules_revision"],
                          env["REVIEW_HOUSE_RULES_REV"])
+
+    def test_panel_keeps_first_commit_when_head_moves_before_context(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        self.write(self.repo, "AGENTS.md", "FIRST RULES\n")
+        self.write(self.repo, "docs/spec.md", "FIRST SPEC\n")
+        self.write(self.repo, "src/core.py", "first_change = 2\n")
+        self.commit(self.repo, "First title\n\nDesign: docs/spec.md")
+        first = self.git(self.repo, "rev-parse", "HEAD")
+        real_python = shutil.which("python3")
+        real_git = shutil.which("git")
+        # The panel invokes the preparer only after target-rule compilation.
+        # Move HEAD at that boundary without sleeps or concurrent timing.
+        wrapper = self.binaries / "python3"
+        wrapper.write_text("#!" + sys.executable + "\n" +
+                          "import os, pathlib, subprocess, sys\n" +
+                          f"preparer = {str(SCRIPT)!r}\n" +
+                          "args = sys.argv[1:]\n" +
+                          "if preparer in args and args[args.index(preparer) + 1] == 'review':\n" +
+                          f"    repo = pathlib.Path({str(self.repo)!r})\n" +
+                          "    for path, body in [('AGENTS.md', 'SECOND RULES\\n'), " +
+                          "('docs/spec.md', 'SECOND SPEC\\n'), ('src/core.py', 'second_change = 3\\n')]:\n" +
+                          "        (repo / path).write_text(body)\n" +
+                          f"    subprocess.run([{real_git!r}, '-C', str(repo), 'add', " +
+                          "'AGENTS.md', 'docs/spec.md', 'src/core.py'], check=True, timeout=5)\n" +
+                          f"    subprocess.run([{real_git!r}, '-C', str(repo), 'commit', '-m', " +
+                          "'Second title\\n\\nDesign: docs/spec.md'], check=True, timeout=5, " +
+                          "stdout=subprocess.DEVNULL)\n" +
+                          f"os.execv({real_python!r}, [{real_python!r}, *args])\n")
+        wrapper.chmod(0o755)
+        stub = self.binaries / "codex"
+        stub.write_text("#!/bin/sh\n"
+                        "while [ \"$1\" != '-o' ]; do shift; done\n"
+                        "printf 'VERDICT: APPROVE\\n' > \"$2\"\n"
+                        "cat > /dev/null\n")
+        stub.chmod(0o755)
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "moving-head",
+                                 str(self.repo), str(summary), "generalist-a"],
+                                capture_output=True, text=True, timeout=10, env=env)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        second = self.git(self.repo, "rev-parse", "HEAD")
+        self.assertNotEqual(first, second)
+        pack = output / "moving-head" / "generalist-a.pack"
+        manifest = json.loads((pack / "manifest.json").read_text())
+        self.assertEqual(manifest["target"]["commit"], first)
+        prompt = (pack / "pack.txt").read_text()
+        self.assertIn("FIRST RULES", prompt)
+        self.assertIn(f"Range: `origin/trunk...{first}`; head: `{first}`", prompt)
+        self.assertIn("Title: First title", prompt)
+        self.assertIn("FIRST SPEC", prompt)
+        self.assertIn("+first_change = 2", prompt)
+        self.assertIn("Commit message " + first[:12], prompt)
+        self.assertNotIn(second, prompt)
+        for canary in ("SECOND RULES", "SECOND SPEC", "Second title", "second_change"):
+            self.assertNotIn(canary, prompt)
 
     def test_panel_prompts_come_from_named_commit_and_manifest_matches_sent_bytes(self):
         summary, output, env = self.panel_fixture()

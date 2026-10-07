@@ -507,11 +507,14 @@ def lens_settings(name, config=None):
     return settings[name]
 
 
-def review(repo, args, base, remote):
-    rng, head = f"{base}...HEAD", git(repo, "rev-parse", "HEAD").strip()
+def review(repo, args, base, remote, head=None):
+    if head is None:
+        head = git(repo, "rev-parse", "--verify", "--end-of-options",
+                   (getattr(args, "rev", None) or "HEAD") + "^{commit}").strip()
+    rng = f"{base}...{head}"
     url = web_remote(repo, remote)
     pr, issues, comments, pr_link, texts, missing, notices = pr_context(repo, args, url)
-    log = git(repo, "log", "--reverse", "--format=%H%x00%B%x00", f"{base}..HEAD").split("\0")
+    log = git(repo, "log", "--reverse", "--format=%H%x00%B%x00", f"{base}..{head}").split("\0")
     commits = [(log[n].strip(), log[n + 1].strip()) for n in range(0, len(log) - 1, 2)]
     summary = Path(args.summary).read_text() if args.summary else pr.get("title") or "\n".join(body.splitlines()[0] for _, body in commits if body)
     lens = args.lens or {"codex": "generalist-a", "grok": "generalist-b", "kimi": "generalist-c"}[args.cli]
@@ -532,7 +535,7 @@ def review(repo, args, base, remote):
     mode = args.format or ("structured" if args.cli == "codex" else "pack")
     parts = ["# 1. Review pack\n" + common, "# 2. Instructions\n" + instructions,
              "\n".join(["# 3. Pull request and issue", f"Pull request: {pr_link}",
-                        f"Title: {pr.get('title') or git(repo, 'log', '-1', '--format=%s').strip()}",
+                        f"Title: {pr.get('title') or git(repo, 'log', '-1', '--format=%s', head).strip()}",
                         "Issues: " + (", ".join(i["html_url"] for i in issues) or "(none)"),
                         f"Range: `{rng}`; head: `{head}`", "", summary])]
     if context_only:
@@ -635,6 +638,7 @@ def main(argv=None):
         p.add_argument("--base")
         p.add_argument("--no-fetch", action="store_true", help="use an already resolved --base without fetching")
         if command == "review":
+            p.add_argument("--rev", default="HEAD", help="commit to review; resolved before base preparation")
             p.add_argument("--context-only", action="store_true", help="emit task context for the commit-built pack compiler")
             p.add_argument("--compiled-chars", type=int, default=0, help="characters reserved for compiled parts and task separator")
             for option in ("pr", "spec", "tests", "lens", "summary"):
@@ -664,12 +668,15 @@ def main(argv=None):
                 raise PrepareError(f"Size guard: limit {CODEX_LIMIT:,} characters; complete prompt size {size:,} characters; narrow the review input")
             return 0
         repo = Path(git(args.checkout, "rev-parse", "--show-toplevel").strip())
+        head = None
+        if args.command == "review":
+            head = git(repo, "rev-parse", "--verify", "--end-of-options", args.rev + "^{commit}").strip()
         base, remote, fresh = resolve_base(repo, args.base, args.no_fetch)
-        print(f"range: {base}...HEAD", file=sys.stderr)
+        print(f"range: {base}...{head or 'HEAD'}", file=sys.stderr)
         if args.command == "base":
             print(base)
         elif args.command == "review":
-            sys.stdout.write(review(repo, args, base, remote))
+            sys.stdout.write(review(repo, args, base, remote, head))
         else:
             status = ownership(repo, remote)
             if not fresh:
