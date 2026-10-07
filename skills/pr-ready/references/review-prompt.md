@@ -13,6 +13,20 @@ change, e.g. authorization on every path, crash/replay, bounded cost>.
 
 ## Fix prompt template
 
+For a dispatched fixer, save the filled template and the work item's Decisions and
+Pre-flight sections in one task file. Compile it with the role in one call:
+
+```sh
+/usr/bin/python3 skills/pr-ready/scripts/prompt.py --rev <commit> --repo <clone> \
+  --role fixer --target <checkout> --session --task <filled-task> \
+  --task-source <owner/repository#issue> --out <new-run-directory>
+```
+
+The normal session loads its live foundation; the role and repository rules are
+commit-built. Retain the pack and manifest. Send the pack unchanged.
+
+For legacy single-file expansion:
+
 Expand the [fixer role](../../../prompts/roles/fixer.md) with `scripts/prompt.py` before this template.
 
 ```text

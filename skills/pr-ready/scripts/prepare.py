@@ -40,7 +40,7 @@ class PrepareError(Exception):
 
 
 def noninteractive_env():
-    return dict(os.environ, GIT_TERMINAL_PROMPT="0", GH_PROMPT_DISABLED="1")
+    return dict(os.environ, GIT_TERMINAL_PROMPT="0", GH_PROMPT_DISABLED="1", GIT_NO_REPLACE_OBJECTS="1")
 
 
 def display(text):
@@ -519,19 +519,24 @@ def review(repo, args, base, remote):
     lens = args.lens or {"codex": "generalist-a", "grok": "generalist-b", "kimi": "generalist-c"}[args.cli]
     if not re.fullmatch(r"[a-zA-Z0-9_-]+", lens):
         raise PrepareError("invalid lens name")
-    lens_settings(lens)
-    prefix = "prompts/"
-    try:
-        common, _ = expand(file=prefix + "roles/reviewer.md")
-        instructions, _ = expand(file=prefix + "lenses/" + lens + ".md")
-    except PromptError as exc:
-        raise PrepareError(str(exc)) from exc
+    context_only = getattr(args, "context_only", False)
+    common, instructions = "", ""
+    if not context_only:
+        lens_settings(lens)
+        prefix = "prompts/"
+        try:
+            common, _ = expand(file=prefix + "roles/reviewer.md")
+            instructions, _ = expand(file=prefix + "lenses/" + lens + ".md")
+        except PromptError as exc:
+            raise PrepareError(str(exc)) from exc
     mode = args.format or ("structured" if args.cli == "codex" else "pack")
     parts = ["# 1. Review pack\n" + common, "# 2. Instructions\n" + instructions,
              "\n".join(["# 3. Pull request and issue", f"Pull request: {pr_link}",
                         f"Title: {pr.get('title') or git(repo, 'log', '-1', '--format=%s').strip()}",
                         "Issues: " + (", ".join(i["html_url"] for i in issues) or "(none)"),
                         f"Range: `{rng}`; head: `{head}`", "", summary])]
+    if context_only:
+        parts = [f"The checkout under review is {repo}; read its files by absolute path.", *parts[2:]]
     files = changed_files(repo, rng)
     entries = requirement_entries(repo, args, pr, issues, comments, texts, commits, files, url, head, missing, notices)
     if missing:
@@ -626,6 +631,7 @@ def main(argv=None):
         p.add_argument("--base")
         p.add_argument("--no-fetch", action="store_true", help="use an already resolved --base without fetching")
         if command == "review":
+            p.add_argument("--context-only", action="store_true", help="emit task context for the commit-built pack compiler")
             for option in ("pr", "spec", "tests", "lens", "summary"):
                 p.add_argument("--" + option)
             p.add_argument("--issue", action="append", default=[])
@@ -638,10 +644,11 @@ def main(argv=None):
             p.add_argument("--update", action="store_true", help="merge the base even on external or unknown-ownership repositories")
     p = sub.add_parser("lens", help="print configured lens family and sandbox")
     p.add_argument("name")
+    p.add_argument("--config", type=Path)
     args = parser.parse_args(argv)
     try:
         if args.command == "lens":
-            print(" ".join(lens_settings(args.name)))
+            print(" ".join(lens_settings(args.name, args.config)))
             return 0
         repo = Path(git(args.checkout, "rev-parse", "--show-toplevel").strip())
         base, remote, fresh = resolve_base(repo, args.base, args.no_fetch)

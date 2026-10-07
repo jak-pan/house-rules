@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Run a read-only review panel in parallel.
-# Usage: review-panel.sh <name> <checkout> <base-prompt> [reviewer ...]
+# Usage: review-panel.sh [--rev COMMIT] [--repo DIR] [--session] <name> <checkout> <base-prompt> [reviewer ...]
+# Pin: --rev or REVIEW_HOUSE_RULES_REV is required; --repo or REVIEW_HOUSE_RULES_REPO names the clone.
 #   name: [A-Za-z0-9][A-Za-z0-9._-]*, a single directory name
 #   reviewer: a file stem in ../../../prompts/lenses/ (default: generalist-<family> for each configured family)
 # Config: ${REVIEW_PANEL_CONF:-<house-rules>/custom/review-panel.conf}, lines "<family> = <cli> <model> [tier] [effort]",
@@ -11,7 +12,20 @@
 #   raw logs, and summary.txt (verdict and wall time per reviewer).
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
-reviewers_dir=$here/../../../prompts/lenses
+rules_repo=${REVIEW_HOUSE_RULES_REPO:-$here/../../..}
+rules_rev=${REVIEW_HOUSE_RULES_REV:-}
+session_mode=0
+while [ $# -gt 0 ]; do
+  case $1 in
+    --rev|--repo)
+      [ $# -ge 2 ] || { echo "$1 requires a value" >&2; exit 2; }
+      if [ "$1" = --rev ]; then rules_rev=$2; else rules_repo=$2; fi
+      shift 2 ;;
+    --session) session_mode=1; shift ;;
+    *) break ;;
+  esac
+done
+[ $# -ge 3 ] || { echo "expected name, checkout and task file" >&2; exit 2; }
 conf=${REVIEW_PANEL_CONF:-$here/../../../custom/review-panel.conf}
 name=$1
 dir=$(cd "$2" && pwd) || exit 2
@@ -27,12 +41,13 @@ fi
 
 # Validate the whole panel before creating, clearing or writing any output.
 # Resolve symlinks as well as '..'; a lexical prefix check is not containment.
-python3 - "$reviewers_dir" "$output_root" "$name" "$@" <<'PY' || exit 2
+python3 - "$rules_repo" "$rules_rev" "$output_root" "$name" "$@" <<'PY' || exit 2
 from pathlib import Path
 import re
+import subprocess
 import sys
 
-reviewers_dir, output_root, name, *reviewers = sys.argv[1:]
+repo, rev, output_root, name, *reviewers = sys.argv[1:]
 if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", name):
     sys.exit(f"invalid panel name: {name!r}; expected [A-Za-z0-9][A-Za-z0-9._-]*")
 if len(reviewers) != len(set(reviewers)):
@@ -40,8 +55,6 @@ if len(reviewers) != len(set(reviewers)):
 for reviewer in reviewers:
     if not re.fullmatch(r"[a-z0-9-]+", reviewer):
         sys.exit(f"invalid reviewer: {reviewer!r}; expected [a-z0-9-]+")
-    if not (Path(reviewers_dir) / f"{reviewer}.md").is_file():
-        sys.exit(f"invalid reviewer: {reviewer!r}; no matching reviewer file")
 
 try:
     root = Path(output_root).resolve()
@@ -50,25 +63,43 @@ try:
         sys.exit(f"refusing panel directory outside output root: {panel}")
     paths = [panel / "summary.txt"]
     paths.extend(panel / f"{reviewer}.{suffix}" for reviewer in reviewers
-                 for suffix in ("md", "jsonl", "json", "err", "prepare.err", "prompt", "prompt.grok"))
+                 for suffix in ("md", "jsonl", "json", "err", "prepare.err", "prompt", "prompt.grok", "task", "pack"))
+    paths.extend(panel / filename for filename in ("compiler.py", "lenses.conf"))
     for path in paths:
         resolved = path.resolve()
         if resolved == panel or not resolved.is_relative_to(panel):
             sys.exit(f"refusing cleanup path outside panel directory: {path}")
 except (OSError, RuntimeError) as exc:
     sys.exit(f"cannot validate panel cleanup paths: {exc}")
+if not rev:
+    sys.exit("review panel requires --rev COMMIT or REVIEW_HOUSE_RULES_REV")
+try:
+    pin = subprocess.run(["git", "--no-replace-objects", "-C", repo, "rev-parse", "--verify",
+                          "--end-of-options", rev + "^{commit}"], capture_output=True, timeout=5, check=True).stdout.decode().strip()
+    for reviewer in reviewers:
+        path = f"prompts/lenses/{reviewer}.md"
+        entry = subprocess.run(["git", "--no-replace-objects", "-C", repo, "ls-tree", "-z", pin,
+                                "--", path], capture_output=True, timeout=5, check=True).stdout
+        if not entry or entry.split(b"\t", 1)[-1] != path.encode() + b"\0" or entry[:6] not in (b"100644", b"100755"):
+            sys.exit(f"invalid reviewer: {reviewer!r}; no matching regular reviewer file at {pin[:12]}")
+except (OSError, subprocess.SubprocessError) as exc:
+    sys.exit(f"cannot read panel pin: {exc}")
 PY
+rules_rev=$(git --no-replace-objects -C "$rules_repo" rev-parse --verify --end-of-options "$rules_rev^{commit}") || exit 2
 mkdir -p "$out" || exit 1
 
 : > "$out/summary.txt" || exit 1
 for r in "$@"; do
   # A reused panel directory must never supply evidence from a previous run.
   if ! rm -f -- "$out/$r.md" "$out/$r.jsonl" "$out/$r.json" \
-      "$out/$r.err" "$out/$r.prepare.err" "$out/$r.prompt" "$out/$r.prompt.grok"; then
+      "$out/$r.err" "$out/$r.prepare.err" "$out/$r.prompt" "$out/$r.prompt.grok" "$out/$r.task" ||
+      ! rm -rf -- "$out/$r.pack"; then
     echo "$r failed: clearing previous reviewer outputs" >> "$out/summary.txt"
     exit 1
   fi
 done
+git --no-replace-objects -C "$rules_repo" show "$rules_rev:skills/pr-ready/scripts/prompt.py" > "$out/compiler.py" || exit 2
+git --no-replace-objects -C "$rules_repo" show "$rules_rev:skills/pr-ready/scripts/review-panel.lenses" > "$out/lenses.conf" || exit 2
 
 base_args=(base "$dir")
 [ -n "${REVIEW_BASE:-}" ] && base_args+=(--base "$REVIEW_BASE")
@@ -80,7 +111,7 @@ resolved_base=$("$here/prepare.py" "${base_args[@]}") || {
 run_one() {
   local r=$1
   local fam sandbox settings cfg cli model tier effort prompt=$out/$r.prompt t0 cli_status=0 verdict
-  if ! settings=$("$here/prepare.py" lens "$r"); then
+  if ! settings=$("$here/prepare.py" lens "$r" --config "$out/lenses.conf"); then
     echo "$r failed: lens configuration" >> "$out/summary.txt"
     return 1
   fi
@@ -88,14 +119,23 @@ run_one() {
   cfg=$(family_cfg "$fam")
   [ -n "$cfg" ] || { echo "$r failed: family $fam not configured" >> "$out/summary.txt"; return 1; }
   read -r cli model tier effort <<<"$cfg"; [ "$tier" = - ] && tier=
-  local prepare_args=(review "$dir" --lens "$r" --cli "$cli" --summary "$base" --base "$resolved_base" --no-fetch)
-  if ! "$here/prepare.py" "${prepare_args[@]}" > "$prompt" 2> "$out/$r.prepare.err"; then
+  local prepare_args=(review "$dir" --context-only --lens "$r" --cli "$cli" --summary "$base" --base "$resolved_base" --no-fetch)
+  if ! "$here/prepare.py" "${prepare_args[@]}" > "$out/$r.task" 2> "$out/$r.prepare.err"; then
     cat "$out/$r.prepare.err" >&2
     echo "$r failed: context preparation (see $r.prepare.err)" >> "$out/summary.txt"
     return 1
   fi
+  local compile_args=(--repo "$rules_repo" --rev "$rules_rev" --role reviewer --lens "$r" \
+      --target "$dir" --task "$out/$r.task" --task-source "review-panel-$r" --out "$out/$r.pack")
+  [ "$session_mode" -eq 0 ] || compile_args+=(--session)
+  if ! /usr/bin/python3 -B "$out/compiler.py" "${compile_args[@]}" 2>> "$out/$r.prepare.err"; then
+    cat "$out/$r.prepare.err" >&2
+    echo "$r failed: prompt compilation (see $r.prepare.err)" >> "$out/summary.txt"
+    return 1
+  fi
+  ln -s "$r.pack/pack.txt" "$prompt" || return 1
   cat "$out/$r.prepare.err" >&2
-  sed -n '/^# 1\. Review pack/q; /^Size guard:/p' "$prompt" |
+  sed -n '/^# 3\. Pull request and issue/q; /^Size guard:/p' "$out/$r.task" |
     while IFS= read -r notice; do printf '%s: %s\n' "$r" "$notice"; done >> "$out/summary.txt"
   t0=$(date +%s)
   # Transient provider errors (capacity, overload, rate limits) are retried twice, 60 s apart;
@@ -114,7 +154,6 @@ run_one() {
            # change under review can edit that configuration. Run it from an empty directory instead and
            # let it read the checkout by absolute path.
            local neutral; neutral=$(mktemp -d "${TMPDIR:-/tmp}/review-grok.XXXXXX") || return 1
-           { printf 'The checkout under review is %s; read its files by absolute path.\n\n' "$dir"; cat "$prompt"; } > "$prompt.grok"
            if ! (cd "$neutral" && env GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_SKILLS_ENABLED=0 GROK_CLAUDE_RULES_ENABLED=0 \
                GROK_CLAUDE_MCPS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 GROK_CURSOR_AGENTS_ENABLED=0 \
                GROK_CURSOR_SKILLS_ENABLED=0 GROK_CURSOR_RULES_ENABLED=0 grok inspect 2>&1) | python3 -c '
@@ -134,12 +173,19 @@ sys.exit(0 if ok else 1)' 2>> "$out/$r.err"; then
            (cd "$neutral" && env GROK_CLAUDE_AGENTS_ENABLED=0 GROK_CLAUDE_SKILLS_ENABLED=0 GROK_CLAUDE_RULES_ENABLED=0 \
                GROK_CLAUDE_MCPS_ENABLED=0 GROK_CLAUDE_HOOKS_ENABLED=0 GROK_CURSOR_AGENTS_ENABLED=0 \
                GROK_CURSOR_SKILLS_ENABLED=0 GROK_CURSOR_RULES_ENABLED=0 \
-               grok -m "$model" --reasoning-effort "${effort:-high}" --tools read_file,list_dir,grep --output-format json --always-approve --disable-web-search --prompt-file "$prompt.grok" > "$out/$r.json" 2> "$out/$r.err") || cli_status=$?
+               grok -m "$model" --reasoning-effort "${effort:-high}" --tools read_file,list_dir,grep --output-format json --always-approve --disable-web-search --prompt-file "$prompt" > "$out/$r.json" 2> "$out/$r.err") || cli_status=$?
            rmdir "$neutral" 2>/dev/null
              if [ "$cli_status" -eq 0 ]; then
                "$here/grok_final.py" "$out/$r.json" > "$out/$r.md" 2>> "$out/$r.err" || cli_status=$?
              fi ;;
-      kimi)  (cd "$dir" && kimi -m "$model" -p "$(cat "$prompt")" > "$out/$r.md" 2> "$out/$r.err") || cli_status=$? ;;
+      kimi)  # Python preserves the pack's trailing newlines in the CLI argument.
+             /usr/bin/python3 -B -c '
+from pathlib import Path
+import subprocess, sys
+checkout, model, prompt = sys.argv[1:]
+text = Path(prompt).read_bytes().decode("utf-8")
+sys.exit(subprocess.run(["kimi", "-m", model, "-p", text], cwd=checkout).returncode)
+' "$dir" "$model" "$prompt" > "$out/$r.md" 2> "$out/$r.err" || cli_status=$? ;;
       *)     echo "$r failed: unknown cli $cli" >> "$out/summary.txt"; return 1 ;;
     esac
     [ "$cli_status" -ne 0 ] && [ $attempt -lt 3 ] && cat "$out/$r.err" "$out/$r.jsonl" "$out/$r.json" 2>/dev/null |
@@ -166,6 +212,12 @@ for r in "$@"; do
 done
 status=0
 for pid in "${pids[@]}"; do wait "$pid" || status=1; done
+transient_inputs=("$out/lenses.conf")
+for r in "$@"; do transient_inputs+=("$out/$r.task"); done
+if ! rm -f -- "${transient_inputs[@]}"; then
+  echo "panel failed: removing temporary compilation inputs" >> "$out/summary.txt"
+  status=1
+fi
 [ -n "$(git -C "$dir" status --porcelain)" ] && echo "WARNING: a reviewer modified the checkout" >> "$out/summary.txt"
 cat "$out/summary.txt"
 exit "$status"

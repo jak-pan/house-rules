@@ -24,7 +24,9 @@ SPEC.loader.exec_module(prepare)
 
 class PrepareTests(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
+        scratch = SCRIPT.parents[3] / ".tmp"
+        scratch.mkdir(exist_ok=True)
+        self.tmp = tempfile.TemporaryDirectory(dir=scratch)
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
         # Ignore host Git aliases, hooks, signing and credentials; fetches use local remotes.
@@ -123,6 +125,18 @@ print(json.dumps(value))
                     summary=None, format=None, cli="codex")
         args.update(kwargs)
         return prepare.review(self.repo, argparse.Namespace(**args), "origin/trunk", "origin")
+
+    def test_panel_task_context_ignores_replacement_blobs_in_direct_and_streamed_reads(self):
+        self.write(self.repo, "src/core.py", "def action():\n    return 2\n")
+        self.commit(self.repo, "Change action")
+        original = self.git(self.repo, "rev-parse", "HEAD:src/core.py")
+        baseline = self.review(context_only=True, format="diff", cli="grok")
+        replacement = subprocess.run(["git", "-C", str(self.repo), "hash-object", "-w", "--stdin"],
+                                     input=b"Replacement canary\n", capture_output=True,
+                                     check=True, timeout=5).stdout.decode().strip()
+        self.git(self.repo, "replace", original, replacement)
+        self.assertEqual(self.review(context_only=True, format="diff", cli="grok"), baseline)
+        self.assertEqual(prepare.git(self.repo, "show", "HEAD:src/core.py"), "def action():\n    return 2\n")
 
     def github(self, pr=None, issues=(), pr_comments=(), review_comments=(), reviews=(), issue_comments=None):
         self.git(self.repo, "remote", "set-url", "origin", "https://github.com/example/project.git")
@@ -603,7 +617,61 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
                 self.assertIn("Touched functions", prompt)
                 self.assertNotIn("x" * 1000, prompt)
 
+    def panel_source(self):
+        """Commit the running compiler and synthetic panel inputs in a local clone."""
+        source = self.root / "panel-source"
+        if source.exists():
+            return
+        source.mkdir()
+        self.git(source, "init", "-b", "main")
+        for folder in ("prompts", "rules"):
+            shutil.copytree(SCRIPT.parents[3] / folder, source / folder)
+        for name in ("prompt.py", "review-panel.lenses"):
+            dest = source / "skills/pr-ready/scripts" / name
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(SCRIPT.with_name(name), dest)
+        self.commit(source, "Panel source")
+        env = mock.patch.dict(os.environ, {
+            "REVIEW_HOUSE_RULES_REPO": str(source),
+            "REVIEW_HOUSE_RULES_REV": self.git(source, "rev-parse", "HEAD"),
+        })
+        env.start()
+        self.addCleanup(env.stop)
+
+    def test_panel_prompts_come_from_named_commit_and_manifest_matches_sent_bytes(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        stub = self.binaries / "codex"
+        stub.write_text("#!/usr/bin/env python3\nimport pathlib, sys\n"
+                        "args = sys.argv[1:]\n"
+                        "data = sys.stdin.buffer.read()\n"
+                        "pathlib.Path(args[args.index('-o') + 1]).with_suffix('.sent').write_bytes(data)\n"
+                        "pathlib.Path(args[args.index('-o') + 1]).write_text('VERDICT: APPROVE')\n")
+        stub.chmod(0o755)
+        source = Path(env["REVIEW_HOUSE_RULES_REPO"])
+        role = source / "prompts/roles/reviewer.md"
+        role.write_text("DIRTY PANEL CANARY")
+        for round_name in ("pinned", "branch"):
+            if round_name == "branch":
+                self.commit(source, "Dirty role")
+                self.git(source, "checkout", "-b", "other")
+            result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), round_name,
+                                     str(self.repo), str(summary), "generalist-a"],
+                                    capture_output=True, text=True, timeout=10, env=env)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            pack = output / round_name / "generalist-a.pack"
+            data = (pack / "pack.txt").read_bytes()
+            manifest = json.loads((pack / "manifest.json").read_text())
+            self.assertEqual(manifest["house_rules_revision"], env["REVIEW_HOUSE_RULES_REV"])
+            self.assertEqual(data, (output / round_name / "generalist-a.sent").read_bytes())
+            self.assertEqual(manifest["pack"]["sha256"], __import__('hashlib').sha256(data).hexdigest())
+            self.assertNotIn(b"DIRTY PANEL CANARY", data)
+            self.assertIn(b"Repository rules: this repository has no rules of its own.", data)
+            self.assertFalse((output / round_name / "generalist-a.task").exists())
+            self.assertFalse((output / round_name / "lenses.conf").exists())
+
     def panel_fixture(self, summary_exists=True):
+        self.panel_source()
         for cli in ("codex", "grok", "kimi"):
             stub = self.binaries / cli
             stub.write_text("#!/bin/sh\necho 'unexpected reviewer execution' >&2\nexit 99\n")
@@ -635,7 +703,7 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
                         str(self.repo), str(summary), "generalist-a"],
                        capture_output=True, text=True, env=env)
         prompt = (output / "round" / "generalist-a.prompt").read_text()
-        self.assertTrue(prompt.startswith("not found: PT999"), prompt[:200])
+        self.assertIn("not found: PT999", prompt)
         notice = next(line for line in prompt.splitlines() if line.startswith("Size guard:"))
         self.assertIn("generalist-a: " + notice, (output / "round" / "summary.txt").read_text())
 
@@ -742,7 +810,7 @@ else:
                 self.assertNotIn("previous run", recorded)
                 for suffix in suffixes:
                     path = panel / f"{reviewer}.{suffix}"
-                    if family == "a" and suffix in ("prepare.err", "prompt"):
+                    if family == "a" and suffix == "prepare.err":
                         self.assertNotIn("previous run", path.read_text())
                     else:
                         self.assertFalse(path.exists(), path)
@@ -893,7 +961,8 @@ else:
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("context preparation", (output / "round" / "summary.txt").read_text())
         self.assertIn("800,000", (output / "round" / "generalist-a.prepare.err").read_text())
-        self.assertEqual((output / "round" / "generalist-a.prompt").read_text(), "")
+        self.assertFalse((output / "round" / "generalist-a.prompt").exists())
+        self.assertFalse((output / "round" / "generalist-a.pack").exists())
         self.assertFalse((output / "round" / "generalist-a.err").exists())
 
     def test_panel_resolves_and_fetches_once(self):
@@ -981,6 +1050,11 @@ else:
         shutil.copytree(SCRIPT.parents[3] / "prompts", kit / "prompts")
         shutil.copytree(SCRIPT.parents[3] / "rules", kit / "rules")
         (scripts / "review-panel.lenses").write_text("generalist-a b read-only\n")
+        self.git(kit, "init", "-b", "main")
+        self.commit(kit, "Pinned family configuration")
+        env["REVIEW_HOUSE_RULES_REPO"] = str(kit)
+        env["REVIEW_HOUSE_RULES_REV"] = self.git(kit, "rev-parse", "HEAD")
+        (scripts / "review-panel.lenses").write_text("generalist-a a read-only\n")
         Path(env["REVIEW_PANEL_CONF"]).write_text("b = codex family-b-model - high\n")
         (self.binaries / "codex").write_text("#!" + sys.executable + "\n" +
             "import pathlib, sys\n" +
@@ -1416,6 +1490,7 @@ else:
         self.assertIn("review-a.md\nreview-b.md", out)
 
     def test_panel_keeps_family_cli_options_and_summary_task(self):
+        self.panel_source()
         self.add_review_change()
         binaries = self.root / "bin"
         binaries.mkdir(exist_ok=True)
@@ -1425,7 +1500,9 @@ cli = pathlib.Path(sys.argv[0]).name
 args = sys.argv[1:]
 if cli == 'codex':
     pathlib.Path(args[args.index('-o') + 1]).write_text('VERDICT: APPROVE')
-    assert '# 3. Pull request and issue' in sys.stdin.read()
+    data = sys.stdin.buffer.read()
+    pathlib.Path(os.environ['TEST_SENT_ROOT'], 'a.sent').write_bytes(data)
+    assert b'# 3. Pull request and issue' in data
 elif cli == 'grok':
     assert os.environ['GROK_CLAUDE_AGENTS_ENABLED'] == '0'
     assert os.environ['GROK_CURSOR_SKILLS_ENABLED'] == '0'
@@ -1437,10 +1514,12 @@ elif cli == 'grok':
     assert '--disable-web-search' in args
     assert args[args.index('--tools') + 1] == 'read_file,list_dir,grep'
     prompt = pathlib.Path(args[args.index('--prompt-file') + 1]).read_text()
-    assert prompt.startswith('The checkout under review is ')
+    assert 'The checkout under review is ' in prompt
+    pathlib.Path(os.environ['TEST_SENT_ROOT'], 'b.sent').write_bytes(pathlib.Path(args[args.index('--prompt-file') + 1]).read_bytes())
     print(json.dumps({'text': 'VERDICT: APPROVE'}))
 else:
     assert 'Round task from file' in args[args.index('-p') + 1]
+    pathlib.Path(os.environ['TEST_SENT_ROOT'], 'c.sent').write_bytes(args[args.index('-p') + 1].encode())
     print('VERDICT: APPROVE')
 """
         for cli in ("codex", "grok", "kimi"):
@@ -1452,8 +1531,11 @@ else:
         summary = self.root / "task.txt"
         summary.write_text("Round task from file")
         output = self.root / "output"
+        sent = self.root / "sent"
+        sent.mkdir()
         env = dict(os.environ, PATH=str(binaries) + os.pathsep + os.environ["PATH"],
-                   REVIEW_PANEL_CONF=str(conf), REVIEW_PANEL_OUT=str(output), REVIEW_BASE="origin/trunk")
+                   REVIEW_PANEL_CONF=str(conf), REVIEW_PANEL_OUT=str(output), REVIEW_BASE="origin/trunk",
+                   TEST_SENT_ROOT=str(sent))
         name = "Round9._-"
         result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), name,
                                  str(self.repo), str(summary)], capture_output=True, text=True, env=env)
@@ -1463,6 +1545,8 @@ else:
             prompt = (output / name / f"generalist-{family}.prompt").read_text()
             self.assertIn("Round task from file", prompt.split("# 3. Pull request and issue")[1])
             self.assertEqual("```diff" in prompt, family == "a")
+            pack = output / name / f"generalist-{family}.pack" / "pack.txt"
+            self.assertEqual((sent / f"{family}.sent").read_bytes(), pack.read_bytes())
 
     def test_pr_brief_works_without_gh_and_classifies_owned_external(self):
         self.write(self.repo, "tests/test_new.py", "assert True\n")

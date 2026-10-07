@@ -13,6 +13,16 @@ Verification invariant: rules/delivery.md §Verification. Local work follows
 
 ## 1. Local gate (implementer or fixer)
 
+- Dispatch each worker through one named-commit pack call:
+  `/usr/bin/python3 skills/pr-ready/scripts/prompt.py --rev <commit> --repo <clone> --role <role> --target <checkout> --task <task-file> --task-source <logical-id> --out <new-run-directory>`.
+  The task file contains the work item's Decisions and Pre-flight sections.
+  Use `--no-target` only when there is no target. Add lenses and extra rules through
+  `--lens` and `--include`; add resume notes through another `--task`.
+  Use `--session` for normal lane sessions that load the live foundation.
+  Retain the complete pack and manifest and send the pack bytes unchanged.
+  The [compiler contract](../../prompts/README.md#one-call-pack-assembly) covers
+  Git object reads, matching compiler extraction, repository loaders and failures.
+
 - Prompts are lists of whole files from the [prompt collection](../../prompts/README.md).
   Expand an implementer, fixer, reviewer, triager or checker role with
   `/usr/bin/python3 skills/pr-ready/scripts/prompt.py prompts/roles/<role>.md`
@@ -79,7 +89,12 @@ Specialist dispatch follows
   reviewer's prompt with `scripts/prepare.py review`: stable rules and lens first, then the
   task, PR and issue context, requirements (spec sections, linked issues, maintainer
   comments, PR description) and the change. A reviewer without a verdict, a preparation
-  failure or a CLI failure fails the panel. Exact behaviour, limits and safety rules:
+  failure or a CLI failure fails the panel. The panel requires `--rev <commit>`
+  or `REVIEW_HOUSE_RULES_REV`; `--repo <clone>` or `REVIEW_HOUSE_RULES_REPO`
+  selects the clone. It extracts the matching compiler and lens configuration with
+  replacement refs disabled. `prepare.py review --context-only` emits task context;
+  the compiler assembles role, lens, target rules and that task in one pack call.
+  `--session` selects the normal-session loading path. Exact behaviour, limits and safety rules:
   [preparer reference](references/preparer.md).
 - **Quick review** (`scripts/quick-review.sh`): one reviewer from family a, for small,
   well-understood changes: fix-diff check-backs after a full round, docs and configuration
