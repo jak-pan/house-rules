@@ -1,10 +1,14 @@
 from pathlib import Path
+import hashlib
+import json
+import os
 import shutil
 import re
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import prompt
 
@@ -93,14 +97,14 @@ class PromptTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "Heading\n\nBody\n")
 
-    def test_list_is_depth_first_include_order_with_repeated_visits(self):
+    def test_list_is_depth_first_first_include_order(self):
         root, script = self.fixture()
         (root / "entry.md").write_text("@rule house-rules:a.md\n@rule house-rules:b.md\n")
         (root / "a.md").write_text("@rule house-rules:b.md\n")
         (root / "b.md").write_text("Body\n")
         result = self.run_prompt("--list", "entry.md", script=script)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "entry.md\na.md\nb.md\nb.md\n")
+        self.assertEqual(result.stdout, "entry.md\na.md\nb.md\n")
         stdin = self.run_prompt("--list", text="@rule house-rules:a.md\n", script=script)
         self.assertEqual(stdin.stdout, "a.md\nb.md\n")
 
@@ -221,7 +225,7 @@ class CompleteWorkerPackTest(unittest.TestCase):
                         self.assertEqual(result.stdout.count((ROOT / owner).read_text()),
                                          0 if session else 1)
 
-    def test_session_omits_only_declared_includes_and_still_rejects_missing_owners(self):
+    def test_session_omits_rules_directory_and_still_rejects_missing_owners(self):
         root, script = self.fixture()
         (root / "rules").mkdir()
         for owner in self.shared:
@@ -233,9 +237,9 @@ class CompleteWorkerPackTest(unittest.TestCase):
         result = self.run_prompt("--session", text=source, script=script)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "Loading path: session; shared rules come from the live "
-                         "House Rules index.\n\nOther rule\n")
+                         "House Rules index.\n\n")
         used = self.run_prompt("--session", "--list", text=source, script=script)
-        self.assertEqual(used.stdout, "rules/other.md\n")
+        self.assertEqual(used.stdout, "")
         for owner in self.shared:
             path = root / owner
             content = path.read_text()
@@ -1977,6 +1981,467 @@ class AlwaysLoadedWritingTest(unittest.TestCase):
             "## Questions to the operator", 1)[1]
         self.assertIn("`FACT` or `ASSESSMENT`", questions)
         self.assertNotRegex(questions, r"`(?:fact|assessment)`")
+
+
+
+class CommitPackTest(unittest.TestCase):
+    """Small Git fixtures prove the compiler contract without model calls."""
+
+    def setUp(self):
+        scratch = ROOT / ".tmp"
+        scratch.mkdir(exist_ok=True)
+        tmp = tempfile.TemporaryDirectory(dir=scratch)
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        env = patch.dict(os.environ, {
+            "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_AUTHOR_NAME": "Test", "GIT_AUTHOR_EMAIL": "test@example.invalid",
+            "GIT_COMMITTER_NAME": "Test", "GIT_COMMITTER_EMAIL": "test@example.invalid",
+        })
+        env.start()
+        self.addCleanup(env.stop)
+        self.repo = self.root / "house-rules"
+        self.target = self.root / "target"
+        for repo in (self.repo, self.target):
+            repo.mkdir()
+            self.git(repo, "init", "-b", "main")
+        self.script = self.repo / "skills/pr-ready/scripts/prompt.py"
+        self.write(self.repo, "skills/pr-ready/scripts/prompt.py", SCRIPT.read_bytes())
+        self.write(self.repo, "prompts/roles/reviewer.md", b"Role\n@rule house-rules:rules/writing.md\n@rule house-rules:common.md\n")
+        self.write(self.repo, "rules/writing.md", b"Shared\n")
+        self.write(self.repo, "common.md", b"Common\n")
+        self.write(self.repo, "prompts/lenses/security.md", b"Lens\n@rule house-rules:common.md\n")
+        self.write(self.repo, "extra.md", b"Extra")
+        self.write(self.repo, "unrelated.md", b"Not requested")
+        self.rev = self.commit(self.repo)
+        self.commit(self.target, empty=True)
+        self.manifest = self.root / "manifest.json"
+
+    def git(self, repo, *args, data=None):
+        result = subprocess.run(["git", "--no-replace-objects", "-C", str(repo), *args],
+                                input=data, capture_output=True, timeout=5)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout.decode().strip()
+
+    def write(self, repo, path, data):
+        dest = repo / path
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(data if isinstance(data, bytes) else data.encode())
+
+    def commit(self, repo, empty=False):
+        self.git(repo, "add", ".")
+        self.git(repo, "commit", "--allow-empty", "-m", "Fixture")
+        return self.git(repo, "rev-parse", "HEAD")
+
+    def run_pack(self, *args, rev=None, target=False, env=None, script=None):
+        return subprocess.run([
+            "/usr/bin/python3", "-B", str(script or self.script), "--repo", str(self.repo),
+            "--rev", rev or self.rev, "--role", "reviewer",
+            *( ["--target", str(self.target)] if target else ["--no-target"] ),
+            *map(str, args),
+        ], capture_output=True, timeout=5, env=env)
+
+    def good(self, *args, **kwargs):
+        result = self.run_pack("--manifest", self.manifest, *args, **kwargs)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout, json.loads(self.manifest.read_text())
+
+    def bad(self, result, message):
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertEqual(result.stdout, b"")
+        self.assertEqual(len(result.stderr.splitlines()), 1, result.stderr)
+        self.assertIn(message.encode(), result.stderr)
+
+    def test_commit_output_ignores_dirty_files_and_other_branch(self):
+        before = self.good()
+        self.write(self.repo, "common.md", b"DIRTY CANARY\n")
+        self.assertEqual(self.good(), before)
+        self.commit(self.repo)
+        self.git(self.repo, "checkout", "-b", "other")
+        self.assertEqual(self.good(), before)
+        self.write(self.repo, "untracked.md", b"Untracked")
+        self.bad(self.run_pack("--include", "untracked.md"), "missing")
+
+    def test_manifest_provenance_and_part_order_are_exact(self):
+        task = self.root / "task.txt"
+        task.write_bytes(b"Task\r\n@rule house-rules:missing.md")
+        second = self.root / "resume.txt"
+        second.write_bytes(b"Resume")
+        third = self.root / "empty.txt"
+        third.write_bytes(b"")
+        pack, manifest = self.good("--lens", "security", "--include", "common.md",
+                                   "--include", "extra.md", "--task", task,
+                                   "--task-source", "symbiotic-sh/house-rules#77",
+                                   "--task", second, "--task-source", "resume-note", "--task", third)
+        self.assertEqual(pack, (f"House Rules revision: {self.rev}\n\n"
+                         "Loading path: compiled shared rules; canonical owners are included in this pack.\n\n"
+                         "Role\nShared\nCommon\n\nLens\n\nExtra\n\n"
+                         "Task\r\n@rule house-rules:missing.md\n\nResume\n").encode())
+        self.assertEqual(manifest["house_rules_revision"], self.rev)
+        self.assertEqual(manifest["pack"], {"bytes": len(pack), "sha256": hashlib.sha256(pack).hexdigest()})
+        self.assertEqual(manifest["skipped_repeats"], [{"path": "common.md", "part": 2},
+                                                       {"path": "common.md", "part": 3}])
+        self.assertEqual([p["kind"] for p in manifest["parts"]],
+                         ["role", "lens", "include", "include", "task", "task", "task"])
+        for entry in manifest["files"]:
+            data = self.git(self.repo, "show", self.rev + ":" + entry["path"])
+            blob = self.git(self.repo, "rev-parse", self.rev + ":" + entry["path"])
+            self.assertEqual(entry["blob"], blob)
+            self.assertEqual(entry["bytes"], len(data.encode()) + (0 if entry["path"] == "extra.md" else 1))
+            self.assertEqual(entry["sha256"], hashlib.sha256((self.repo / entry["path"]).read_bytes()).hexdigest())
+        for entry, data, source in zip(manifest["parts"][-3:],
+                                       [task.read_bytes() + b"\n", b"Resume\n", b""],
+                                       ["symbiotic-sh/house-rules#77", "resume-note", "inline"]):
+            self.assertEqual(entry, {"kind": "task", "source": source, "bytes": len(data),
+                                     "sha256": hashlib.sha256(data).hexdigest()})
+        self.assertNotIn(str(self.root), self.manifest.read_text())
+        self.assertEqual(self.manifest.read_bytes(),
+                         (json.dumps(manifest, sort_keys=True, indent=2) + "\n").encode())
+
+    def test_cycle_is_checked_before_repeat_suppression(self):
+        self.write(self.repo, "common.md", "@rule house-rules:prompts/roles/reviewer.md\n")
+        rev = self.commit(self.repo)
+        self.bad(self.run_pack(rev=rev), "cycle")
+
+    def test_session_validates_and_omits_all_rules_paths(self):
+        pack, manifest = self.good("--session")
+        self.assertNotIn(b"Shared\n", pack)
+        self.assertEqual(manifest["omitted_shared_rules"], ["rules/writing.md"])
+        self.assertNotIn("rules/writing.md", [e["path"] for e in manifest["files"]])
+        self.write(self.repo, "rules/extra.md", "Extra shared\n")
+        rev = self.commit(self.repo)
+        pack, manifest = self.good("--session", "--include", "rules/extra.md", rev=rev)
+        self.assertNotIn(b"Extra shared", pack)
+        self.assertEqual(manifest["omitted_shared_rules"], ["rules/writing.md", "rules/extra.md"])
+        (self.repo / "rules/writing.md").unlink()
+        rev = self.commit(self.repo)
+        self.bad(self.run_pack("--session", rev=rev), "missing")
+
+    def test_legacy_session_preserves_explicit_rule_entry_and_lists_it(self):
+        self.write(self.repo, "rules/entry.md", "Requested entry\n@rule house-rules:rules/writing.md\n")
+        rev = self.commit(self.repo)
+        for pin in ([], ["--rev", rev]):
+            for listing in ([], ["--list"]):
+                with self.subTest(pin=pin, listing=listing):
+                    result = subprocess.run([
+                        "/usr/bin/python3", "-B", str(self.script), *pin,
+                        "--session", *listing, "rules/entry.md",
+                    ], capture_output=True, timeout=5)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    expected = (b"rules/entry.md\n" if listing else
+                                b"Loading path: session; shared rules come from the live House Rules index.\n\nRequested entry\n")
+                    self.assertEqual(result.stdout, expected)
+
+    def test_every_actual_role_has_no_repeats_in_either_shared_mode(self):
+        for folder in ("prompts", "rules"):
+            shutil.rmtree(self.repo / folder)
+            shutil.copytree(ROOT / folder, self.repo / folder)
+        rev = self.commit(self.repo)
+        with prompt.Commit(self.repo, rev) as source:
+            for role in (ROOT / "prompts/roles").glob("*.md"):
+                for session in (False, True):
+                    with self.subTest(role=role.stem, session=session):
+                        pack, manifest = prompt.build_pack(source, role=role.stem, omit_shared_rules=session)
+                        self.assertEqual(manifest["skipped_repeats"], [])
+                        self.assertNotRegex(pack.decode(), r"(?m)^@rule ")
+                        self.assertEqual(bool(manifest["omitted_shared_rules"]), session)
+
+    def test_invalid_entries_revision_self_check_and_cli_fail_without_outputs(self):
+        link = self.repo / "link.md"
+        link.symlink_to("common.md")
+        self.write(self.repo, "directory/child.md", "Child")
+        rev = self.commit(self.repo)
+        for path in ("link.md", "directory", "../outside", "/etc/passwd", "common.md#section", "a/../common.md"):
+            with self.subTest(path=path):
+                dest = self.root / "publish"
+                self.bad(self.run_pack("--include", path, "--out", dest, rev=rev), "prompt:")
+                self.assertFalse(dest.exists())
+        self.bad(self.run_pack(rev="does-not-exist"), "commit")
+        self.script.write_bytes(self.script.read_bytes() + b"\n# Dirty compiler\n")
+        self.bad(self.run_pack(), "compiler differs")
+        for args in (("--manifest", self.manifest), ("--role", "reviewer", "--no-target"),
+                     ("--rev", self.rev, "--role", "reviewer"),
+                     ("--rev", self.rev, "--role", "reviewer", "--target", self.target, "--no-target"),
+                     ("--rev", self.rev, "common.md", "--role", "reviewer", "--no-target"),
+                     ("--task-source", "orphan")):
+            result = subprocess.run(["/usr/bin/python3", str(self.script), *map(str, args)],
+                                    input=b"", capture_output=True, timeout=5)
+            self.bad(result, "prompt:")
+        self.assertFalse(self.manifest.exists())
+
+    def test_task_source_must_follow_task_and_cannot_be_machine_path(self):
+        task = self.root / "task.txt"
+        task.write_text("Task")
+        for source in (str(task), "../task", "C:\\tasks\\item", "file:///task", "folder/task.txt",
+                       "../task#77", "./task#77", "owner/..#77", "owner/.#77"):
+            with self.subTest(source=source):
+                self.bad(self.run_pack("--task", task, "--task-source", source), "logical")
+        self.bad(self.run_pack("--task", task, "--include", "extra.md", "--task-source", "name"),
+                 "immediately")
+
+    def test_empty_options_fail_without_substituting_defaults_or_output_modes(self):
+        for option in ("--rev", "--target-rev", "--out", "--manifest", "--repo", "--target"):
+            with self.subTest(option=option):
+                self.bad(self.run_pack(option, "", target=True), option + " must not be empty")
+        for option in ("--rev", "--manifest"):
+            with self.subTest(legacy_option=option):
+                result = subprocess.run(["/usr/bin/python3", "-B", str(self.script), option, ""],
+                                        input=b"Literal", capture_output=True, timeout=5)
+                self.bad(result, option + " must not be empty")
+
+    def test_abbreviated_task_source_is_rejected_without_traceback(self):
+        task = self.root / "task.txt"
+        task.write_text("Task")
+        for args in (("--task-so", "orphan"),
+                     ("--task", task, "--include", "extra.md", "--task-so", "name")):
+            self.bad(self.run_pack(*args), "unrecognized arguments: --task-so")
+
+    def test_pack_refuses_standard_input_text_instead_of_dropping_it(self):
+        result = subprocess.run(["/usr/bin/python3", str(self.script), "--rev", self.rev,
+                                 "--role", "reviewer", "--no-target"],
+                                input=b"Unexpected task on stdin", capture_output=True, timeout=5)
+        self.bad(result, "standard-input text cannot be combined with pack parts")
+
+    def managed(self, own=True):
+        return ("# AGENTS.md\nThis repository is managed by [House Rules](https://example.invalid/house-rules). "
+                "Read House Rules `INDEX.md` first and follow it.\n" +
+                ("This repository's own rules are in [.agents/rules.md](.agents/rules.md).\n" if own else ""))
+
+    def assert_target_files(self, expected, rev):
+        baseline, _ = self.good()
+        pack, manifest = self.good(target=True)
+        parts = []
+        records = []
+        for path, data in expected:
+            heading = f"Repository rules (<target>/{path} at {rev[:12]}):\n".encode()
+            parts.append(heading + data + (b"" if data.endswith(b"\n") else b"\n"))
+            records.append({"path": path, "commit": rev,
+                            "blob": self.git(self.target, "rev-parse", rev + ":" + path),
+                            "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()})
+        target_text = (b"\n".join(parts) if parts else
+                       b"Repository rules: this repository has no rules of its own.\n")
+        self.assertEqual(pack, baseline + b"\n" + target_text)
+        self.assertEqual(manifest["target"], {"commit": rev, "files": records})
+        self.assertEqual(manifest["parts"][-1], {"kind": "target"})
+        self.assertEqual(manifest["pack"], prompt.fingerprint(pack))
+        self.assertNotIn(str(self.target), json.dumps(manifest))
+        return pack, manifest
+
+    def test_target_includes_both_rule_files_unchanged_in_order(self):
+        expected = [(".agents/rules.md", b"Own\r\n@rule house-rules:missing.md"),
+                    ("AGENTS.md", (self.managed() + "Local requirement\n").encode())]
+        for path, data in expected:
+            self.write(self.target, path, data)
+        rev = self.commit(self.target)
+        self.assert_target_files(expected, rev)
+
+    def test_target_includes_either_rule_file_without_classifying_loaders(self):
+        for path, data in ((".agents/rules.md", b"Own\r\n"),
+                           ("AGENTS.md", self.managed().encode()),
+                           ("AGENTS.md", b"Read [House Rules](/opt/house-rules/INDEX.md)\n"),
+                           ("AGENTS.md", b"Do not read [House Rules](/opt/house-rules/INDEX.md)\n"),
+                           ("AGENTS.md", b"Local requirement")):
+            with self.subTest(path=path, data=data):
+                for name in (".agents/rules.md", "AGENTS.md"):
+                    (self.target / name).unlink(missing_ok=True)
+                self.write(self.target, path, data)
+                rev = self.commit(self.target)
+                self.assert_target_files([(path, data)], rev)
+
+    def test_target_reports_no_rules_only_when_both_files_are_absent(self):
+        self.assert_target_files([], self.git(self.target, "rev-parse", "HEAD"))
+
+    def test_target_rule_files_ignore_uncommitted_edits_at_selected_revision(self):
+        expected = [(".agents/rules.md", b"Own\n"), ("AGENTS.md", self.managed().encode())]
+        for path, data in expected:
+            self.write(self.target, path, data)
+        rev = self.commit(self.target)
+        before = self.assert_target_files(expected, rev)
+        for path, _ in expected:
+            self.write(self.target, path, b"Uncommitted target canary\n")
+        self.assertEqual(self.good(target=True), before)
+        self.commit(self.target)
+        self.assertEqual(self.good("--target-rev", rev, target=True), before)
+
+    def test_task_assembly_does_not_recopy_the_accumulated_prefix(self):
+        class Prefix(bytes):
+            def __add__(self, other):
+                raise AssertionError("task assembly recopied the accumulated prefix")
+        tasks = []
+        for index, data in enumerate((b"Task\r\n", b"", b"Resume")):
+            file = self.root / f"task-{index}.txt"
+            file.write_bytes(data)
+            tasks.append((file, f"task-{index}"))
+        pack, manifest = prompt.append_tasks(Prefix(b"Pinned rules\n"), {"parts": []}, tasks)
+        self.assertEqual(pack, b"Pinned rules\n\nTask\r\n\nResume\n")
+        self.assertEqual(manifest["parts"], [
+            {"kind": "task", "source": f"task-{index}", **prompt.fingerprint(prompt.ending(data))}
+            for index, data in enumerate((b"Task\r\n", b"", b"Resume"))])
+        self.assertEqual(manifest["pack"], prompt.fingerprint(pack))
+
+    def test_retry_instructions_distinguish_read_only_reviews_from_workers(self):
+        design = (ROOT / "docs/design/77-one-step-pack-assembly.md").read_text()
+        task_text = design.split("### Task text is data\n", 1)[1].split("### Target repository rules", 1)[0]
+        step = design.split("### Changes in the lane runner\n", 1)[1].split("8. ", 1)[1].split("\n\n", 1)[0]
+        for section in (task_text, step):
+            with self.subTest(section=section):
+                self.assertIn("read-only reviewer", section)
+                self.assertIn("unchanged pack and manifest", section)
+                self.assertIn("checking both hashes", section)
+                self.assertIn("workers that change files", section)
+                self.assertIn("resume note", section)
+                self.assertIn("fresh pack and manifest", section)
+
+    def test_invalid_target_sources_fail_even_when_the_other_file_exists(self):
+        for invalid, other in (("AGENTS.md", ".agents/rules.md"), (".agents/rules.md", "AGENTS.md")):
+            for path in ("AGENTS.md", ".agents/rules.md"):
+                (self.target / path).unlink(missing_ok=True)
+            self.write(self.target, other, self.managed() if other == "AGENTS.md" else "Own")
+            (self.target / invalid).symlink_to(other)
+            self.commit(self.target)
+            self.bad(self.run_pack(target=True), "regular file")
+        with prompt.Commit(self.target, "HEAD") as target, prompt.Commit(self.repo, self.rev) as source:
+            with patch.object(target, "read", side_effect=OSError("read error")):
+                with self.assertRaisesRegex((prompt.PromptError, OSError), "read error"):
+                    prompt.build_pack(source, target=target)
+
+    def test_house_rules_own_portable_pointer_never_selects_index(self):
+        self.write(self.target, "AGENTS.md", (ROOT / "AGENTS.md").read_bytes())
+        self.write(self.target, ".agents/rules.md", "Own repository rules\n")
+        self.write(self.target, "INDEX.md", "Universal index must not be included\n")
+        self.commit(self.target)
+        pack, manifest = self.good(target=True)
+        self.assertEqual([entry["path"] for entry in manifest["target"]["files"]],
+                         [".agents/rules.md", "AGENTS.md"])
+        self.assertIn((ROOT / "AGENTS.md").read_bytes(), pack)
+        self.assertNotIn(b"Universal index", pack)
+
+    def test_legacy_commit_file_and_stdin_do_not_gain_revision_header(self):
+        for args, data in ((["extra.md"], b""), ([], b"@rule house-rules:extra.md\n")):
+            result = subprocess.run(["/usr/bin/python3", str(self.script), "--rev", self.rev, *args],
+                                    input=data, capture_output=True, timeout=5)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout, b"Extra")
+
+    def test_atomic_publish_and_faults_leave_no_destination(self):
+        pack, manifest = self.good()
+        dest = self.root / "published"
+        result = self.run_pack("--out", dest)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, b"")
+        self.assertEqual((dest / "pack.txt").read_bytes(), pack)
+        self.assertEqual(json.loads((dest / "manifest.json").read_text()), manifest)
+        self.bad(self.run_pack("--out", dest), "exists")
+        self.assertEqual((dest / "pack.txt").read_bytes(), pack)
+        write = Path.write_bytes
+        for fail in ("pack.txt", "manifest.json", "rename"):
+            failed = self.root / ("fail-" + fail)
+            def faulty_write(path, data):
+                if path.name == fail:
+                    raise OSError("injected write failure")
+                return write(path, data)
+            with patch.object(Path, "write_bytes", faulty_write):
+                if fail == "rename":
+                    with patch.object(Path, "rename", side_effect=OSError("injected rename failure")):
+                        with self.assertRaises(OSError):
+                            prompt.publish(failed, pack, manifest)
+                else:
+                    with self.assertRaises(OSError):
+                        prompt.publish(failed, pack, manifest)
+            self.assertFalse(failed.exists())
+            self.assertEqual(list(self.root.glob("." + failed.name + "-*")), [])
+
+    def test_stdout_write_failure_is_nonzero(self):
+        class Broken:
+            def write(self, data):
+                raise BrokenPipeError("closed output")
+            def flush(self):
+                pass
+        with patch.object(sys, "stdout") as stdout:
+            stdout.buffer = Broken()
+            self.assertNotEqual(prompt.main(["--repo", str(self.repo), "--rev", self.rev,
+                                            "--role", "reviewer", "--no-target"]), 0)
+
+    def test_only_requested_paths_use_one_protected_batch_per_repository(self):
+        self.write(self.target, ".agents/rules.md", "Own\n")
+        self.commit(self.target)
+        calls = []
+        requests = []
+        popen = subprocess.Popen
+        def recording(*args, **kwargs):
+            calls.append(args[0])
+            child = popen(*args, **kwargs)
+            if "--batch" in args[0]:
+                class Input:
+                    def write(self, data):
+                        requests.append(data.decode())
+                        return child_input.write(data)
+                    def flush(self):
+                        return child_input.flush()
+                    def close(self):
+                        return child_input.close()
+                child_input = child.stdin
+                child.stdin = Input()
+            return child
+        with patch.object(subprocess, "Popen", recording):
+            with prompt.Commit(self.repo, self.rev) as source, prompt.Commit(self.target, "HEAD") as target:
+                prompt.build_pack(source, role="reviewer", lens="security", includes=["common.md"], target=target)
+        self.assertEqual(sum("--batch" in c for c in calls), 2)
+        self.assertTrue(all(c[0:2] == ["git", "--no-replace-objects"] for c in calls), calls)
+        self.assertFalse(any("-r" in c for c in calls), calls)
+        for call in calls:
+            if "ls-tree" in call:
+                self.assertEqual(call[-2], "--")
+                self.assertNotIn(call[-1].removeprefix(":(literal)"), ("", "unrelated.md"))
+        lookups = [(c[c.index("-C") + 1], c[-1].removeprefix(":(literal)"))
+                   for c in calls if "ls-tree" in c]
+        self.assertEqual(len(lookups), len(set(lookups)))
+        self.assertEqual(set(lookups),
+                         {(str(self.repo), p) for p in ("skills/pr-ready/scripts/prompt.py",
+                           "prompts/roles/reviewer.md", "prompts/lenses/security.md", "common.md", "rules/writing.md")} |
+                         {(str(self.target), "AGENTS.md"), (str(self.target), ".agents/rules.md")})
+        self.assertFalse(any("unrelated.md" in r for r in requests))
+        self.assertTrue(all(re.fullmatch(r"[0-9a-f]{40}:[^\n]+\n", r) for r in requests))
+
+    def test_house_rules_target_shares_the_source_batch_even_at_another_revision(self):
+        self.write(self.repo, ".agents/rules.md", "Local rules\n")
+        target_rev = self.commit(self.repo)
+        popen = subprocess.Popen
+        calls = []
+        def recording(*args, **kwargs):
+            calls.append(args[0])
+            return popen(*args, **kwargs)
+        with patch.object(subprocess, "Popen", recording):
+            with prompt.Commit(self.repo, self.rev) as source, prompt.Commit(self.repo, target_rev) as target:
+                pack, manifest = prompt.build_pack(source, role="reviewer", target=target)
+        self.assertEqual(sum("--batch" in c for c in calls), 1)
+        self.assertIn(b"Local rules", pack)
+        self.assertEqual(manifest["target"]["commit"], target_rev)
+
+    def test_replacement_commits_trees_and_blobs_never_change_bytes_or_provenance(self):
+        self.write(self.target, ".agents/rules.md", "Own\n")
+        self.write(self.target, "AGENTS.md", "Local instructions\n")
+        target_rev = self.commit(self.target)
+        extract = self.root / "extracted.py"
+        # Extraction is the dispatcher's native Git read, protected like compiler reads.
+        extract.write_bytes(subprocess.run(["git", "--no-replace-objects", "-C", str(self.repo),
+                            "show", self.rev + ":skills/pr-ready/scripts/prompt.py"],
+                            check=True, capture_output=True, timeout=5).stdout)
+        baseline = self.good(target=True, script=extract)
+        for repo, rev, paths in ((self.repo, self.rev, ["skills/pr-ready/scripts/prompt.py", "common.md"]),
+                                 (self.target, target_rev, [".agents/rules.md", "AGENTS.md"])):
+            tree = self.git(repo, "rev-parse", rev + "^{tree}")
+            for path in paths:
+                self.write(repo, path, "Replacement canary\n")
+            replacement = self.commit(repo)
+            replacement_tree = self.git(repo, "rev-parse", replacement + "^{tree}")
+            pairs = [(rev, replacement), (tree, replacement_tree)]
+            pairs += [(self.git(repo, "rev-parse", rev + ":" + p),
+                       self.git(repo, "rev-parse", replacement + ":" + p)) for p in paths]
+            for original, substitute in pairs:
+                self.git(repo, "replace", original, substitute)
+                self.assertEqual(self.good("--target-rev", target_rev, target=True, script=extract), baseline)
+                self.git(repo, "replace", "-d", original)
 
 
 if __name__ == "__main__":

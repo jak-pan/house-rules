@@ -11,14 +11,14 @@ Review task fields: [review template](review-prompt.md). `scripts/review-panel.s
   token means `REQUEST_CHANGES`, and `APPROVE` requires every token to agree)
   are recorded in `summary.txt` and make the panel exit nonzero. Unknown configured CLIs
   fail the reviewer; explicitly selected reviewers whose families are unconfigured also fail.
-  A checkout that cannot be opened fails before changing outputs. Each run resets `summary.txt` and removes each selected
-  reviewer's previous report, raw logs and prompt before base resolution; a base-resolution
-  failure is recorded in the new summary. Cleanup failures also make the panel exit nonzero. Before any output changes, panel names must match
+  A checkout that cannot be opened fails before changing outputs. Each run requires a fresh
+  panel directory and creates it exclusively. An existing directory is refused without
+  changing its reports, prompts, packs or manifests. A base-resolution failure is recorded
+  in the new summary. Before any output changes, panel names must match
   `[A-Za-z0-9][A-Za-z0-9._-]*` and the panel directory must resolve strictly beneath the
   configured output root, including through symlinks. Reviewer names must match
-  `[a-z0-9-]+` and an existing file stem in `prompts/lenses/`, with no duplicates. All cleanup
-  paths and the summary must resolve beneath the panel directory, including through
-  symlinks, or the panel refuses to run. Prompt order: stable rules and lens first, then the
+  `[a-z0-9-]+` and an existing file stem in `prompts/lenses/`, with no duplicates.
+  Prompt order: stable rules and lens first, then the
   base-prompt file as summary/task, PR/issue context, requirements and change. Requirements
   are indexed as R1, R2, … with source links, most authoritative first: design/spec
   documents, linked issues (title, labels, body), non-bot
@@ -59,7 +59,11 @@ Review task fields: [review template](review-prompt.md). `scripts/review-panel.s
   hunk headers for pack mode. Changed paths use NUL-delimited metadata and byte-preserving
   decoding, then literal Git pathspecs. Non-UTF-8 bytes are displayed as escapes and
   percent-encoded in links; NUL bytes are displayed as escapes. Size checks measure the
-  final displayed prompt, including its terminating newline. Codex prompts over 800,000 characters fall back to pack for the change, then trim comments,
+  final displayed prompt, including its terminating newline. The panel measures the pinned
+  role, lens and target rules with the extracted compiler before context preparation.
+  Context preparation reserves that character count and the task separator in its existing
+  budget. The panel checks the complete compiled prompt again before dispatch.
+  Codex prompts over 800,000 characters fall back to pack for the change, then trim comments,
   issue bodies and spec documents in that order (largest first within each source type).
   Notices identify every trim. If the prompt still exceeds the limit after all trim
   steps, preparation exits nonzero without emitting a prompt; the error names the limit,

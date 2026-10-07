@@ -24,7 +24,9 @@ SPEC.loader.exec_module(prepare)
 
 class PrepareTests(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
+        scratch = SCRIPT.parents[3] / ".tmp"
+        scratch.mkdir(exist_ok=True)
+        self.tmp = tempfile.TemporaryDirectory(dir=scratch)
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
         # Ignore host Git aliases, hooks, signing and credentials; fetches use local remotes.
@@ -123,6 +125,30 @@ print(json.dumps(value))
                     summary=None, format=None, cli="codex")
         args.update(kwargs)
         return prepare.review(self.repo, argparse.Namespace(**args), "origin/trunk", "origin")
+
+    def test_panel_task_context_ignores_replacement_blobs_in_direct_and_streamed_reads(self):
+        self.write(self.repo, "src/core.py", "def action():\n    return 2\n")
+        self.commit(self.repo, "Change action")
+        original = self.git(self.repo, "rev-parse", "HEAD:src/core.py")
+        baseline = self.review(context_only=True, format="diff", cli="grok")
+        replacement = subprocess.run(["git", "-C", str(self.repo), "hash-object", "-w", "--stdin"],
+                                     input=b"Replacement canary\n", capture_output=True,
+                                     check=True, timeout=5).stdout.decode().strip()
+        self.git(self.repo, "replace", original, replacement)
+        self.assertEqual(self.review(context_only=True, format="diff", cli="grok"), baseline)
+        self.assertEqual(prepare.git(self.repo, "show", "HEAD:src/core.py"), "def action():\n    return 2\n")
+
+    def test_context_preparation_does_not_execute_the_live_compiler(self):
+        scripts = self.root / "live-scripts"
+        scripts.mkdir()
+        shutil.copyfile(SCRIPT, scripts / "prepare.py")
+        (scripts / "prompt.py").write_text("print('DIRTY COMPILER CANARY')\nraise RuntimeError('live import')\n")
+        result = subprocess.run([sys.executable, "-B", str(scripts / "prepare.py"),
+                                 "review", str(self.repo), "--context-only", "--base", "origin/trunk",
+                                 "--no-fetch"], capture_output=True, text=True, timeout=5)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("DIRTY COMPILER CANARY", result.stdout)
+        self.assertIn("# 3. Pull request and issue", result.stdout)
 
     def github(self, pr=None, issues=(), pr_comments=(), review_comments=(), reviews=(), issue_comments=None):
         self.git(self.repo, "remote", "set-url", "origin", "https://github.com/example/project.git")
@@ -448,14 +474,10 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
         self.assertIn("duplicate reviewer", result.stderr)
         self.assertEqual((panel / "summary.txt").read_text(), "Existing summary")
 
-    def test_panel_base_failure_clears_previous_approvals(self):
+    def test_panel_base_failure_is_recorded_in_a_fresh_directory(self):
         summary, output, env = self.panel_fixture()
         env["REVIEW_BASE"] = "missing-ref"
         panel = output / "badbase"
-        panel.mkdir(parents=True)
-        (panel / "summary.txt").write_text("verdict=APPROVE")
-        for suffix in ("md", "jsonl", "json", "err", "prepare.err", "prompt"):
-            (panel / ("generalist-a." + suffix)).write_text("Old approval")
         result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "badbase",
                                  str(self.repo), str(summary), "generalist-a"], capture_output=True, text=True, env=env)
         self.assertNotEqual(result.returncode, 0)
@@ -536,7 +558,8 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
             with self.subTest(command=command), mock.patch.object(prepare, "update") as update:
                 code, out, err = self.invoke(command, str(self.repo))
                 self.assertEqual(code, 0, err)
-                self.assertIn("origin/trunk...HEAD", out)
+                head = self.git(self.repo, "rev-parse", "HEAD") if command == "review" else "HEAD"
+                self.assertIn(f"origin/trunk...{head}", out)
                 self.assertIn("cached", err)
                 update.assert_not_called()
 
@@ -550,7 +573,8 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
             with self.subTest(command=command), mock.patch.object(prepare, "run", side_effect=fail_fetch), mock.patch.object(prepare, "update") as update:
                 code, out, err = self.invoke(command, str(self.repo), "--base", "origin/trunk")
                 self.assertEqual(code, 0, err)
-                self.assertIn("origin/trunk...HEAD", out)
+                head = self.git(self.repo, "rev-parse", "HEAD") if command == "review" else "HEAD"
+                self.assertIn(f"origin/trunk...{head}", out)
                 self.assertIn("cached", err)
                 update.assert_not_called()
 
@@ -603,7 +627,245 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
                 self.assertIn("Touched functions", prompt)
                 self.assertNotIn("x" * 1000, prompt)
 
+    def panel_source(self):
+        """Commit the running compiler and synthetic panel inputs in a local clone."""
+        source = self.root / "panel-source"
+        if source.exists():
+            return
+        source.mkdir()
+        self.git(source, "init", "-b", "main")
+        for folder in ("prompts", "rules"):
+            shutil.copytree(SCRIPT.parents[3] / folder, source / folder)
+        for name in ("prompt.py", "review-panel.lenses"):
+            dest = source / "skills/pr-ready/scripts" / name
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(SCRIPT.with_name(name), dest)
+        self.commit(source, "Panel source")
+        env = mock.patch.dict(os.environ, {
+            "REVIEW_HOUSE_RULES_REPO": str(source),
+            "REVIEW_HOUSE_RULES_REV": self.git(source, "rev-parse", "HEAD"),
+        })
+        env.start()
+        self.addCleanup(env.stop)
+
+    def test_panel_pack_preparation_never_imports_checkout_hashlib(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        env["PYTHONPATH"] = str(self.repo)
+        marker = self.root / "checkout-hashlib-executed"
+        self.write(self.repo, "hashlib.py",
+                   "from pathlib import Path\n"
+                   f"Path({str(marker)!r}).write_text('checkout module executed')\n"
+                   "raise RuntimeError('checkout hashlib imported')\n")
+        stub = self.binaries / "codex"
+        stub.write_text("#!/bin/sh\n"
+                        "while [ \"$1\" != '-o' ]; do shift; done\n"
+                        "printf 'VERDICT: APPROVE\\n' > \"$2\"\n"
+                        "cat > /dev/null\n")
+        stub.chmod(0o755)
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "isolated",
+                                 str(self.repo), str(summary), "generalist-a"],
+                                cwd=self.repo, capture_output=True, text=True, timeout=10, env=env)
+        self.assertFalse(marker.exists(), result.stderr)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        pack = output / "isolated" / "generalist-a.pack"
+        self.assertIn(summary.read_bytes(), (pack / "pack.txt").read_bytes())
+        self.assertEqual(json.loads((pack / "manifest.json").read_text())["house_rules_revision"],
+                         env["REVIEW_HOUSE_RULES_REV"])
+
+    def test_panel_keeps_first_commit_when_head_moves_before_context(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        self.write(self.repo, "AGENTS.md", "FIRST RULES\n")
+        self.write(self.repo, "docs/spec.md", "FIRST SPEC\n")
+        self.write(self.repo, "src/core.py", "first_change = 2\n")
+        self.commit(self.repo, "First title\n\nDesign: docs/spec.md")
+        first = self.git(self.repo, "rev-parse", "HEAD")
+        real_python = shutil.which("python3")
+        real_git = shutil.which("git")
+        # The panel invokes the preparer only after target-rule compilation.
+        # Move HEAD at that boundary without sleeps or concurrent timing.
+        wrapper = self.binaries / "python3"
+        wrapper.write_text("#!" + sys.executable + "\n" +
+                          "import os, pathlib, subprocess, sys\n" +
+                          f"preparer = {str(SCRIPT)!r}\n" +
+                          "args = sys.argv[1:]\n" +
+                          "if preparer in args and args[args.index(preparer) + 1] == 'review':\n" +
+                          f"    repo = pathlib.Path({str(self.repo)!r})\n" +
+                          "    for path, body in [('AGENTS.md', 'SECOND RULES\\n'), " +
+                          "('docs/spec.md', 'SECOND SPEC\\n'), ('src/core.py', 'second_change = 3\\n')]:\n" +
+                          "        (repo / path).write_text(body)\n" +
+                          f"    subprocess.run([{real_git!r}, '-C', str(repo), 'add', " +
+                          "'AGENTS.md', 'docs/spec.md', 'src/core.py'], check=True, timeout=5)\n" +
+                          f"    subprocess.run([{real_git!r}, '-C', str(repo), 'commit', '-m', " +
+                          "'Second title\\n\\nDesign: docs/spec.md'], check=True, timeout=5, " +
+                          "stdout=subprocess.DEVNULL)\n" +
+                          f"os.execv({real_python!r}, [{real_python!r}, *args])\n")
+        wrapper.chmod(0o755)
+        stub = self.binaries / "codex"
+        stub.write_text("#!/bin/sh\n"
+                        "while [ \"$1\" != '-o' ]; do shift; done\n"
+                        "printf 'VERDICT: APPROVE\\n' > \"$2\"\n"
+                        "cat > /dev/null\n")
+        stub.chmod(0o755)
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "moving-head",
+                                 str(self.repo), str(summary), "generalist-a"],
+                                capture_output=True, text=True, timeout=10, env=env)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        second = self.git(self.repo, "rev-parse", "HEAD")
+        self.assertNotEqual(first, second)
+        pack = output / "moving-head" / "generalist-a.pack"
+        manifest = json.loads((pack / "manifest.json").read_text())
+        self.assertEqual(manifest["target"]["commit"], first)
+        prompt = (pack / "pack.txt").read_text()
+        self.assertIn("FIRST RULES", prompt)
+        self.assertIn(f"Range: `origin/trunk...{first}`; head: `{first}`", prompt)
+        self.assertIn("Title: First title", prompt)
+        self.assertIn("FIRST SPEC", prompt)
+        self.assertIn("+first_change = 2", prompt)
+        self.assertIn("Commit message " + first[:12], prompt)
+        self.assertNotIn(second, prompt)
+        for canary in ("SECOND RULES", "SECOND SPEC", "Second title", "second_change"):
+            self.assertNotIn(canary, prompt)
+
+    def test_panel_prompts_come_from_named_commit_and_manifest_matches_sent_bytes(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        stub = self.binaries / "codex"
+        stub.write_text("#!/usr/bin/env python3\nimport pathlib, sys\n"
+                        "args = sys.argv[1:]\n"
+                        "data = sys.stdin.buffer.read()\n"
+                        "pathlib.Path(args[args.index('-o') + 1]).with_suffix('.sent').write_bytes(data)\n"
+                        "pathlib.Path(args[args.index('-o') + 1]).write_text('VERDICT: APPROVE')\n")
+        stub.chmod(0o755)
+        source = Path(env["REVIEW_HOUSE_RULES_REPO"])
+        role = source / "prompts/roles/reviewer.md"
+        role.write_text("DIRTY PANEL CANARY")
+        for round_name in ("pinned", "branch", "replacement"):
+            if round_name == "branch":
+                self.commit(source, "Dirty role")
+                self.git(source, "checkout", "-b", "other")
+            if round_name == "replacement":
+                compiler = source / "skills/pr-ready/scripts/prompt.py"
+                original = self.git(source, "rev-parse", env["REVIEW_HOUSE_RULES_REV"] + ":skills/pr-ready/scripts/prompt.py")
+                compiler.write_text("print('REPLACEMENT COMPILER CANARY')\n" + compiler.read_text())
+                self.commit(source, "Replacement compiler")
+                substitute = self.git(source, "rev-parse", "HEAD:skills/pr-ready/scripts/prompt.py")
+                self.git(source, "replace", original, substitute)
+                real_git = shutil.which("git")
+                log = self.root / "extraction.log"
+                recorder = self.binaries / "git"
+                recorder.write_text("#!" + sys.executable + "\nimport json, os, sys\n"
+                                    f"with open({str(log)!r}, 'a') as log: log.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+                                    f"os.execv({real_git!r}, ['git', *sys.argv[1:]])\n")
+                recorder.chmod(0o755)
+            result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), round_name,
+                                     str(self.repo), str(summary), "generalist-a"],
+                                    capture_output=True, text=True, timeout=10, env=env)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            pack = output / round_name / "generalist-a.pack"
+            data = (pack / "pack.txt").read_bytes()
+            manifest = json.loads((pack / "manifest.json").read_text())
+            self.assertEqual(manifest["house_rules_revision"], env["REVIEW_HOUSE_RULES_REV"])
+            self.assertEqual(data, (output / round_name / "generalist-a.attempt-1.sent").read_bytes())
+            self.assertEqual(manifest["pack"]["sha256"], __import__('hashlib').sha256(data).hexdigest())
+            self.assertNotIn(b"DIRTY PANEL CANARY", data)
+            self.assertIn(b"Repository rules: this repository has no rules of its own.", data)
+            self.assertFalse((output / round_name / "generalist-a.task").exists())
+            self.assertFalse((output / round_name / "lenses.conf").exists())
+            if round_name == "replacement":
+                calls = [json.loads(line) for line in log.read_text().splitlines()]
+                extractions = [c for c in calls if "show" in c and
+                               c[-1] == env["REVIEW_HOUSE_RULES_REV"] + ":skills/pr-ready/scripts/prompt.py"]
+                self.assertEqual(len(extractions), 1, calls)
+                self.assertEqual(extractions[0][0], "--no-replace-objects")
+                self.assertEqual((output / round_name / "compiler.py").read_bytes(), SCRIPT.with_name("prompt.py").read_bytes())
+
+    def test_context_budget_reserves_compiled_parts_and_keeps_trim_notices(self):
+        self.write(self.repo, "docs/spec.md", "Spec\n" + "s" * 10_000)
+        self.commit(self.repo, "Design: docs/spec.md")
+        baseline = self.review(context_only=True, format="pack")
+        overhead = 2000
+        with mock.patch.object(prepare, "CODEX_LIMIT", len(baseline) + 1000):
+            result = self.review(context_only=True, format="pack", compiled_chars=overhead)
+            self.assertLessEqual(len(result) + overhead, prepare.CODEX_LIMIT)
+            self.assertIn("Size guard: trimmed R1 (spec)", result)
+
+    def test_codex_panel_compiles_each_requested_path_once_before_publication(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        summary.write_text("Review literal @rule house-rules:missing.md\nUnicode: café\n")
+        stub = self.binaries / "codex"
+        stub.write_text("#!/usr/bin/env python3\nimport pathlib, sys\n"
+                        "args = sys.argv[1:]\n"
+                        "pathlib.Path(args[args.index('-o') + 1]).with_suffix('.sent').write_bytes(sys.stdin.buffer.read())\n"
+                        "pathlib.Path(args[args.index('-o') + 1]).write_text('VERDICT: APPROVE')\n")
+        stub.chmod(0o755)
+        real_git = shutil.which("git")
+        log = self.root / "compilation.log"
+        wrapper = self.binaries / "git"
+        wrapper.write_text("#!" + sys.executable + "\nimport json, os, sys\n"
+                           f"with open({str(log)!r}, 'a') as log: log.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+                           f"os.execv({real_git!r}, ['git', *sys.argv[1:]])\n")
+        wrapper.chmod(0o755)
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "single-compile",
+                                 str(self.repo), str(summary), "generalist-a"],
+                                capture_output=True, text=True, timeout=10, env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        panel = output / "single-compile"
+        data = (panel / "generalist-a.pack/pack.txt").read_bytes()
+        manifest = json.loads((panel / "generalist-a.pack/manifest.json").read_text())
+        self.assertEqual(data, (panel / "generalist-a.attempt-1.sent").read_bytes())
+        self.assertIn(summary.read_bytes(), data)
+        self.assertEqual(manifest["pack"], {"bytes": len(data), "sha256": __import__('hashlib').sha256(data).hexdigest()})
+        task = manifest["parts"][-1]
+        task_bytes = data[-task["bytes"]:]
+        self.assertEqual(task["source"], "review-panel-generalist-a")
+        self.assertEqual(task["sha256"], __import__('hashlib').sha256(task_bytes).hexdigest())
+        calls = [json.loads(line) for line in log.read_text().splitlines()]
+        lookups = [(c[c.index("-C") + 1], c[-1]) for c in calls
+                   if "ls-tree" in c and c[-1].startswith(":(literal)")]
+        expected = {(env["REVIEW_HOUSE_RULES_REPO"], ":(literal)" + p)
+                    for p in ["skills/pr-ready/scripts/prompt.py", *[e["path"] for e in manifest["files"]]]}
+        expected |= {(str(self.repo), ":(literal)" + p) for p in ("AGENTS.md", ".agents/rules.md")}
+        self.assertEqual(len(lookups), len(expected), lookups)
+        self.assertEqual(set(lookups), expected)
+        self.assertEqual(sum("--batch" in c for c in calls), 1, calls)
+
+    def test_panel_size_budget_includes_pinned_rules_and_target_rules(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        summary.write_text("s" * (prepare.CODEX_LIMIT - 10_000))
+        self.write(self.repo, "AGENTS.md", "Local rules\n" + "r" * 20_000)
+        self.commit(self.repo, "Local rules")
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "rules-size",
+                                 str(self.repo), str(summary), "generalist-a"],
+                                capture_output=True, text=True, timeout=10, env=env)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("context preparation", (output / "rules-size/summary.txt").read_text())
+        self.assertIn("800,000", (output / "rules-size/generalist-a.prepare.err").read_text())
+        self.assertFalse((output / "rules-size/generalist-a.attempt-1.err").exists())
+
+    def test_panel_checks_complete_prompt_before_dispatch(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        source = Path(env["REVIEW_HOUSE_RULES_REPO"])
+        compiler = source / "skills/pr-ready/scripts/prompt.py"
+        compiler.write_text(compiler.read_text().replace(
+            '    manifest["pack"] = fingerprint(pack)',
+            '    if tasks:\n        pack += b"x" * 800_001\n    manifest["pack"] = fingerprint(pack)'))
+        self.commit(source, "Inject oversized final prompt")
+        env["REVIEW_HOUSE_RULES_REV"] = self.git(source, "rev-parse", "HEAD")
+        result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), "final-size",
+                                 str(self.repo), str(summary), "generalist-a"],
+                                capture_output=True, text=True, timeout=10, env=env)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("complete prompt size", (output / "final-size/summary.txt").read_text())
+        self.assertIn("800,000", (output / "final-size/generalist-a.prepare.err").read_text())
+        self.assertFalse((output / "final-size/generalist-a.attempt-1.err").exists())
+
     def panel_fixture(self, summary_exists=True):
+        self.panel_source()
         for cli in ("codex", "grok", "kimi"):
             stub = self.binaries / cli
             stub.write_text("#!/bin/sh\necho 'unexpected reviewer execution' >&2\nexit 99\n")
@@ -635,9 +897,102 @@ assert redact(noise + 'api_key=fake)tail&x=1') == noise + 'api_key=[REDACTED]&x=
                         str(self.repo), str(summary), "generalist-a"],
                        capture_output=True, text=True, env=env)
         prompt = (output / "round" / "generalist-a.prompt").read_text()
-        self.assertTrue(prompt.startswith("not found: PT999"), prompt[:200])
+        self.assertIn("not found: PT999", prompt)
         notice = next(line for line in prompt.splitlines() if line.startswith("Size guard:"))
         self.assertIn("generalist-a: " + notice, (output / "round" / "summary.txt").read_text())
+
+    def test_panel_provider_retry_preserves_each_attempt_and_unchanged_inputs(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        env["TMPDIR"] = str(self.root)
+        env["TEST_RETRY_ROOT"] = str(self.root)
+        Path(env["REVIEW_PANEL_CONF"]).write_text(
+            "a = codex test-model - high\nb = grok test-model - high\nc = kimi test-model\n")
+        sleep = self.binaries / "sleep"
+        sleep.write_text("#!/bin/sh\nexit 0\n")
+        sleep.chmod(0o755)
+        stub = "#!" + sys.executable + "\n" + r'''import hashlib, json, os, pathlib, sys
+cli = pathlib.Path(sys.argv[0]).name
+args = sys.argv[1:]
+if cli == 'grok' and args[:1] == ['inspect']:
+    print('  MCP Servers (0)\n  └ (none)\n\n  Hooks (0)\n  └ (none)\n')
+    sys.exit(0)
+root = pathlib.Path(os.environ['TEST_RETRY_ROOT'])
+counter = root / (cli + '.count')
+attempt = int(counter.read_text()) + 1 if counter.exists() else 1
+counter.write_text(str(attempt))
+family = {'codex': 'a', 'grok': 'b', 'kimi': 'c'}[cli]
+pack = root / 'output' / family / ('generalist-' + family + '.pack')
+data = (sys.stdin.buffer.read() if cli == 'codex' else
+        pathlib.Path(args[args.index('--prompt-file') + 1]).read_bytes() if cli == 'grok' else
+        args[args.index('-p') + 1].encode())
+record = {'sent': hashlib.sha256(data).hexdigest(),
+          'pack': hashlib.sha256((pack / 'pack.txt').read_bytes()).hexdigest(),
+          'manifest': hashlib.sha256((pack / 'manifest.json').read_bytes()).hexdigest()}
+(root / (cli + f'.attempt-{attempt}.inputs')).write_text(json.dumps(record))
+report = f'Attempt {attempt}\n' + ('partial\n' if attempt == 1 else 'VERDICT: APPROVE\n')
+if cli == 'codex':
+    pathlib.Path(args[args.index('-o') + 1]).write_text(report)
+    print(json.dumps({'attempt': attempt}))
+elif cli == 'grok':
+    print(json.dumps({'text': report}))
+else:
+    print(report, end='')
+print(f'Attempt {attempt}: ' + ('at capacity' if attempt == 1 else 'complete'), file=sys.stderr)
+sys.exit(99 if attempt == 1 else 0)
+'''
+        for cli in ("codex", "grok", "kimi"):
+            (self.binaries / cli).write_text(stub)
+        for family, cli in (("a", "codex"), ("b", "grok"), ("c", "kimi")):
+            with self.subTest(cli=cli):
+                result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), family,
+                                         str(self.repo), str(summary), "generalist-" + family],
+                                        capture_output=True, text=True, timeout=10, env=env)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                panel = output / family
+                reviewer = "generalist-" + family
+                for attempt in (1, 2):
+                    prefix = panel / f"{reviewer}.attempt-{attempt}"
+                    self.assertTrue(Path(str(prefix) + ".err").exists(), f"missing attempt {attempt} log")
+                    self.assertIn(f"Attempt {attempt}:", Path(str(prefix) + ".err").read_text())
+                    suffix = {"codex": ".jsonl", "grok": ".json", "kimi": ".md"}[cli]
+                    self.assertIn(str(attempt), Path(str(prefix) + suffix).read_text())
+                    if cli == "codex":
+                        self.assertIn(f"Attempt {attempt}", Path(str(prefix) + ".md").read_text())
+                inputs = [json.loads((self.root / f"{cli}.attempt-{n}.inputs").read_text()) for n in (1, 2)]
+                self.assertEqual(inputs[0], inputs[1])
+                self.assertEqual(inputs[0]["sent"], inputs[0]["pack"])
+                self.assertIn("attempts=2", (panel / "summary.txt").read_text())
+                self.assertIn("VERDICT: APPROVE", (panel / (reviewer + ".md")).read_text())
+
+    def test_panel_provider_retry_refuses_changed_pack_or_manifest(self):
+        summary, output, env = self.panel_fixture()
+        env["REVIEW_BASE"] = "origin/trunk"
+        sleep = self.binaries / "sleep"
+        sleep.write_text("#!/bin/sh\nexit 0\n")
+        sleep.chmod(0o755)
+        stub = self.binaries / "codex"
+        stub.write_text("#!" + sys.executable + "\n" + r'''import os, pathlib, sys
+marker = pathlib.Path(os.environ['TEST_RETRY_MARKER'])
+if marker.exists():
+    pathlib.Path(sys.argv[sys.argv.index('-o') + 1]).write_text('VERDICT: APPROVE')
+    sys.exit(0)
+marker.write_text('first attempt')
+pathlib.Path(os.environ['TEST_RETRY_MUTATE']).write_text('changed input')
+print('at capacity', file=sys.stderr)
+sys.exit(99)
+''')
+        for name in ("pack.txt", "manifest.json"):
+            with self.subTest(input=name):
+                panel = output / name
+                env["TEST_RETRY_MARKER"] = str(self.root / (name + ".marker"))
+                env["TEST_RETRY_MUTATE"] = str(panel / "generalist-a.pack" / name)
+                result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), name,
+                                         str(self.repo), str(summary), "generalist-a"],
+                                        capture_output=True, text=True, timeout=10, env=env)
+                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn("pack or manifest changed", (panel / "summary.txt").read_text())
+                self.assertFalse((panel / "generalist-a.attempt-2.md").exists())
 
     def test_panel_reviewer_cli_failure_returns_nonzero(self):
         summary, output, env = self.panel_fixture()
@@ -701,8 +1056,7 @@ else:
         for family, cli in (("a", "codex"), ("b", "grok"), ("c", "kimi")):
             for index, report in enumerate(reports):
                 with self.subTest(cli=cli, report=report):
-                    # Reuse the panel directory, including valid output followed by no output.
-                    name = family
+                    name = f"{family}-{index}"
                     env["TEST_REVIEW_REPORT"] = json.dumps(report)
                     result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), name,
                                              str(self.repo), str(summary), "generalist-" + family],
@@ -717,7 +1071,7 @@ else:
                         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                         self.assertIn("verdict=" + ("REQUEST_CHANGES" if "REQUEST_CHANGES" in report else "APPROVE"), recorded)
 
-    def test_panel_clears_previous_outputs_before_preparation_or_skip(self):
+    def test_panel_reuse_refuses_and_preserves_previous_provenance(self):
         summary, output, env = self.panel_fixture(summary_exists=False)
         env["REVIEW_BASE"] = "origin/trunk"
         for family in ("a", "c"):
@@ -725,27 +1079,28 @@ else:
                 panel = output / family
                 panel.mkdir(parents=True)
                 reviewer = "generalist-" + family
-                suffixes = ("md", "jsonl", "json", "err", "prepare.err", "prompt")
+                suffixes = ("md", "jsonl", "json", "err", "prepare.err", "prompt", "task")
                 for suffix in suffixes:
                     (panel / f"{reviewer}.{suffix}").write_text("previous run\n")
                 (panel / "summary.txt").write_text("previous run verdict=APPROVE\n")
-                # Cleanup must be confined to this reviewer's known outputs.
+                pack = panel / f"{reviewer}.pack"
+                pack.mkdir()
+                (pack / "pack.txt").write_text("pinned previous prompt\n")
+                (pack / "manifest.json").write_text('{"previous": true}\n')
                 untouched = (panel / f"{reviewer}.notes", panel / "generalist-b.md")
                 for path in untouched:
                     path.write_text("keep\n")
                 result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), family,
                                          str(self.repo), str(summary), reviewer],
                                         capture_output=True, text=True, env=env)
-                recorded = (panel / "summary.txt").read_text()
-                self.assertIn("context preparation" if family == "a" else "not configured", recorded)
                 self.assertEqual(result.returncode, 1, result.stderr)
-                self.assertNotIn("previous run", recorded)
+                self.assertIn("fresh panel directory", result.stderr)
+                self.assertEqual((panel / "summary.txt").read_text(), "previous run verdict=APPROVE\n")
                 for suffix in suffixes:
                     path = panel / f"{reviewer}.{suffix}"
-                    if family == "a" and suffix in ("prepare.err", "prompt"):
-                        self.assertNotIn("previous run", path.read_text())
-                    else:
-                        self.assertFalse(path.exists(), path)
+                    self.assertEqual(path.read_text(), "previous run\n")
+                self.assertEqual((pack / "pack.txt").read_text(), "pinned previous prompt\n")
+                self.assertEqual((pack / "manifest.json").read_text(), '{"previous": true}\n')
                 for path in untouched:
                     self.assertEqual(path.read_text(), "keep\n")
 
@@ -870,7 +1225,7 @@ else:
                 self.assertTrue(link.is_symlink(), "escaping cleanup path was removed")
                 self.assertEqual(victim.read_text(), "keep outside panel\n")
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn("outside panel directory", result.stderr)
+                self.assertIn("fresh panel directory", result.stderr)
                 for name in filenames:
                     if name != filename:
                         self.assertEqual((panel / name).read_text(), "previous run\n")
@@ -893,8 +1248,9 @@ else:
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("context preparation", (output / "round" / "summary.txt").read_text())
         self.assertIn("800,000", (output / "round" / "generalist-a.prepare.err").read_text())
-        self.assertEqual((output / "round" / "generalist-a.prompt").read_text(), "")
-        self.assertFalse((output / "round" / "generalist-a.err").exists())
+        self.assertFalse((output / "round" / "generalist-a.prompt").exists())
+        self.assertFalse((output / "round" / "generalist-a.pack").exists())
+        self.assertFalse((output / "round" / "generalist-a.attempt-1.err").exists())
 
     def test_panel_resolves_and_fetches_once(self):
         summary, output, env = self.panel_fixture(summary_exists=False)
@@ -981,6 +1337,11 @@ else:
         shutil.copytree(SCRIPT.parents[3] / "prompts", kit / "prompts")
         shutil.copytree(SCRIPT.parents[3] / "rules", kit / "rules")
         (scripts / "review-panel.lenses").write_text("generalist-a b read-only\n")
+        self.git(kit, "init", "-b", "main")
+        self.commit(kit, "Pinned family configuration")
+        env["REVIEW_HOUSE_RULES_REPO"] = str(kit)
+        env["REVIEW_HOUSE_RULES_REV"] = self.git(kit, "rev-parse", "HEAD")
+        (scripts / "review-panel.lenses").write_text("generalist-a a read-only\n")
         Path(env["REVIEW_PANEL_CONF"]).write_text("b = codex family-b-model - high\n")
         (self.binaries / "codex").write_text("#!" + sys.executable + "\n" +
             "import pathlib, sys\n" +
@@ -995,8 +1356,10 @@ else:
         self.assertNotRegex(prompt, r"(?m)^(family:|sandbox:|lens:|---$)")
 
     def test_review_preserves_whole_role_and_lens_files(self):
+        from prompt import expand
+
         prompt = self.review()
-        role, _ = prepare.expand(file="prompts/roles/reviewer.md")
+        role, _ = expand(file="prompts/roles/reviewer.md")
         lens = (SCRIPT.parents[3] / "prompts/lenses/generalist-a.md").read_text()
         self.assertIn("# 1. Review pack\n" + role, prompt)
         self.assertIn("# 2. Instructions\n" + lens, prompt)
@@ -1052,7 +1415,9 @@ else:
                 self.assertIn("section selectors", err)
 
     def test_missing_prompt_include_fails_without_emitting_review(self):
-        with mock.patch.object(prepare, "expand", side_effect=prepare.PromptError("missing rule")):
+        import prompt
+
+        with mock.patch.object(prompt, "expand", side_effect=prompt.PromptError("missing rule")):
             code, out, err = self.invoke("review", str(self.repo), "--base", "origin/trunk",
                                          "--no-fetch")
         self.assertEqual(code, 1)
@@ -1416,6 +1781,7 @@ else:
         self.assertIn("review-a.md\nreview-b.md", out)
 
     def test_panel_keeps_family_cli_options_and_summary_task(self):
+        self.panel_source()
         self.add_review_change()
         binaries = self.root / "bin"
         binaries.mkdir(exist_ok=True)
@@ -1425,7 +1791,9 @@ cli = pathlib.Path(sys.argv[0]).name
 args = sys.argv[1:]
 if cli == 'codex':
     pathlib.Path(args[args.index('-o') + 1]).write_text('VERDICT: APPROVE')
-    assert '# 3. Pull request and issue' in sys.stdin.read()
+    data = sys.stdin.buffer.read()
+    pathlib.Path(os.environ['TEST_SENT_ROOT'], 'a.sent').write_bytes(data)
+    assert b'# 3. Pull request and issue' in data
 elif cli == 'grok':
     assert os.environ['GROK_CLAUDE_AGENTS_ENABLED'] == '0'
     assert os.environ['GROK_CURSOR_SKILLS_ENABLED'] == '0'
@@ -1437,10 +1805,12 @@ elif cli == 'grok':
     assert '--disable-web-search' in args
     assert args[args.index('--tools') + 1] == 'read_file,list_dir,grep'
     prompt = pathlib.Path(args[args.index('--prompt-file') + 1]).read_text()
-    assert prompt.startswith('The checkout under review is ')
+    assert 'The checkout under review is ' in prompt
+    pathlib.Path(os.environ['TEST_SENT_ROOT'], 'b.sent').write_bytes(pathlib.Path(args[args.index('--prompt-file') + 1]).read_bytes())
     print(json.dumps({'text': 'VERDICT: APPROVE'}))
 else:
     assert 'Round task from file' in args[args.index('-p') + 1]
+    pathlib.Path(os.environ['TEST_SENT_ROOT'], 'c.sent').write_bytes(args[args.index('-p') + 1].encode())
     print('VERDICT: APPROVE')
 """
         for cli in ("codex", "grok", "kimi"):
@@ -1452,8 +1822,11 @@ else:
         summary = self.root / "task.txt"
         summary.write_text("Round task from file")
         output = self.root / "output"
+        sent = self.root / "sent"
+        sent.mkdir()
         env = dict(os.environ, PATH=str(binaries) + os.pathsep + os.environ["PATH"],
-                   REVIEW_PANEL_CONF=str(conf), REVIEW_PANEL_OUT=str(output), REVIEW_BASE="origin/trunk")
+                   REVIEW_PANEL_CONF=str(conf), REVIEW_PANEL_OUT=str(output), REVIEW_BASE="origin/trunk",
+                   TEST_SENT_ROOT=str(sent))
         name = "Round9._-"
         result = subprocess.run(["bash", str(SCRIPT.with_name("review-panel.sh")), name,
                                  str(self.repo), str(summary)], capture_output=True, text=True, env=env)
@@ -1463,6 +1836,8 @@ else:
             prompt = (output / name / f"generalist-{family}.prompt").read_text()
             self.assertIn("Round task from file", prompt.split("# 3. Pull request and issue")[1])
             self.assertEqual("```diff" in prompt, family == "a")
+            pack = output / name / f"generalist-{family}.pack" / "pack.txt"
+            self.assertEqual((sent / f"{family}.sent").read_bytes(), pack.read_bytes())
 
     def test_pr_brief_works_without_gh_and_classifies_owned_external(self):
         self.write(self.repo, "tests/test_new.py", "assert True\n")
