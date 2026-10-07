@@ -1318,9 +1318,10 @@ class ChangeReviewEntryTest(unittest.TestCase):
             "Use the dispatcher's commit when the dispatcher supplies one.",
             "git -C \"<HOUSE_RULES_ROOT>\" rev-parse HEAD",
             "<HOUSE_RULES_ROOT>/skills/pr-ready/scripts/prompt.py",
-            '--rev "<HOUSE_RULES_COMMIT>" --session prompts/roles/reviewer.md',
+            '--rev "<HOUSE_RULES_COMMIT>" --role reviewer --no-target --session',
             "Read the whole compiler output before reviewing.",
             "Compile the reviewer role and the selected `prompts/lenses/<lens>.md` together",
+            'Add `--lens "<lens>"` to the pack command',
             "If compilation fails, report the error and stop the review.",
             "Do not substitute live checkout files or an incomplete pack.",
             "After compaction, compile the pack again from the same named commit.",
@@ -1328,6 +1329,7 @@ class ChangeReviewEntryTest(unittest.TestCase):
             with self.subTest(instruction=instruction):
                 self.assertIn(instruction, text)
         # The role owns its recursive includes, criteria and report template.
+        self.assertNotIn("--session prompts/roles/reviewer.md", skill)
         self.assertNotRegex(skill, r"(?m)^@rule ")
         report = (ROOT / "prompts/util/review-report.md").read_text()
         template = report.split("```text\n", 1)[1].split("```", 1)[0]

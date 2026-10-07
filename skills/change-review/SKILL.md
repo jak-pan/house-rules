@@ -24,7 +24,7 @@ Keep that resolved ID as `<HOUSE_RULES_COMMIT>` for this review, including after
 Compile the reviewer role with the session option for already-loaded shared rules:
 
 ```sh
-python3 "<HOUSE_RULES_ROOT>/skills/pr-ready/scripts/prompt.py" --rev "<HOUSE_RULES_COMMIT>" --session prompts/roles/reviewer.md
+python3 "<HOUSE_RULES_ROOT>/skills/pr-ready/scripts/prompt.py" --rev "<HOUSE_RULES_COMMIT>" --role reviewer --no-target --session
 ```
 
 The [pack-assembly design](../../docs/design/77-one-step-pack-assembly.md) owns named-commit compilation.
@@ -33,6 +33,7 @@ The [pack-assembly design](../../docs/design/77-one-step-pack-assembly.md) owns 
 - Select any requested review lens from the same named commit.
   Compile the reviewer role and the selected `prompts/lenses/<lens>.md` together
   with the same `--rev` and `--session` options.
+  Add `--lens "<lens>"` to the pack command, using the lens name without its path or extension.
 - If compilation fails, report the error and stop the review.
   Do not substitute live checkout files or an incomplete pack.
 - After compaction, compile the pack again from the same named commit.
