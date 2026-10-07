@@ -11,8 +11,6 @@ import tempfile
 from pathlib import Path
 from urllib.parse import quote, quote_from_bytes, unquote, urlsplit
 
-from prompt import expand, PromptError
-
 HERE = Path(__file__).resolve().parent
 CODEX_LIMIT = 800_000
 SPEC_LIMIT = 2_000_000
@@ -40,7 +38,7 @@ class PrepareError(Exception):
 
 
 def noninteractive_env():
-    return dict(os.environ, GIT_TERMINAL_PROMPT="0", GH_PROMPT_DISABLED="1")
+    return dict(os.environ, GIT_TERMINAL_PROMPT="0", GH_PROMPT_DISABLED="1", GIT_NO_REPLACE_OBJECTS="1")
 
 
 def display(text):
@@ -509,29 +507,39 @@ def lens_settings(name, config=None):
     return settings[name]
 
 
-def review(repo, args, base, remote):
-    rng, head = f"{base}...HEAD", git(repo, "rev-parse", "HEAD").strip()
+def review(repo, args, base, remote, head=None):
+    if head is None:
+        head = git(repo, "rev-parse", "--verify", "--end-of-options",
+                   (getattr(args, "rev", None) or "HEAD") + "^{commit}").strip()
+    rng = f"{base}...{head}"
     url = web_remote(repo, remote)
     pr, issues, comments, pr_link, texts, missing, notices = pr_context(repo, args, url)
-    log = git(repo, "log", "--reverse", "--format=%H%x00%B%x00", f"{base}..HEAD").split("\0")
+    log = git(repo, "log", "--reverse", "--format=%H%x00%B%x00", f"{base}..{head}").split("\0")
     commits = [(log[n].strip(), log[n + 1].strip()) for n in range(0, len(log) - 1, 2)]
     summary = Path(args.summary).read_text() if args.summary else pr.get("title") or "\n".join(body.splitlines()[0] for _, body in commits if body)
     lens = args.lens or {"codex": "generalist-a", "grok": "generalist-b", "kimi": "generalist-c"}[args.cli]
     if not re.fullmatch(r"[a-zA-Z0-9_-]+", lens):
         raise PrepareError("invalid lens name")
-    lens_settings(lens)
-    prefix = "prompts/"
-    try:
-        common, _ = expand(file=prefix + "roles/reviewer.md")
-        instructions, _ = expand(file=prefix + "lenses/" + lens + ".md")
-    except PromptError as exc:
-        raise PrepareError(str(exc)) from exc
+    context_only = getattr(args, "context_only", False)
+    common, instructions = "", ""
+    if not context_only:
+        from prompt import expand, PromptError
+
+        lens_settings(lens)
+        prefix = "prompts/"
+        try:
+            common, _ = expand(file=prefix + "roles/reviewer.md")
+            instructions, _ = expand(file=prefix + "lenses/" + lens + ".md")
+        except PromptError as exc:
+            raise PrepareError(str(exc)) from exc
     mode = args.format or ("structured" if args.cli == "codex" else "pack")
     parts = ["# 1. Review pack\n" + common, "# 2. Instructions\n" + instructions,
              "\n".join(["# 3. Pull request and issue", f"Pull request: {pr_link}",
-                        f"Title: {pr.get('title') or git(repo, 'log', '-1', '--format=%s').strip()}",
+                        f"Title: {pr.get('title') or git(repo, 'log', '-1', '--format=%s', head).strip()}",
                         "Issues: " + (", ".join(i["html_url"] for i in issues) or "(none)"),
                         f"Range: `{rng}`; head: `{head}`", "", summary])]
+    if context_only:
+        parts = [f"The checkout under review is {repo}; read its files by absolute path.", *parts[2:]]
     files = changed_files(repo, rng)
     entries = requirement_entries(repo, args, pr, issues, comments, texts, commits, files, url, head, missing, notices)
     if missing:
@@ -541,8 +549,12 @@ def review(repo, args, base, remote):
     # Normalize before trimming: escaping invalid bytes can quadruple their size.
     for entry in entries:
         entry.update((key, display(value)) for key, value in entry.items())
+    compiled_chars = getattr(args, "compiled_chars", 0)
+    if compiled_chars < 0 or (compiled_chars and not context_only):
+        raise PrepareError("--compiled-chars requires context-only mode and a nonnegative count")
+    limit = CODEX_LIMIT - compiled_chars
     overhead = len(display("\n\n".join([*notices, *parts, requirements_part(entries, mode)]))) + 3
-    budget = max(0, CODEX_LIMIT - overhead) if args.cli == "codex" else CODEX_LIMIT
+    budget = max(0, limit - overhead) if args.cli == "codex" else CODEX_LIMIT
     packed = mode == "pack"
     try:
         change = change_part(repo, rng, files, url, head, mode, budget if mode != "pack" else None)
@@ -557,7 +569,7 @@ def review(repo, args, base, remote):
         # Include the terminating newline; main writes this exact representation.
         return display("\n\n".join([*notices, *trim_notes(), *parts, requirements_part(entries, mode), change])) + "\n"
     result = render()
-    if args.cli == "codex" and len(result) > CODEX_LIMIT:
+    if args.cli == "codex" and len(result) > limit:
         if not packed:
             notices.append(f"Size guard: prompt exceeds {CODEX_LIMIT:,} characters; change part uses pack (hunk headers).")
             change = change_part(repo, rng, files, url, head, "pack")
@@ -567,18 +579,18 @@ def review(repo, args, base, remote):
                                  and e["body"] and not (mode == "diff" and category == "spec")),
                                 key=lambda n: len(entries[n]["body"]), reverse=True)
             for n in candidates:
-                if len(result) <= CODEX_LIMIT:
+                if len(result) <= limit:
                     break
                 trimmed.append(n)
                 # Include the trim notice in the budget before retaining a prefix.
                 result = render()
-                keep = max(0, len(entries[n]["body"]) - (len(result) - CODEX_LIMIT) - 64)
+                keep = max(0, len(entries[n]["body"]) - (len(result) - limit) - 64)
                 entries[n]["body"] = entries[n]["body"][:keep] + "\n[Trimmed by size guard.]"
                 result = render()
-        if len(result) > CODEX_LIMIT:
+        if len(result) > limit:
             history = "\n".join(trim_notes() or ["No requirement bodies eligible for trimming."])
             raise PrepareError(
-                f"Size guard: limit {CODEX_LIMIT:,} characters; final size {len(result):,} characters after trimming. "
+                f"Size guard: limit {CODEX_LIMIT:,} characters; final size {len(result) + compiled_chars:,} characters after trimming. "
                 "Retained indexes, rules, task and author claims require a smaller input.\n"
                 "Already trimmed: change part uses pack (hunk headers).\n" + history)
     return result
@@ -626,6 +638,9 @@ def main(argv=None):
         p.add_argument("--base")
         p.add_argument("--no-fetch", action="store_true", help="use an already resolved --base without fetching")
         if command == "review":
+            p.add_argument("--rev", default="HEAD", help="commit to review; resolved before base preparation")
+            p.add_argument("--context-only", action="store_true", help="emit task context for the commit-built pack compiler")
+            p.add_argument("--compiled-chars", type=int, default=0, help="characters reserved for compiled parts and task separator")
             for option in ("pr", "spec", "tests", "lens", "summary"):
                 p.add_argument("--" + option)
             p.add_argument("--issue", action="append", default=[])
@@ -638,18 +653,30 @@ def main(argv=None):
             p.add_argument("--update", action="store_true", help="merge the base even on external or unknown-ownership repositories")
     p = sub.add_parser("lens", help="print configured lens family and sandbox")
     p.add_argument("name")
+    p.add_argument("--config", type=Path)
+    p = sub.add_parser("check-prompt", help="check the complete compiled prompt before dispatch")
+    p.add_argument("file", type=Path)
+    p.add_argument("--cli", choices=("codex", "grok", "kimi"), required=True)
     args = parser.parse_args(argv)
     try:
         if args.command == "lens":
-            print(" ".join(lens_settings(args.name)))
+            print(" ".join(lens_settings(args.name, args.config)))
+            return 0
+        if args.command == "check-prompt":
+            size = len(args.file.read_bytes().decode("utf-8"))
+            if args.cli == "codex" and size > CODEX_LIMIT:
+                raise PrepareError(f"Size guard: limit {CODEX_LIMIT:,} characters; complete prompt size {size:,} characters; narrow the review input")
             return 0
         repo = Path(git(args.checkout, "rev-parse", "--show-toplevel").strip())
+        head = None
+        if args.command == "review":
+            head = git(repo, "rev-parse", "--verify", "--end-of-options", args.rev + "^{commit}").strip()
         base, remote, fresh = resolve_base(repo, args.base, args.no_fetch)
-        print(f"range: {base}...HEAD", file=sys.stderr)
+        print(f"range: {base}...{head or 'HEAD'}", file=sys.stderr)
         if args.command == "base":
             print(base)
         elif args.command == "review":
-            sys.stdout.write(review(repo, args, base, remote))
+            sys.stdout.write(review(repo, args, base, remote, head))
         else:
             status = ownership(repo, remote)
             if not fresh:
@@ -664,7 +691,7 @@ def main(argv=None):
                 update_note = f"Merged {base} (or already up to date)."
             print(display(brief(repo, args, base, status, update_note)))
         return 0
-    except (PrepareError, OSError) as exc:
+    except (PrepareError, OSError, UnicodeError) as exc:
         print(display(f"error: {exc}"), file=sys.stderr)
         return 1
 
