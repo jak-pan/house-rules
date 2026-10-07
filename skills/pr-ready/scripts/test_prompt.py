@@ -2143,11 +2143,14 @@ class CommitPackTest(unittest.TestCase):
         # Reproduction in issue #74 comment 6021138417: Warden's AGENTS.md
         # reopened House Rules through this explicit Base rules instruction.
         older = "# AGENTS.md\n\nBase rules: [House Rules](https://example.invalid/house-rules). Read and follow them first.\n"
+        reference = ("Base rules: [House Rules][foundation]. Read and follow them first.\n\n"
+                     "[foundation]: https://example.invalid/house-rules\n")
         unsupported = self.managed().replace("INDEX.md", "AGENTS.md")
         block = (ROOT / "AGENTS.md").read_text()
         for index, (agents, reason) in enumerate(((self.managed() + "Use the local gate.\n", "mixes"),
                                (block + "Local requirement\n", "mixes"),
                                (older, "unsupported House Rules loader"),
+                               (reference, "unsupported House Rules loader"),
                                (unsupported, "unsupported House Rules loader"),
                                (block.replace("house-rules:", "forge:"), "unsupported House Rules loader"),
                                (block.replace("house-rules:", "groundwork:"), "unsupported House Rules loader"),
