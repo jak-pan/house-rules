@@ -42,7 +42,8 @@ class SpecialistTests(unittest.TestCase):
         self.manifest.write_text(json.dumps({"house_rules_revision": "a" * 40,
             "files": [], "pack": {"sha256": hashlib.sha256(self.data).hexdigest()}}))
         self.env = {**os.environ, "HOME": str(self.user), "PATH": str(self.bin) + os.pathsep + os.environ["PATH"],
-                    "FAKE_CALLS": str(self.calls), "FAKE_DEBUG": "[]"}
+                    "FAKE_CALLS": str(self.calls), "FAKE_DEBUG": "[]",
+                    "FAKE_ADMIN_SKILLS": str(self.base / "administrative-skills")}
         for key in ("CODEX_HOME", "CLAUDE_CONFIG_DIR", "KIMI_CODE_HOME"):
             self.env[key] = str(self.base / ("normal-" + key))
             Path(self.env[key]).mkdir()
@@ -62,9 +63,14 @@ if args[:2] == ["debug", "prompt-input"]:
         print("unsupported debugger execution flag", file=sys.stderr)
         sys.exit(2)
     with open(os.environ["FAKE_CALLS"] + ".debug", "a") as f:
-        f.write(json.dumps({{"args":args,"home":os.environ["CODEX_HOME"],"cwd":os.getcwd()}}) + "\\n")
+        f.write(json.dumps({{"args":args,"home":os.environ["CODEX_HOME"],"cwd":os.getcwd(),
+                            "config":pathlib.Path(os.environ["CODEX_HOME"], "config.toml").read_text()}}) + "\\n")
     if os.environ.get("FAKE_MUTATE_HOME"):
         pathlib.Path(os.environ["FAKE_MUTATE_HOME"]).write_text("changed original config")
+    if os.environ.get("FAKE_ADD_SKILL"):
+        skill = pathlib.Path(os.environ["FAKE_ADD_SKILL"])
+        skill.parent.mkdir(parents=True, exist_ok=True)
+        skill.write_text("skill added after clean capture")
     print(os.environ["FAKE_DEBUG"])
     sys.exit(int(os.environ.get("FAKE_DEBUG_EXIT", "0")))
 data = sys.stdin.buffer.read() if tool != "kimi" else args[args.index("-p") + 1].encode()
@@ -89,8 +95,7 @@ if tool == "claude":
         time.sleep(10)
     print(json.dumps({{"type":"result", "subtype":"success", "is_error":False, "result":"answer\\n"}}))
 elif tool == "codex":
-    if not os.environ.get("FAKE_NO_OUT"):
-        pathlib.Path(args[args.index("-o") + 1]).write_text("answer\\n")
+    pathlib.Path(args[args.index("-o") + 1]).write_text("answer\\n")
 else:
     print("answer")
 sys.exit(int(os.environ.get("FAKE_EXIT", "0")))
@@ -153,8 +158,9 @@ spec.loader.exec_module(launcher)
 if os.environ.get("FAKE_READONLY_MOUNT"):
     launcher.os.statvfs = lambda path: mock.Mock(f_flag=os.ST_RDONLY)
 original = launcher.sync.discover_skills
-with mock.patch.object(launcher.sync, "discover_skills", side_effect=lambda folder, seen=None:
-                       set() if folder == Path("/etc/codex/skills") else original(folder, seen)):
+with mock.patch.object(launcher.sync, "discover_skills", side_effect=lambda folder, *args, **kwargs:
+                       original(Path(os.environ["FAKE_ADMIN_SKILLS"]) if folder == Path("/etc/codex/skills")
+                                else folder, *args, **kwargs)):
     sys.exit(launcher.main(sys.argv[2:]))
 """
         command = [sys.executable, "-B", "-c", driver, str(LAUNCHER), *args[3:]]
@@ -282,23 +288,21 @@ os._exit(0)  # The tracked parent exits with its lifetime pipe still open.
         self.qualification.write_text(json.dumps(record))
         self.refused(self.invoke("codex", qualify=True), "version")
 
-    def test_codex_arguments_each_mode_and_pack_bytes_unchanged(self):
+    def test_codex_preflight_arguments_each_mode_then_refusal(self):
         self.register("codex")
         for mode, sandbox in (("ro", "read-only"), ("rw", "workspace-write")):
             with self.subTest(mode=mode):
                 self.qualify("codex", mode, "tool")
                 result = self.invoke("codex", mode, True, ["--model", "model", "--effort", "high"])
-                self.assertEqual(result.returncode, 0, result.stderr.decode())
-                call = self.called()[-1]
-                self.assertEqual(bytes.fromhex(call["pack"]), self.data)
+                self.refused(result, "Codex runtime skill discovery")
+                call = json.loads(Path(str(self.calls) + ".debug").read_text().splitlines()[-1])
                 self.assertNotEqual(call["home"], str(self.home))
                 self.assertFalse(Path(call["home"]).exists())
-                self.assertIn(sandbox, call["args"])
+                self.assertIn('sandbox_mode="' + sandbox + '"', call["args"])
                 self.assertIn("model_reasoning_effort=\"high\"", call["args"])
-                for arg in ("--skip-git-repo-check", "project_doc_max_bytes=0", "-C", str(self.workdir), "-o", "-", "model"):
+                for arg in ("project_doc_max_bytes=0", 'model="model"'):
                     self.assertIn(arg, call["args"])
-                self.assertEqual(self.out.read_text(), "answer\n")
-                self.out.unlink()
+                self.assertEqual(call["cwd"], str(self.workdir))
 
     def test_claude_native_safe_mode_event_and_output_extraction(self):
         self.qualify("claude")
@@ -368,14 +372,6 @@ os._exit(0)  # The tracked parent exits with its lifetime pipe still open.
         self.assertEqual(len(self.called()), 1)
         self.assertFalse(self.out.exists())
 
-    def test_success_without_codex_output_fails_visibly(self):
-        self.register("codex")
-        self.qualify("codex")
-        self.env["FAKE_NO_OUT"] = "1"
-        result = self.invoke("codex", qualify=True)
-        self.assertEqual(result.returncode, 1, result.stderr.decode())
-        self.assertFalse(self.out.exists())
-
     def test_existing_output_is_refused_without_overwrite(self):
         self.out.write_text("previous answer")
         result = self.invoke()
@@ -428,21 +424,14 @@ os._exit(0)  # The tracked parent exits with its lifetime pipe still open.
             config.write("# changed native configuration\n")
         self.refused(self.invoke("codex", qualify=True), "config_sha256")
 
-    def test_codex_child_failure_retains_log_without_retry(self):
-        for tool in ("codex",):
-            with self.subTest(tool=tool):
-                self.register(tool)
-                self.data += str(self.workdir).encode() + b"\n"
-                self.pack.write_bytes(self.data)
-                self.set_manifest()
-                self.qualify(tool)
-                self.env["FAKE_EXIT"] = "8"
-                result = self.invoke(tool, qualify=True)
-                self.assertEqual(result.returncode, 1, result.stderr.decode())
-                self.assertIn("8", result.stderr.decode())
-                self.assertEqual(len(self.called()), 1)
-                self.assertFalse(self.out.exists())
-                self.calls.unlink()
+    def test_codex_preflight_failure_retains_log_without_retry(self):
+        self.register("codex")
+        self.qualify("codex")
+        self.env["FAKE_DEBUG_EXIT"] = "8"
+        result = self.invoke("codex", qualify=True)
+        self.refused(result, "preflight exited 8")
+        self.assertIn("log", result.stderr.decode())
+        self.assertEqual(len(Path(str(self.calls) + ".debug").read_text().splitlines()), 1)
 
     def test_numeric_manifest_revision_refuses_without_traceback(self):
         record = json.loads(self.manifest.read_text())
@@ -458,7 +447,63 @@ os._exit(0)  # The tracked parent exits with its lifetime pipe still open.
         self.refused(result, "manifest")
         self.assertNotIn("Traceback", result.stderr.decode())
 
-    def test_codex_snapshot_is_shared_by_debug_and_execution_after_source_changes(self):
+    def test_codex_live_discovery_refuses_after_clean_preflight_in_both_modes(self):
+        self.register("codex")
+        for mode in ("ro", "rw"):
+            for source in (self.user / ".agents/skills", self.base / "administrative-skills",
+                           self.workdir / ".agents/skills"):
+                with self.subTest(mode=mode, source=source):
+                    self.out.unlink(missing_ok=True)
+                    self.calls.unlink(missing_ok=True)
+                    self.qualify("codex", mode, "tool")
+                    added = source / (mode + "/SKILL.md")
+                    self.env["FAKE_ADD_SKILL"] = str(added)
+                    result = self.invoke("codex", mode, True)
+                    try:
+                        self.refused(result, "Codex runtime skill discovery is not disabled or isolated")
+                        self.assertEqual(added.read_text(), "skill added after clean capture")
+                    finally:
+                        added.unlink(missing_ok=True)
+
+    def test_snapshot_accepts_canonical_disable_for_linked_builtin_skills(self):
+        self.register("codex")
+        external = self.base / "external-system"
+        skill = external / "example/SKILL.md"
+        skill.parent.mkdir(parents=True)
+        skill.write_text("synthetic builtin")
+        (external / "alias").symlink_to(skill.parent, target_is_directory=True)
+        other = self.base / "external-skill.md"
+        other.write_text("synthetic linked document")
+        alias = external / "linked/SKILL.md"
+        alias.parent.mkdir()
+        alias.symlink_to(other)
+        (self.home / "skills").mkdir()
+        (self.home / "skills/.system").symlink_to(external, target_is_directory=True)
+        with (self.home / "config.toml").open("a") as config:
+            for canonical in (skill, other):
+                config.write(f'[[skills.config]]\npath = "{canonical}"\nenabled = false\n')
+        spec = importlib.util.spec_from_file_location("linked_builtin_test", LAUNCHER)
+        launcher = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(launcher)
+        original = launcher.sync.discover_skills
+        with mock.patch.object(Path, "home", return_value=self.user), mock.patch.object(
+                launcher.sync, "discover_skills", side_effect=lambda folder, *args, **kwargs:
+                set() if folder == Path("/etc/codex/skills") else original(folder, *args, **kwargs)):
+            findings = []
+            launcher.sync.specialist_findings(self.root, self.user, "SPECIALIST_CODEX_HOME",
+                                             self.home, findings, self.workdir)
+            self.assertEqual(findings, [])
+            staging = self.base / "inputs"
+            staging.mkdir()
+            args = mock.Mock(root=self.root, workdir=self.workdir, mcp_config=None)
+            home = launcher.snapshot_inputs(args, self.home, staging, self.env.copy())
+        for relative in ("alias/SKILL.md", "example/SKILL.md", "linked/SKILL.md"):
+            copied = home / "skills/.system" / relative
+            self.assertTrue(copied.is_file())
+            self.assertFalse(copied.is_symlink())
+            self.assertIn(str(copied), args.skill_options[1])
+
+    def test_codex_snapshot_preflight_survives_source_changes_then_refuses_execution(self):
         self.register("codex")
         config = self.home / "config.toml"
         # Built-in document selectors must follow the copied home through native overrides.
@@ -471,14 +516,12 @@ os._exit(0)  # The tracked parent exits with its lifetime pipe still open.
         original = config.read_text()
         self.env["FAKE_MUTATE_HOME"] = str(config)
         result = self.invoke("codex", qualify=True)
-        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.refused(result, "Codex runtime skill discovery")
         debug = json.loads(Path(str(self.calls) + ".debug").read_text())
-        call = self.called()[0]
-        self.assertEqual(debug["home"], call["home"])
-        self.assertEqual(call["config"], original)
+        self.assertEqual(debug["config"], original)
         self.assertEqual(config.read_text(), "changed original config")
-        self.assertIn(str(Path(call["home"]) / "skills/.system/example/SKILL.md"), " ".join(call["args"]))
-        self.assertFalse(Path(call["home"]).exists())
+        self.assertIn(str(Path(debug["home"]) / "skills/.system/example/SKILL.md"), " ".join(debug["args"]))
+        self.assertFalse(Path(debug["home"]).exists())
 
     def test_codex_snapshot_dereferences_config_alias_before_preflight(self):
         self.register("codex")
@@ -491,9 +534,10 @@ os._exit(0)  # The tracked parent exits with its lifetime pipe still open.
         original = canonical.read_text()
         self.env["FAKE_MUTATE_HOME"] = str(canonical)
         result = self.invoke("codex", qualify=True)
-        self.assertEqual(result.returncode, 0, result.stderr.decode())
-        self.assertNotEqual(self.called()[0]["home"], str(self.home))
-        self.assertEqual(self.called()[0]["config"], original)
+        self.refused(result, "Codex runtime skill discovery")
+        debug = json.loads(Path(str(self.calls) + ".debug").read_text())
+        self.assertNotEqual(debug["home"], str(self.home))
+        self.assertEqual(debug["config"], original)
         self.assertEqual(canonical.read_text(), "changed original config")
 
     def test_claude_mcp_snapshot_survives_source_replacement_before_qualification(self):

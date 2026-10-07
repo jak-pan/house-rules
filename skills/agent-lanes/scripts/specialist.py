@@ -174,12 +174,10 @@ def snapshot_inputs(args, source_home, staging, env):
         if not sync.is_file(home / "auth.json"):
             raise Refusal("missing codex login state in registered specialist home")
         _, entries, _ = sync.codex_specialist_config(home / "config.toml")
-        relocated = [dict(entry, path=home / entry["path"].relative_to(source_home.resolve()))
-                     for entry in entries if source_home.resolve() in entry["path"].parents]
-        if relocated:
-            entries += relocated
+        mapped = sync.codex_snapshot_entries(entries, source_home, home)
+        if mapped != entries:
             value = "[" + ",".join("{path=" + json.dumps(str(entry["path"])) +
-                                    ",enabled=false}" for entry in entries) + "]"
+                                    ",enabled=false}" for entry in mapped) + "]"
             args.skill_options = ["-c", "skills.config=" + value]
         env["CODEX_HOME"] = str(home)
     if args.mcp_config:
@@ -259,7 +257,7 @@ def prompt_context(data):
 def codex_preflight(args, env, record, log, owner):
     command = ["codex", "debug", "prompt-input", "-c", "project_doc_max_bytes=0",
                "-c", "sandbox_mode=" + json.dumps("read-only" if args.mode == "ro" else "workspace-write")]
-    command.extend(codex_options(args, debugger=True))
+    command.extend(codex_options(args))
     capture = owner.run(command, env=env, cwd=args.workdir, stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE, timeout=30)
     log.write(capture.stdout)
@@ -275,10 +273,10 @@ def codex_preflight(args, env, record, log, owner):
         raise Refusal("Codex prompt-input capture is missing or invalid") from error
 
 
-def codex_options(args, debugger=False):
+def codex_options(args):
     options = list(args.skill_options)
     if args.model:
-        options += ["-c", "model=" + json.dumps(args.model)] if debugger else ["-m", args.model]
+        options += ["-c", "model=" + json.dumps(args.model)]
     if args.effort:
         options += ["-c", "model_reasoning_effort=" + json.dumps(args.effort)]
     return options
@@ -352,11 +350,10 @@ def claude_stream(child, data, log):
 def launch(args, data, env, record, log, staging, owner):
     if args.tool == "codex":
         codex_preflight(args, env, record, log, owner)
-        command = ["codex", "exec", "--skip-git-repo-check", "-c", "project_doc_max_bytes=0",
-                   "-s", "read-only" if args.mode == "ro" else "workspace-write", "-C", str(args.workdir),
-                   "-o", str(staging / "answer"), *codex_options(args), "-"]
-        child = owner.run(command, cwd=args.workdir, env=env, input=data, stdout=log, stderr=log)
-        answer = staging / "answer"
+        # A clean capture cannot freeze user, administrative or repository skills
+        # for a separate execution process. No supported isolation control is qualified.
+        raise Refusal("Codex runtime skill discovery is not disabled or isolated; "
+                      "user, administrative and repository discovery sources remain live")
     elif args.tool == "claude":
         command = ["claude", "-p", "--safe-mode", "--output-format", "stream-json", "--verbose",
                    "--permission-prompts", "none"]
@@ -370,11 +367,6 @@ def launch(args, data, env, record, log, staging, owner):
         return answer
     else:
         raise Refusal("Kimi runtime instruction discovery is not disabled or isolated")
-    if child.returncode:
-        raise ChildFailure(f"child exit status {child.returncode}")
-    if not sync.is_file(answer):
-        raise ChildFailure("child exited 0 without writing --out")
-    return answer
 
 
 def main(argv=None):

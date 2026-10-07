@@ -210,9 +210,12 @@ def outside_checkout(path, root, target=None):
         raise ValueError(f"specialist home must be outside any project checkout: {path}")
 
 
-def discover_skills(folder, seen=None):
-    """Find canonical skill documents, including symlinks and nested system skills."""
+def discover_skills(folder, seen=None, *, canonical=True):
+    """Find skill identities or source locations, including links and nested skills."""
     seen = set() if seen is None else seen
+    if not canonical:
+        # Keep sibling aliases as separate copy locations; stop only ancestor cycles.
+        seen = set(seen)
     if not present(folder):
         return set()
     resolved = folder.resolve()
@@ -222,11 +225,12 @@ def discover_skills(folder, seen=None):
     if not is_dir(folder):
         raise ValueError(f"skill scan location is not a directory: {folder}")
     if is_file(folder / "SKILL.md"):
-        return {(folder / "SKILL.md").resolve()}
+        path = folder / "SKILL.md"
+        return {path.resolve() if canonical else path}
     found = set()
     for entry in children(folder):
         if is_dir(entry):
-            found.update(discover_skills(entry, seen))
+            found.update(discover_skills(entry, seen, canonical=canonical))
         elif is_link(entry) and not present(entry.resolve()):
             raise ValueError(f"broken skill link: {entry}")
     return found
@@ -300,6 +304,19 @@ def codex_specialist_config(path):
     return limit, entries, instructions
 
 
+def codex_snapshot_entries(entries, source_home, product_home):
+    """Map disabled source identities to every document location in the copied home."""
+    disabled = {entry["path"] for entry in entries if not entry["enabled"]}
+    mapped = {entry["path"]: entry for entry in entries}
+    source_home = source_home.resolve()
+    for name in ("skills", "plugins"):
+        for path in sorted(discover_skills(source_home / name, canonical=False)):
+            if path.resolve() in disabled:
+                copied = (product_home / path.relative_to(source_home)).resolve()
+                mapped[copied] = {"path": copied, "enabled": False}
+    return list(mapped.values())
+
+
 def specialist_findings(root, home, key, product_home, findings, workdir=None, source_home=None):
     """Shared filesystem preflight for sync and the specialist launcher."""
     outside_checkout(product_home, root, workdir)
@@ -331,15 +348,13 @@ def specialist_findings(root, home, key, product_home, findings, workdir=None, s
         findings.append(f"missing specialist config: {config}")
         return
     limit, entries, instructions = codex_specialist_config(config)
+    if source_home is not None:
+        entries = codex_snapshot_entries(entries, source_home, product_home)
     for setting in instructions:
         findings.append(f"additional global task instructions in {setting}: {config}")
     if limit != 0:
         findings.append(f"specialist project_doc_max_bytes must be 0: {config}")
     disabled = {entry["path"] for entry in entries if not entry["enabled"]}
-    if source_home is not None:
-        # The native launch overrides use these same relocated document selectors.
-        disabled.update(product_home.resolve() / path.relative_to(source_home.resolve())
-                        for path in tuple(disabled) if source_home.resolve() in path.parents)
     for entry in entries:
         if entry["enabled"]:
             findings.append(f"enabled discoverable skill: {entry['path']}")

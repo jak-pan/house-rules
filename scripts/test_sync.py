@@ -68,8 +68,8 @@ class SyncTests(unittest.TestCase):
         patch.start()
         self.addCleanup(patch.stop)
         original_discovery = sync.discover_skills
-        admin = mock.patch.object(sync, "discover_skills", side_effect=lambda folder, seen=None:
-                                  set() if folder == Path("/etc/codex/skills") else original_discovery(folder, seen))
+        admin = mock.patch.object(sync, "discover_skills", side_effect=lambda folder, *args, **kwargs:
+                                  set() if folder == Path("/etc/codex/skills") else original_discovery(folder, *args, **kwargs))
         admin.start()
         self.addCleanup(admin.stop)
 

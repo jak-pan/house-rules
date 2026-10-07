@@ -115,11 +115,15 @@ EOF or launcher termination. Group cleanup precedes temporary snapshot removal.
 It refuses invalid packs, contaminated homes and unqualified capabilities. Exit 0 means success with an output file; exit 1 reports child failure
 and its log; exit 2 names the refused check. Codex and Kimi require registered
 [specialist homes and qualification evidence](../../INSTALL-AGENTS.md#specialist-homes).
-Claude requires safe-mode isolation evidence but no specialist home. Codex supports
-`--model` and `--effort`; Claude and Kimi support `--model` and refuse `--effort`.
+Claude requires safe-mode isolation evidence but no specialist home. Codex preflight
+supports `--model` and `--effort`; Claude and Kimi support `--model` and refuse `--effort`.
 
-Read-only roles require qualified write prevention. Codex uses its read-only
-sandbox with tool write-prevention evidence. Host-only read-only launches are
+Read-only roles require qualified write prevention. Codex specialization is refused
+in every mode: user, administrative and repository skill discovery sources remain
+live even after a clean prompt-input capture. A separate execution process cannot
+use that capture as a frozen skill source. Codex specialization remains unavailable
+until supported controls make execution use the same qualified discovery sources.
+Host-only read-only launches are
 refused: checkout mount status cannot cover writable Git directories or symlink
 resources. Claude read-only roles remain unavailable until a qualified boundary
 covers reachable repository resources. Kimi specialization is refused in every
@@ -131,9 +135,11 @@ Report a blocked task when none qualifies. Never drop required MCP functionality
 or weaken safe mode.
 
 The launcher copies the Codex home and explicit Claude MCP configuration into one
-private temporary directory per launch. It checks the copied inputs and passes
-those same copies to preflight and execution. It never reopens source paths after
-qualification. Copied Codex skill documents receive matching native disable overrides.
+private temporary directory per launch. It checks the copied inputs and uses the
+Codex copy for preflight or the Claude MCP copy for execution. It never reopens source
+paths after qualification. Copied Codex skill documents receive matching native
+disable overrides derived from source locations and canonical identities, including
+external link targets. Snapshot validation uses the same selector mapping.
 
 The launcher never retries. For an authorized read-only reviewer capacity retry,
 reuse the unchanged pack and manifest after their checks pass. Recompile only when
