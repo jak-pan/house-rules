@@ -62,6 +62,8 @@ happened, why it matters and what to do, in that order.
 
 ## Claim labels
 
+- Render claim labels as inline code: `FACT`, `ASSUMPTION`, `ESTIMATE`, `ASSESSMENT` or
+  `DECISION`. Put punctuation outside the code span, for example `FACT`: the test passed.
 - Label claims `FACT`, `ASSUMPTION`, `ESTIMATE`, `ASSESSMENT` or `DECISION`. Quote an
   existing decision; never present a settled operator decision as open, or your own choice
   as settled.

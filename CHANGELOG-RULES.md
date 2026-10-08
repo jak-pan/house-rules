@@ -2,6 +2,12 @@
 
 Source notes for House Rules invariants and procedures.
 
+## rules/writing.md — Claim-label presentation
+
+Operator direction: 2026-10-08, restore the chosen inline-code presentation of claim
+labels in review output. Review report prompts use compact section labels and one
+summary for empty sections; exact machine protocol lines remain unformatted.
+
 ## rules/delivery.md — Track every deferred item (tracker choice)
 
 Operator decision: 2026-10-07, issue #54, option 1. A GitHub issue is the default tracker; the workspace
