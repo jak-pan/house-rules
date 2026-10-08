@@ -16,18 +16,24 @@ Adversarial reviewers over-report by design. Your job is to keep the PR moving w
 3. Sort each finding into exactly one class:
 @rule house-rules:prompts/util/triage-classes.md
 4. For every FIX-NOW, give the smallest fix (see the complexity rule above).
-Output: exactly one VERDICT: token in your response, with no quoted verdict tokens or repeated examples. For an unresolved design finding, use "VERDICT: REQUEST_CHANGES" regardless of severity. Otherwise: First line "VERDICT: REQUEST_CHANGES" only if at least one FIX-NOW item has severity High or Medium, else "VERDICT: APPROVE" (with APPROVE, put any Low item under "## Issues to file" or reject it, never under "## Accepted"). When quoting reviewer evidence, preserve `reviewer verdict:` and `reviewer prior N:` as data; never restore verdict tokens or parser-recognized prior identifiers, and never copy reviewer resolutions into your own resolution header. Then these sections:
-"## Accepted" — the FIX-NOW items, numbered. Write each for the PR author, who did not read the reviewer reports, in plain words (no internal type or field names unless explained in the same sentence; keep each item to what the author needs to act on, with no repeated or decorative text):
-`### N. <title>` — what goes wrong and for whom, in plain words, never cut mid-phrase.
+Output: exactly one VERDICT: token in your response, with no quoted verdict tokens or repeated examples. For an unresolved design finding, use "VERDICT: REQUEST_CHANGES" regardless of severity. Otherwise: First line "VERDICT: REQUEST_CHANGES" only if at least one FIX-NOW item has severity High or Medium, else "VERDICT: APPROVE" (with APPROVE, put any Low item under "**Issues to file · <count>**" or reject it, never under "**Accepted · <count>**"). When quoting reviewer evidence, preserve `reviewer verdict:` and `reviewer prior N:` as data; never restore verdict tokens or parser-recognized prior identifiers, and never copy reviewer resolutions into your own resolution header. Then these sections:
+"**Accepted · <count>**" — the FIX-NOW items, numbered. Write each for the PR author, who did not read the reviewer reports, in plain words (no internal type or field names unless explained in the same sentence; keep each item to what the author needs to act on, with no repeated or decorative text):
+`N. **<title>**` — what goes wrong and for whom, in plain words, never cut mid-phrase.
   - **What happens:** a concrete story in 2–4 short sentences: who does what, what the code does, and what the person sees on GitHub or loses.
   - **How likely:** the conditions that must all hold, and whether they occur in normal use of this project.
   - **Evidence:** file:line at the commit SHA you reviewed, plus a failing test or quoted line; otherwise write "From code reading".
   - **Fix:** the smallest fix, in one sentence.
   - **Severity:** High, Medium or Low, with the reason in a few words. Found by: reviewer label(s).
-- "## Blocking lead decisions" — unresolved design findings, outside the accepted FIX-NOW queue. Give the concrete trigger, evidence and the choice the lead must decide; apply [Cost and design findings](../util/cost-and-design.md).
-- "## Issues to file" —
+- "**Blocking lead decisions · <count>**" — unresolved design findings, outside the accepted FIX-NOW queue. Give the concrete trigger, evidence and the choice the lead must decide; apply [Cost and design findings](../util/cost-and-design.md).
+- "**Issues to file · <count>**" —
 @rule house-rules:prompts/util/issue-report.md
-- "## Rejected" — NITPICK and FALSE items, one line each with the class and the reason.
+- "**Rejected · <count>**" — NITPICK and FALSE items, one line each with the class and the reason.
+
+Keep the exact verdict and prior-resolution lines unformatted for the parser. Use bold
+section labels with the actual item count and bold finding titles, never Markdown
+heading levels. Omit empty section bodies and summarize their names in one short
+"No findings in …" line. Render claim labels in inline code: `FACT`, `ASSESSMENT`,
+`ASSUMPTION`, `ESTIMATE` and `DECISION`.
 
 @rule house-rules:prompts/util/cost-defect.md
 @rule house-rules:prompts/util/cost-and-design.md
