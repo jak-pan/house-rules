@@ -65,7 +65,7 @@ class PromptTest(unittest.TestCase):
         result = self.run_prompt("prompts/roles/triager.md")
         self.assertEqual(result.returncode, 0, result.stderr)
         requirements = (
-            'Reconcile before filing: before listing an item under "## Issues to file", '
+            'Reconcile before filing: before listing an item under "Issues to file", '
             'check the lists the dispatcher supplies: open issues, open PRs, '
             'PRs merged in the last 7 days, and issues already filed for this PR.',
             'When one of them already covers the finding, write "Already tracked as #N", '
@@ -401,7 +401,7 @@ class CollectionAcceptanceTest(unittest.TestCase):
         self.assertTrue(contract_path.is_file())
         contract = contract_path.read_text()
         self.assertEqual(contract, (
-            'one per ISSUE item, as "### <title>" then the body. '
+            'one per ISSUE item, as "**<title>**" then the body. '
             'The title names the behavior in plain words (no internal labels, codes or round names, never cut mid-phrase). '
             'The body follows [the issue form](issue-form.md).\n'
         ))
@@ -428,7 +428,7 @@ class CollectionAcceptanceTest(unittest.TestCase):
                     "Label untested parts", "full SHA",
                 ):
                     self.assertIn(requirement, prompt.stdout)
-                self.assertIn('"## Issues to file"', prompt.stdout)
+                self.assertIn('"Issues to file"', prompt.stdout)
                 self.assertNotIn("3–6 line body", prompt.stdout)
 
     def test_role_prompts_include_only_files_warden_stages(self):
@@ -475,11 +475,11 @@ class CollectionAcceptanceTest(unittest.TestCase):
             "defect with real impact (security, data loss, correctness, a contradiction "
             "of the spec or an operator decision), or waste whose fix is a deletion "
             "of a few lines.",
-            'Then these sections: "## Accepted" — the FIX-NOW items, numbered.',
+            'Then these sections: "Accepted · <count>" — the FIX-NOW items, numbered.',
             'Write each for the PR author, who did not read the reviewer reports, '
             'in plain words (no internal type or field names unless explained in '
             'the same sentence; keep each item to what the author needs to act on, '
-            'with no repeated or decorative text): ### N. <title> — what goes wrong '
+            'with no repeated or decorative text): N. <title> — what goes wrong '
             'and for whom, in plain words, never cut mid-phrase.',
         ):
             with self.subTest(sentence=sentence):
@@ -505,10 +505,10 @@ class CollectionAcceptanceTest(unittest.TestCase):
         text = (ROOT / "prompts/util/triage-classes.md").read_text()
         self.assertIn(
             "Severity decides blocking: only High or Medium FIX-NOW items block. "
-            'A Low finding never blocks: list it under "## Accepted" marked '
+            'A Low finding never blocks: list it under "Accepted" marked '
             '"Severity: Low (non-blocking)" only when a fix round runs anyway for '
             'a blocking item and its fix is small; otherwise file it under '
-            '"## Issues to file", or reject it as NITPICK when negligible.', text,
+            '"Issues to file", or reject it as NITPICK when negligible.', text,
         )
 
     def test_checker_approval_requires_only_high_or_medium_fixes_and_reports_all(self):
@@ -534,8 +534,8 @@ class CollectionAcceptanceTest(unittest.TestCase):
         self.assertIn(
             'First line "VERDICT: REQUEST_CHANGES" only if at least one FIX-NOW '
             'item has severity High or Medium, else "VERDICT: APPROVE" '
-            '(with APPROVE, put any Low item under "## Issues to file" or reject '
-            'it, never under "## Accepted").', text,
+            '(with APPROVE, put any Low item under "**Issues to file · <count>**" or reject '
+            'it, never under "**Accepted · <count>**").', text,
         )
         self.assertNotIn("if there is no FIX-NOW item", text)
 
@@ -545,7 +545,7 @@ class CollectionAcceptanceTest(unittest.TestCase):
                 result = PromptTest().run_prompt(f"prompts/roles/{role}.md")
                 self.assertEqual(result.returncode, 0, result.stderr)
                 text = " ".join(result.stdout.split())
-                self.assertIn('"## Blocking lead decisions"', text)
+                self.assertIn('"**Blocking lead decisions · <count>**"' if role == "triager" else '"## Blocking lead decisions"', text)
                 self.assertIn("outside the accepted FIX-NOW queue", text)
                 self.assertIn("regardless of severity", text)
                 self.assertIn("never becomes a follow-up or starts another fix round", text)
@@ -570,12 +570,12 @@ class CollectionAcceptanceTest(unittest.TestCase):
     def test_accepted_findings_explain_the_behavior_to_the_author(self):
         text = (ROOT / "prompts/roles/triager.md").read_text()
         expected = (
-            '"## Accepted" — the FIX-NOW items, numbered. Write each for the PR '
+            '"**Accepted · <count>**" — the FIX-NOW items, numbered. Write each for the PR '
             'author, who did not read the reviewer reports, in plain words '
             '(no internal type or field names unless explained in the same sentence; '
             'keep each item to what the author needs to act on, with no repeated or '
             'decorative text):\n'
-            '`### N. <title>` — what goes wrong and for whom, in plain words, '
+            '`N. **<title>**` — what goes wrong and for whom, in plain words, '
             'never cut mid-phrase.\n'
             '  - **What happens:** a concrete story in 2–4 short sentences: who does '
             'what, what the code does, and what the person sees on GitHub or loses.\n'
@@ -594,7 +594,7 @@ class CollectionAcceptanceTest(unittest.TestCase):
         text = (ROOT / "prompts/util/triage-classes.md").read_text()
         self.assertIn(
             'It becomes a separate tracked issue, not part of this PR. '
-            'Describe it under "## Issues to file" for the lane to file separately; '
+            'Describe it under "Issues to file" for the lane to file separately; '
             'external-write authority follows [External writes](external-writes.md).', text,
         )
 
